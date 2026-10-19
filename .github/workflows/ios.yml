@@ -39,7 +39,9 @@ jobs:
           xcodegen --version
 
       - name: Audit production sources
-        run: python3 scripts/audit_release.py
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_*.py'
+          python3 scripts/audit_release.py
 
       - name: Test OpenWrtKit
         run: swift test --package-path Packages/OpenWrtKit

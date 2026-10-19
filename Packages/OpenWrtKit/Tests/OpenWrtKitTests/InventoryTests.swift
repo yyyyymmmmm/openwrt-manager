@@ -56,4 +56,17 @@ final class InventoryTests: XCTestCase {
         ])]))
         XCTAssertEqual(names, ["system"])
     }
+
+    func testMalformedPackageMetadataDoesNotHideConfigurationsAndServices() {
+        let invalidFiles: JSONValue = .array([.object([
+            "name": .string("luci-app-test"), "version": .string("1"), "contents": .array([.number(7)])
+        ])])
+        XCTAssertThrowsError(try InventoryParser.packages(invalidFiles))
+        let invalidDependencies: JSONValue = .array([.object([
+            "name": .string("luci-app-test"), "version": .string("1"), "depends": .string("test")
+        ])])
+        XCTAssertThrowsError(try InventoryParser.packages(invalidDependencies))
+        XCTAssertThrowsError(try InventoryParser.opkg("one - 1.0\nmalformed row\ntwo - 2.0"))
+        XCTAssertThrowsError(try InventoryParser.initServices(.object(["broken": .string("error")])))
+    }
 }

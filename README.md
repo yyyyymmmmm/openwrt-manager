@@ -17,7 +17,7 @@
 
 ## 连接与兼容性
 
-客户端使用 HTTP(S) `/ubus` JSON-RPC。需要 `rpcd`、`uhttpd-mod-ubus` 和账户 ACL；租约、启动项及部分系统记录还依赖相应 LuCI RPC 模块。无线、配置和插件内容以当前路由器的实际响应为准。接口缺失、拒绝访问和请求失败会显示错误，不以空数据冒充读取成功。
+客户端使用 HTTP(S) `/ubus` JSON-RPC。需要 `rpcd`、`uhttpd-mod-ubus` 和账户 ACL；租约、启动项及部分系统记录还依赖相应 LuCI RPC 模块。无线、配置和插件内容以当前路由器的实际响应为准。接口缺失、拒绝访问和请求失败会显示错误，不以空数据冒充读取成功。接口、租约、无线、服务和软件包关键记录格式异常时明确报错，不静默略过异常记录后声称清单完整。
 
 软件包清单优先使用固定命令 `/usr/libexec/package-manager-call list-installed` 的受控 CGI 接口；旧版固件可尝试固定的 opkg 清单命令。没有任意命令执行入口，无法读取时明确报错。APK/opkg 的可用性取决于固件和 ACL，不能按 SSH 的 root 权限推定 HTTP 权限。
 
@@ -48,7 +48,7 @@ open OpenWrtManager.xcodeproj
 
 选择 OpenWrtManager scheme 和 iPhone Simulator。实体设备需要自己的 Apple 开发者团队与签名；首次局域网访问需要允许本地网络权限。
 
-`.github/workflows/ios.yml` 在 GitHub macOS runner 上扫描正式源码、执行协议测试、生成工程、构建并检查未签名 Release IPA，再运行模拟器 UI 测试。`scripts/audit_release.py` 拦截已知演示代码、CI 数据标识和测试资源进入正式包；它不能代替逐项功能验收。UI 测试使用仅在 CI 主机环回地址监听的 HTTP 测试服务器，通过正常登录和请求路径验证权限、配置事务及服务操作。服务器和测试数据均不加入正式 App；其截图只能证明自动化测试结果，不能作为真实路由器写入验收证据。
+`.github/workflows/ios.yml` 在 GitHub macOS runner 上扫描正式源码与资源、执行协议测试、生成工程、构建并检查未签名 Release IPA，再运行模拟器 UI 测试。`scripts/audit_release.py` 拦截已知演示代码、CI 数据标识和测试资源进入正式包；其规则由 6 项 Python 测试验证，但不能代替逐项功能验收。UI 测试使用仅在 CI 主机环回地址监听的 HTTP 测试服务器，通过正常登录和请求路径验证权限、配置事务及服务操作。服务器和测试数据均不加入正式 App；其截图只能证明自动化测试结果，不能作为真实路由器写入验收证据。
 
 每个提交的实际构建结果以 [GitHub Actions](https://github.com/yyyyymmmmm/openwrt-manager/actions) 为准。未签名 IPA 需自行签名后安装；TestFlight/App Store 分发还需 Apple Developer Program。工作流不收集或导出 Apple 私钥。
 

@@ -93,21 +93,26 @@ public enum InventoryParser {
         guard let array = value.arrayValue else { throw OpenWrtKitError.malformedResponse }
         return try array.map { item in
             guard let name = item["name"].stringValue, let version = item["version"].stringValue,
-                  !name.isEmpty else { throw OpenWrtKitError.malformedResponse }
+                  !name.isEmpty, !version.isEmpty else { throw OpenWrtKitError.malformedResponse }
+            func strings(_ field: String) throws -> [String] {
+                guard item[field] != .null else { return [] }
+                guard let list = item[field].arrayValue, list.allSatisfy({ $0.stringValue != nil }) else {
+                    throw OpenWrtKitError.malformedResponse
+                }
+                return list.compactMap(\.stringValue)
+            }
             return InstalledPackage(name: name, version: version, description: item["description"].stringValue ?? "",
-                                    dependencies: (item["depends"].arrayValue ?? []).compactMap(\.stringValue),
-                                    files: (item["contents"].arrayValue ?? []).compactMap(\.stringValue))
+                                    dependencies: try strings("depends"), files: try strings("contents"))
         }.sorted { $0.name < $1.name }
     }
 
     public static func opkg(_ text: String) throws -> [InstalledPackage] {
         let rows = text.split(whereSeparator: \.isNewline)
-        let values = rows.compactMap { row -> InstalledPackage? in
+        let values = try rows.map { row -> InstalledPackage in
             let fields = row.components(separatedBy: " - ")
-            guard fields.count >= 2, !fields[0].isEmpty else { return nil }
+            guard fields.count >= 2, !fields[0].isEmpty, !fields[1].isEmpty else { throw OpenWrtKitError.malformedResponse }
             return InstalledPackage(name: fields[0], version: fields[1], description: fields.dropFirst(2).joined(separator: " - "))
         }
-        guard !values.isEmpty || rows.isEmpty else { throw OpenWrtKitError.malformedResponse }
         return values.sorted { $0.name < $1.name }
     }
 
@@ -134,7 +139,8 @@ public enum InventoryParser {
 
     public static func initServices(_ value: JSONValue) throws -> [InitService] {
         guard let object = value.objectValue else { throw OpenWrtKitError.malformedResponse }
-        return object.map {
+        return try object.map {
+            guard $0.value.objectValue != nil else { throw OpenWrtKitError.malformedResponse }
             let value = $0.value["enabled"]
             return InitService(name: $0.key, enabled: value.boolValue ?? value.intValue.map { $0 != 0 })
         }.sorted { $0.name < $1.name }

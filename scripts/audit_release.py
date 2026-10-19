@@ -12,7 +12,7 @@ from pathlib import Path
 FORBIDDEN_MARKERS = (
     b"DemoData", b"loadDemo", b"enterDemo", b"isDemo", b"--demo",
     b"demoModeButton", b"ci-only-password", b"ci-router",
-    b"ci_extension", b"luci-app-ci-extension", b"CI integration server",
+    b"ci_extension", b"luci-app-ci-extension", b"CI integration server", b"CI fixture",
 )
 
 
@@ -28,9 +28,12 @@ def audit_sources(repository):
     for root in roots:
         if not root.is_dir():
             raise ValueError(f"Missing production source directory: {root}")
-        for source in root.rglob("*.swift"):
+        for source in root.rglob("*"):
+            if not source.is_file():
+                continue
             check_content(source.relative_to(repository), source.read_bytes())
-            count += 1
+            if source.suffix == ".swift":
+                count += 1
     if not count:
         raise ValueError("No production Swift sources found")
     return count

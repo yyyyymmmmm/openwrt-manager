@@ -29,8 +29,8 @@ public struct RouterReader: Sendable {
         snapshot.system = SnapshotParser.system(board: board, info: info)
         switch interfacesResult {
         case .success(let value):
-            if value["interface"].arrayValue != nil { snapshot.interfaces = SnapshotParser.interfaces(value) }
-            else { snapshot.warnings.append("网络接口：\(OpenWrtKitError.malformedResponse.localizedDescription)") }
+            do { snapshot.interfaces = try SnapshotParser.interfaces(value) }
+            catch { snapshot.warnings.append("网络接口：\(error.localizedDescription)") }
         case .failure(let error): snapshot.warnings.append("网络接口：\(error.localizedDescription)")
         }
         snapshot.refreshedAt = Date()
@@ -39,22 +39,17 @@ public struct RouterReader: Sendable {
 
     public func leases() async throws -> [DHCPLease] {
         let value = try await client.call(session: session, object: "luci-rpc", method: "getDHCPLeases")
-        guard value["dhcp_leases"].arrayValue != nil || value["dhcp6_leases"].arrayValue != nil else {
-            throw OpenWrtKitError.malformedResponse
-        }
-        return SnapshotParser.leases(value)
+        return try SnapshotParser.leases(value)
     }
 
     public func wireless() async throws -> [WirelessRadio] {
         let value = try await client.call(session: session, object: "network.wireless", method: "status")
-        guard value.objectValue != nil else { throw OpenWrtKitError.malformedResponse }
-        return SnapshotParser.wireless(value)
+        return try SnapshotParser.wireless(value)
     }
 
     public func services() async throws -> [RouterService] {
         let value = try await client.call(session: session, object: "service", method: "list")
-        guard value.objectValue != nil else { throw OpenWrtKitError.malformedResponse }
-        return SnapshotParser.services(value)
+        return try SnapshotParser.services(value)
     }
 
     public func inventory() async -> RouterInventory {
@@ -168,12 +163,15 @@ public enum SnapshotParser {
         return result
     }
 
-    public static func interfaces(_ value: JSONValue) -> [NetworkInterfaceSnapshot] {
-        (value["interface"].arrayValue ?? []).compactMap { item in
-            guard let name = item["interface"].stringValue else { return nil }
-            let addresses = ["ipv4-address", "ipv6-address"].flatMap { key in
-                (item[key].arrayValue ?? []).compactMap { address -> String? in
-                    guard let ip = address["address"].stringValue else { return nil }
+    public static func interfaces(_ value: JSONValue) throws -> [NetworkInterfaceSnapshot] {
+        guard let items = value["interface"].arrayValue else { throw OpenWrtKitError.malformedResponse }
+        return try items.map { item in
+            guard let name = item["interface"].stringValue, !name.isEmpty else { throw OpenWrtKitError.malformedResponse }
+            let addresses = try ["ipv4-address", "ipv6-address"].flatMap { key -> [String] in
+                guard item[key] != .null else { return [] }
+                guard let reported = item[key].arrayValue else { throw OpenWrtKitError.malformedResponse }
+                return try reported.map { address in
+                    guard let ip = address["address"].stringValue, !ip.isEmpty else { throw OpenWrtKitError.malformedResponse }
                     return ip + (address["mask"].intValue.map { "/\($0)" } ?? "")
                 }
             }
@@ -182,13 +180,21 @@ public enum SnapshotParser {
         }.sorted { $0.name < $1.name }
     }
 
-    public static func leases(_ value: JSONValue) -> [DHCPLease] {
+    public static func leases(_ value: JSONValue) throws -> [DHCPLease] {
+        var reported: [JSONValue] = []
+        var hasList = false
+        for key in ["dhcp_leases", "dhcp6_leases"] where value[key] != .null {
+            guard let leases = value[key].arrayValue else { throw OpenWrtKitError.malformedResponse }
+            hasList = true
+            reported.append(contentsOf: leases)
+        }
+        guard hasList else { throw OpenWrtKitError.malformedResponse }
         var seen = Set<String>()
-        return ["dhcp_leases", "dhcp6_leases"].flatMap { value[$0].arrayValue ?? [] }.compactMap { item in
+        return try reported.compactMap { item -> DHCPLease? in
             let address = item["ipaddr"].stringValue
                 ?? item["ip6addr"].stringValue
                 ?? item["ip6addrs"].arrayValue?.first?.stringValue
-            guard let address else { return nil }
+            guard let address, !address.isEmpty else { throw OpenWrtKitError.malformedResponse }
             let lease = DHCPLease(hostname: item["hostname"].stringValue ?? "未命名设备", address: address,
                                   mac: item["macaddr"].stringValue ?? "—",
                                   expires: item["expires"].intValue, duid: item["duid"].stringValue)
@@ -196,16 +202,29 @@ public enum SnapshotParser {
         }.sorted { $0.hostname.localizedStandardCompare($1.hostname) == .orderedAscending }
     }
 
-    public static func wireless(_ value: JSONValue) -> [WirelessRadio] {
-        (value.objectValue ?? [:]).map { name, radio in
-            WirelessRadio(name: name, up: radio["up"].boolValue, channel: radio["config"]["channel"].textValue ?? "未报告",
-                          networks: (radio["interfaces"].arrayValue ?? []).compactMap { $0["config"]["ssid"].stringValue })
+    public static func wireless(_ value: JSONValue) throws -> [WirelessRadio] {
+        guard let radios = value.objectValue else { throw OpenWrtKitError.malformedResponse }
+        return try radios.map { name, radio in
+            guard radio.objectValue != nil else { throw OpenWrtKitError.malformedResponse }
+            let interfaces: [JSONValue]
+            if radio["interfaces"] == .null { interfaces = [] }
+            else {
+                guard let reported = radio["interfaces"].arrayValue else { throw OpenWrtKitError.malformedResponse }
+                interfaces = reported
+            }
+            guard interfaces.allSatisfy({ $0.objectValue != nil }) else { throw OpenWrtKitError.malformedResponse }
+            return WirelessRadio(name: name, up: radio["up"].boolValue, channel: radio["config"]["channel"].textValue ?? "未报告",
+                                 networks: interfaces.compactMap { $0["config"]["ssid"].stringValue })
         }.sorted { $0.name < $1.name }
     }
 
-    public static func services(_ value: JSONValue) -> [RouterService] {
-        (value.objectValue ?? [:]).map { name, service in
+    public static func services(_ value: JSONValue) throws -> [RouterService] {
+        guard let services = value.objectValue else { throw OpenWrtKitError.malformedResponse }
+        return try services.map { name, service in
+            guard service.objectValue != nil,
+                  service["instances"] == .null || service["instances"].objectValue != nil else { throw OpenWrtKitError.malformedResponse }
             let instances = service["instances"].objectValue.map { Array($0.values) }
+            guard instances?.allSatisfy({ $0.objectValue != nil }) != false else { throw OpenWrtKitError.malformedResponse }
             let running = instances.flatMap { values -> Int? in
                 guard values.allSatisfy({ $0["running"].boolValue != nil }) else { return nil }
                 return values.filter { $0["running"].boolValue == true }.count
