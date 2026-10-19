@@ -264,6 +264,45 @@ final class RouterStore {
         return try await reader.networkProtocols()
     }
 
+    func homeProxyCapabilities() async throws -> HomeProxyCapabilities {
+        guard let reader else { throw OpenWrtKitError.authenticationFailed }
+        return try await reader.homeProxyCapabilities()
+    }
+
+    func nativePluginRead(_ request: NativePluginRead) async throws -> String {
+        guard let reader else { throw OpenWrtKitError.authenticationFailed }
+        return try await reader.nativePluginRead(request)
+    }
+
+    func upnpMappings() async throws -> [UPnPMapping] {
+        guard let reader else { throw OpenWrtKitError.authenticationFailed }
+        return try await reader.upnpMappings()
+    }
+
+    func zeroTierNetworks() async throws -> [ZeroTierNetwork] {
+        guard let reader else { throw OpenWrtKitError.authenticationFailed }
+        return try await reader.zeroTierNetworks()
+    }
+
+    func deleteUPnPMapping(_ mapping: UPnPMapping, observed: [UPnPMapping]) async throws -> [UPnPMapping] {
+        guard !isMutating, pendingConfiguration == nil, let reader else { throw ConfigurationError.busy }
+        isMutating = true
+        defer { isMutating = false }
+        let mappings = try await reader.deleteUPnPMapping(mapping, observed: observed)
+        recordActivity("UPnP 映射已重新核对", detail: "删除请求后未再读取到所选端点映射；客户端仍可能重新建立。")
+        return mappings
+    }
+
+    func nativePluginAction(_ action: NativePluginAction) async throws -> String {
+        guard !isMutating, pendingConfiguration == nil, let reader else { throw ConfigurationError.busy }
+        isMutating = true
+        defer { isMutating = false }
+        let result = try await reader.nativePluginAction(action)
+        recordActivity(action.title, detail: "固件已响应请求。业务结果请查看操作页及日志。")
+        await refresh()
+        return result
+    }
+
     func diagnose(tool: DiagnosticTool, host: String) async throws -> RouterCommandResult {
         guard let reader else { throw OpenWrtKitError.authenticationFailed }
         return try await reader.diagnose(tool: tool, host: host)

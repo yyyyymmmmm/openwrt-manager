@@ -15,6 +15,8 @@ struct NativeConfigurationView: View {
     @State private var permissionError: String?
     @State private var protocols: [String] = []
     @State private var protocolError: String?
+    @State private var homeProxyCapabilities: HomeProxyCapabilities?
+    @State private var homeProxyCapabilityError: String?
     @State private var adding: NativeSectionSchema?
     @State private var discard = false
     @State private var preview: ConfigurationPlan?
@@ -23,10 +25,11 @@ struct NativeConfigurationView: View {
     private var changed: Bool { draft != nil && draft != original }
     private var editable: Bool { writable && !store.isMutating && store.pendingConfiguration == nil }
     private var sectionSchemas: [NativeSectionSchema] {
-        guard schema.id == "interfaces", let draft else { return schema.sections }
+        let resolved = schema.resolvedPluginSections(configuration: draft, capabilities: homeProxyCapabilities)
+        guard schema.id == "interfaces", let draft else { return resolved }
         let interfaces = draft.sections.filter { $0.type == "interface" && $0.values["proto"]?.stringValue == "wireguard" }.map(\.id)
         let peers = draft.sections.filter { $0.type.hasPrefix("wireguard_") }.map { String($0.type.dropFirst(10)) }
-        return schema.sections + Set(interfaces + peers).sorted().map { NativeConfigurationSchema.wireguardPeers(interface: $0) }
+        return resolved + Set(interfaces + peers).sorted().map { NativeConfigurationSchema.wireguardPeers(interface: $0) }
     }
 
     var body: some View {
@@ -40,9 +43,10 @@ struct NativeConfigurationView: View {
                     Label(writable ? "允许编辑" : "当前仅可查看", systemImage: writable ? "pencil" : "lock")
                     if let permissionError { Text(permissionError).foregroundStyle(AppPalette.orange) }
                     if let protocolError { Text(protocolError).foregroundStyle(AppPalette.orange) }
+                    if let homeProxyCapabilityError { Text(homeProxyCapabilityError).foregroundStyle(AppPalette.orange) }
                 } footer: { Text(schema.note) }
                 ForEach(sectionSchemas) { sectionSchema in
-                    let sections = draft.sections.filter { $0.type == sectionSchema.type }
+                    let sections = draft.sections.filter { sectionSchema.matches($0) }
                     Section(sectionSchema.title) {
                         ForEach(sections) { section in
                             NavigationLink {
@@ -117,7 +121,7 @@ struct NativeConfigurationView: View {
     private func load() async {
         let generation = store.connectionID
         loading = true; error = nil; permissionError = nil; writable = false
-        protocols = []; protocolError = nil
+        protocols = []; protocolError = nil; homeProxyCapabilities = nil; homeProxyCapabilityError = nil
         defer { if generation == store.connectionID { loading = false } }
         do {
             let value = try await store.configuration(schema.config)
@@ -139,6 +143,16 @@ struct NativeConfigurationView: View {
                 } catch {
                     guard generation == store.connectionID, !Task.isCancelled else { return }
                     protocolError = "协议能力读取失败，保留现有协议：" + FriendlyError.message(error)
+                }
+            }
+            if schema.id == "homeproxy" {
+                do {
+                    let capabilities = try await store.homeProxyCapabilities()
+                    guard generation == store.connectionID, !Task.isCancelled else { return }
+                    homeProxyCapabilities = capabilities
+                } catch {
+                    guard generation == store.connectionID, !Task.isCancelled else { return }
+                    homeProxyCapabilityError = "未能确认 sing-box 能力，节点、DNS 类型和代理模式不会列出假定选项：" + FriendlyError.message(error)
                 }
             }
         } catch {
@@ -200,8 +214,11 @@ private struct NativeFieldGroupView: View {
                                 Text(field.title).foregroundStyle(AppPalette.text)
                                 Text(summary(field, value: section.values[field.id]))
                                     .font(AppTypography.secondary).foregroundStyle(AppPalette.muted).lineLimit(3)
+                                if let reason = field.editingUnavailableReason {
+                                    Text(reason).font(AppTypography.secondary).foregroundStyle(AppPalette.orange)
+                                }
                             }.frame(maxWidth: .infinity, alignment: .leading)
-                        }.disabled(!editable || (section.type == "interface" && field.id == "proto" && protocols.isEmpty))
+                        }.disabled(!editable || field.editingUnavailableReason != nil || (section.type == "interface" && field.id == "proto" && protocols.isEmpty))
                             .accessibilityIdentifier("native-field-\(field.id)")
                     }
                 } footer: { Text(editable ? "选择一项修改。未设置表示交由路由器固件处理。" : "当前账户没有已确认的写权限。") }
@@ -289,8 +306,11 @@ private struct NativeFieldEditor: View {
             }
         case .choice(let options):
             Picker("值", selection: $text) {
-                Text("请选择").tag("")
-                ForEach(Array(Set(options + (text.isEmpty ? [] : [text]))).sorted(), id: \.self) { Text($0).tag($0) }
+                if options.contains("") { Text(field.choiceLabels[""] ?? "未设置").tag("") }
+                else if text.isEmpty { Text("请选择").tag("") }
+                ForEach(Array(Set(options + (text.isEmpty ? [] : [text]))).sorted(), id: \.self) { option in
+                    if !option.isEmpty { Text(field.choiceLabels[option] ?? option).tag(option) }
+                }
             }
         case .list:
             TextField("每行一项", text: $text, axis: .vertical).lineLimit(4...14)
@@ -353,13 +373,23 @@ private enum NativeValidation {
     }
     static func validate(original: RouterConfiguration, draft: RouterConfiguration, schema: NativeConfigurationSchema) throws {
         for section in draft.sections {
-            guard let definition = schema.sections.first(where: { $0.type == section.type }) else { continue }
+            guard let definition = schema.sections.first(where: { $0.matches(section) }) else { continue }
             let old = original.sections.first { $0.id == section.id }
             if old == nil { try validate(section: section, schema: definition) }
-            else {
-                for field in definition.fields where old?.values[field.id] != section.values[field.id] {
+            else if let old {
+                for field in definition.fields {
+                    let changed = old.values[field.id] != section.values[field.id]
+                    let newlyRequired = field.required && field.visible(in: section) && !field.visible(in: old)
+                    guard changed || newlyRequired else { continue }
+                    if changed && field.editingUnavailableReason != nil {
+                        throw Invalid(message: "无法确认\(field.title)能力，请重新读取后编辑。")
+                    }
                     try validate(field, value: section.values[field.id])
                 }
+            }
+            if schema.id == "zerotier", section.type == "network", let networkID = section.values["id"]?.stringValue,
+               draft.sections.filter({ $0.type == "network" && $0.values["id"]?.stringValue?.lowercased() == networkID.lowercased() }).count > 1 {
+                throw Invalid(message: "ZeroTier 网络 ID 重复，请保留一个网络配置。")
             }
         }
     }
@@ -380,7 +410,7 @@ private enum NativeValidation {
         guard texts.allSatisfy({ !$0.contains("\0") && $0.utf8.count <= 65536 }) else { throw ConfigurationError.invalidValue }
         if field.required && (texts.isEmpty || texts.allSatisfy(\.isEmpty)) { throw Invalid(message: "请填写\(field.title)。") }
         for text in texts {
-            if ["private_key", "public_key", "preshared_key"].contains(field.id), !text.isEmpty,
+            if ["private_key", "public_key", "preshared_key", "wireguard_private_key", "wireguard_peer_public_key", "wireguard_pre_shared_key"].contains(field.id), !text.isEmpty,
                Data(base64Encoded: text)?.count != 32 {
                 throw Invalid(message: "\(field.title)必须是 Base64 编码的 32 字节 WireGuard 密钥。")
             }
@@ -398,7 +428,8 @@ private enum NativeValidation {
                 let inverse = ~UInt32(bigEndian: v4.s_addr)
                 valid = parsed && inverse & (inverse &+ 1) == 0
             case .flag: valid = ["1", "0", "true", "false", "on", "off", "yes", "no"].contains(text)
-            case .choice: valid = !text.isEmpty
+            case .hexadecimal(let count): valid = text.utf8.count == count && text.utf8.allSatisfy { (48...57).contains($0) || (65...70).contains($0) || (97...102).contains($0) }
+            case .choice(let options): valid = !text.isEmpty || options.contains("")
             default: valid = true
             }
             if !valid { throw Invalid(message: "\(field.title)的格式或范围不正确。") }

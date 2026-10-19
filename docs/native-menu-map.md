@@ -102,6 +102,17 @@
 ├─ 重启 → 确认 → system.reboot → 响应/真实错误 → 重新连接
 └─ 固件扩展〔未适配的计划任务、文件、升级等仍保留〕
 服务〔仅对应 services 分类〕
+├─ HomeProxy → 专用配置 / 状态与操作 / 系统启动项
+│  ├─ 主配置 / 自定义路由 / DNS设置 / 节点 / 订阅 / 路由节点 / DNS服务器 / 规则集 / 访问控制 / 路由规则 / DNS规则
+│  │  └─ 实例 → 分组 → 字段 → 原生选择、文本、密码、列表或数值 → 草稿
+│  └─ 状态与操作 → 内核能力 / 站点连通性 / 四类资源版本与更新 / 更新订阅 / 三类日志
+│     └─ 读取结果、时间、错误、重读；写操作 → 确认 → 固件响应 → 版本/日志/配置核对入口
+├─ MosDNS → 专用配置 / 状态与操作 / 系统启动项
+│  ├─ 基本 / 上游分流 / 高级 / 缓存 / 广告与Cloudflare / API统计设置 / GeoData → 字段
+│  │  └─ 自定义YAML模式仅编辑启用、配置文件及dnsmasq转发
+│  └─ 状态与操作 → 版本 / 运行日志 / 清空缓存 / 请求更新规则 / 更新日志 → 真实响应
+├─ ZeroTier → 全局与网络配置 / 状态与操作 / 系统启动项
+│  └─ 状态与操作 → 客户端信息；网络列表 → 网络详情 → 授权状态、接口、地址、控制器路由、接受策略
 ├─ 动态DNS → 配置 → 全局 / 服务 → 基本 / 高级 / 计时器 → 字段
 │           └─ 系统启动项〔仅在真实目录中发现时〕
 ├─ 其他固件服务菜单〔原生专有操作尚未适配，不能宣称完成〕
@@ -125,7 +136,8 @@
 ├─ SQM〔固件菜单发现后〕 → 配置 / 系统启动项
 │  └─ 队列 → 基本 / 队列 / 链路层 → 字段
 ├─ UPnP〔固件菜单发现后〕 → 配置 / 系统启动项
-│  └─ 服务常规/高级；访问控制规则 → 字段
+│  ├─ 服务常规/高级；访问控制规则 → 字段
+│  └─ 活动端口映射 → 详情 → 删除确认 → ACL/列表/租约文件核对 → 删除请求 → 重新读取或真实错误
 ├─ 其他固件网络菜单〔尚未适配〕
 └─ 高级：全部实际配置文件 → 通用UCI编辑
 设置〔App自身〕
@@ -146,6 +158,6 @@
 - [防火墙](https://github.com/openwrt/luci/tree/master/applications/luci-app-firewall/htdocs/luci-static/resources/view/firewall)、[DDNS](https://github.com/openwrt/luci/blob/master/applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js)、[SQM](https://github.com/openwrt/luci/blob/master/applications/luci-app-sqm/htdocs/luci-static/resources/view/network/sqm.js)、[UPnP](https://github.com/openwrt/luci/blob/master/applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js)
 - [netifd 协议发现](https://github.com/openwrt/netifd/blob/master/ubus.c)：`network.get_proto_handlers`。ACL 拒绝或旧固件缺少方法时不展示假定可用的协议。
 
-仍待完成且不能勾选：所有核心模块的完整字段与条件依赖校验、交换机与不同无线驱动能力、无线关联站/访客跨配置事务、密码/公钥、时区联动、ZRam、NTP服务生命周期、进程信号、内核日志、nftables与策略规则状态、实时图表、计划任务/挂载/磁盘/文件、软件包写操作、备份/恢复/重置/固件升级；全部插件业务状态和专有任务。DDNS缺注册IP/服务定义/单实例任务/日志；SQM缺运行队列核对/脚本与规则能力/危险参数；UPnP缺动态映射与删除。HomeProxy、MosDNS、ZeroTier等不能用通用字段编辑视为完成。
+仍待完成且不能勾选：所有核心模块的完整字段与条件依赖校验、交换机与不同无线驱动能力、无线关联站/访客跨配置事务、密码/公钥、时区联动、ZRam、NTP服务生命周期、进程信号、内核日志、nftables与策略规则状态、实时图表、计划任务/挂载/磁盘/文件、软件包写操作、备份/恢复/重置/固件升级；全部插件业务状态和专有任务的完整覆盖。DDNS缺注册IP/服务定义/单实例任务/日志；SQM缺运行队列核对/脚本与规则能力/危险参数；UPnP缺更多后端/IPv6-PCP能力核对及实际删除验收。HomeProxy服务端/证书/导入/高级协议、MosDNS规则文件/统计与查询记录、ZeroTier服务生命周期与实际加入退出仍待完成。本轮插件协议与具体限制见 [native-plugin-protocols.md](native-plugin-protocols.md)，专用字段实现仍不能视为完整插件验收。
 
 本轮未在用户路由器执行诊断、配置写入、服务控制或重启。遵照用户要求未运行本轮测试；Release 编译和包审计记录在 TASKS.md，不能替代逐层交互或真实写入验收。

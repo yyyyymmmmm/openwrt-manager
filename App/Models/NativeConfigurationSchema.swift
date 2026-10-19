@@ -8,6 +8,7 @@ struct NativeField: Identifiable {
         case integer(Int, Int)
         case choice([String])
         case address, prefix, mac, netmask4
+        case hexadecimal(Int)
     }
     enum ListItem { case address, prefix, mac }
     let id: String
@@ -17,7 +18,11 @@ struct NativeField: Identifiable {
     var required = false
     var when: (String, [String])? = nil
     var items: ListItem? = nil
+    var choiceLabels: [String: String] = [:]
+    var additionalConditions: [String: [String]] = [:]
+    var editingUnavailableReason: String? = nil
     func visible(in section: ConfigurationSection) -> Bool {
+        guard additionalConditions.allSatisfy({ key, values in values.contains(section.values[key]?.stringValue ?? "") }) else { return false }
         guard let (key, values) = when else { return true }
         return values.contains(section.values[key]?.stringValue ?? "")
     }
@@ -35,10 +40,14 @@ struct NativeSectionSchema: Identifiable {
     let groups: [NativeFieldGroup]
     var named = false
     var addable = true
-    var id: String { type }
+    var sectionIDs: Set<String>? = nil
+    var id: String { type + (sectionIDs?.sorted().joined(separator: ",") ?? "") }
+    func matches(_ section: ConfigurationSection) -> Bool {
+        section.type == type && (sectionIDs?.contains(section.id) ?? true)
+    }
     var fields: [NativeField] { groups.flatMap(\.fields) }
     func label(_ section: ConfigurationSection) -> String {
-        for key in ["name", "ssid", "interface", "target", "hostname"] {
+        for key in ["label", "name", "ssid", "interface", "target", "hostname"] {
             if let value = section.values[key]?.stringValue, !value.isEmpty { return value }
         }
         return section.anonymous ? title : section.id
@@ -52,17 +61,17 @@ struct NativeConfigurationSchema: Identifiable {
     let sections: [NativeSectionSchema]
     var note = "未设置的字段沿用固件行为；打开页面不会写入默认值。"
 
-    private static func f(_ key: String, _ title: String, _ kind: NativeField.Kind = .text,
+    static func f(_ key: String, _ title: String, _ kind: NativeField.Kind = .text,
                           _ help: String = "", required: Bool = false,
                           when: (String, [String])? = nil, items: NativeField.ListItem? = nil) -> NativeField {
         NativeField(id: key, title: title, kind: kind, help: help, required: required, when: when, items: items)
     }
-    private static func g(_ title: String, _ fields: [NativeField]) -> NativeFieldGroup {
+    static func g(_ title: String, _ fields: [NativeField]) -> NativeFieldGroup {
         NativeFieldGroup(title: title, fields: fields)
     }
-    private static func s(_ type: String, _ title: String, _ groups: [NativeFieldGroup],
-                          named: Bool = false, addable: Bool = true) -> NativeSectionSchema {
-        NativeSectionSchema(type: type, title: title, groups: groups, named: named, addable: addable)
+    static func s(_ type: String, _ title: String, _ groups: [NativeFieldGroup],
+                          named: Bool = false, addable: Bool = true, ids: Set<String>? = nil) -> NativeSectionSchema {
+        NativeSectionSchema(type: type, title: title, groups: groups, named: named, addable: addable, sectionIDs: ids)
     }
 
     static let system = Self(id: "system", title: "系统", config: "system", sections: [
@@ -308,5 +317,84 @@ struct NativeConfigurationSchema: Identifiable {
         s("perm_rule", "访问控制", [g("ACL 规则", [f("comment", "说明"), f("int_addr", "客户端网段", .prefix, required: true),
             f("int_ports", "客户端端口/范围", required: true), f("ext_ports", "外部端口/范围", required: true),
             f("action", "动作", .choice(["allow", "deny"]), required: true)])])
-    ], note: "本页编辑服务及访问控制；动态映射列表和单条映射删除尚未接入，不将静态 ACL 冒充当前映射。")
+    ], note: "本页编辑服务及访问控制；运行管理单独读取实际端口映射并提供详情和删除。静态 ACL 不代表当前映射。")
+
+    static let homeproxy = Self(id: "homeproxy", title: "HomeProxy", config: "homeproxy", sections: [
+        s("homeproxy", "主配置", [g("路由", [f("main_node", "主节点", .text, "节点名称由路由器当前配置返回；此处不猜测节点。"),
+            f("main_urltest_nodes", "URLTest 节点", .list), f("main_urltest_interval", "URLTest 间隔（秒）", .integer(1, 2_147_483_647)),
+            f("main_urltest_tolerance", "URLTest 容差（毫秒）", .integer(0, 2_147_483_647)), f("main_udp_node", "UDP 主节点"),
+            f("main_udp_urltest_nodes", "UDP URLTest 节点", .list), f("main_udp_urltest_interval", "UDP URLTest 间隔（秒）", .integer(1, 2_147_483_647)),
+            f("main_udp_urltest_tolerance", "UDP URLTest 容差（毫秒）", .integer(0, 2_147_483_647)),
+            f("dns_server", "DNS 服务器"), f("china_dns_server", "中国 DNS 服务器"),
+            f("routing_mode", "分流模式", .choice(["gfwlist", "bypass_mainland_china", "proxy_mainland_china", "custom", "global"])),
+            f("routing_port", "分流端口", .text, "留空为全部端口，common 为常用端口，也可填写固件支持的端口范围。"), f("proxy_mode", "代理模式", .text, "可用模式取决于固件 TUN / TProxy 内核能力。"),
+            f("ipv6_support", "IPv6 支持", .flag)])], addable: false, ids: ["config"]),
+        s("homeproxy", "自定义路由设置", [g("路由", [f("tcpip_stack", "TCP/IP 协议栈"), f("endpoint_independent_nat", "端点无关 NAT", .flag),
+            f("udp_timeout", "UDP NAT 超时（秒）", .integer(0, 2_147_483_647)), f("bypass_cn_traffic", "绕过中国流量", .flag),
+            f("domain_strategy", "域名策略"), f("default_outbound", "默认出口"), f("default_outbound_dns", "默认出口 DNS")])], addable: false, ids: ["routing"]),
+        s("homeproxy", "DNS 设置", [g("DNS", [f("default_strategy", "默认解析策略"), f("default_server", "默认 DNS 服务器"),
+            f("disable_cache", "禁用 DNS 缓存", .flag), f("disable_cache_expire", "不让缓存过期", .flag),
+            f("client_subnet", "EDNS 客户端网段", .prefix), f("cache_file_store_rdrc", "缓存拒绝响应", .flag),
+            f("cache_file_rdrc_timeout", "拒绝响应缓存超时（秒）", .integer(0, 2_147_483_647))])], addable: false, ids: ["dns"]),
+        s("node", "代理节点", [g("节点", [f("label", "节点名称", required: true),
+            f("type", "节点类型", .text, "可选类型来自当前 sing-box 编译能力；现有未知值保持原样。", required: true),
+            f("address", "地址", required: true, when: ("type", ["anytls", "http", "hysteria", "hysteria2", "shadowsocks", "shadowtls", "socks", "ssh", "trojan", "tuic", "wireguard", "vless", "vmess"])),
+            f("port", "端口", .integer(1, 65535), required: true, when: ("type", ["anytls", "http", "hysteria", "hysteria2", "shadowsocks", "shadowtls", "socks", "ssh", "trojan", "tuic", "wireguard", "vless", "vmess"])), f("override_address", "直连覆盖地址", when: ("type", ["direct"])),
+            f("override_port", "直连覆盖端口", .integer(1, 65535), when: ("type", ["direct"])),
+            f("username", "用户名"), f("password", "密码", .secret), f("uuid", "UUID", .secret),
+            f("tls_sni", "TLS 服务器名"), f("tls", "启用 TLS", .flag), f("tls_insecure", "允许不安全 TLS", .flag),
+            f("transport", "传输方式"), f("http_host", "HTTP 主机", .list), f("http_path", "HTTP 路径"), f("ws_path", "WebSocket 路径"),
+            f("grpc_servicename", "gRPC 服务名"), f("multiplex", "多路复用", .flag), f("tcp_fast_open", "TCP Fast Open", .flag)]),
+            g("协议参数", [f("shadowsocks_encrypt_method", "Shadowsocks 加密方法", when: ("type", ["shadowsocks"])),
+            f("vmess_encrypt", "VMess 加密方法", when: ("type", ["vmess"])), f("vmess_alterid", "VMess Alter ID", .integer(0, 65535), when: ("type", ["vmess"])),
+            f("vless_flow", "VLESS Flow", when: ("type", ["vless"])), f("packet_encoding", "数据包编码"),
+            f("tls_alpn", "TLS ALPN", .list), f("tls_utls", "uTLS 指纹"), f("tls_reality", "Reality", .flag),
+            f("tls_reality_public_key", "Reality 公钥"), f("tls_reality_short_id", "Reality Short ID")]),
+            g("WireGuard", [f("wireguard_local_address", "本地隧道地址", .list, when: ("type", ["wireguard"]), items: .prefix),
+            f("wireguard_private_key", "私钥", .secret, when: ("type", ["wireguard"])),
+            f("wireguard_peer_public_key", "对端公钥", when: ("type", ["wireguard"])),
+            f("wireguard_pre_shared_key", "预共享密钥", .secret, when: ("type", ["wireguard"])),
+            f("wireguard_mtu", "MTU", .integer(0, 9000), when: ("type", ["wireguard"])),
+            f("wireguard_persistent_keepalive_interval", "保活间隔（秒）", .integer(0, 65535), when: ("type", ["wireguard"]))])], named: true),
+        s("homeproxy", "节点订阅", [g("订阅", [f("auto_update", "自动更新", .flag), f("auto_update_time", "更新时间（小时）", .integer(0, 23)),
+            f("update_via_proxy", "通过代理更新", .flag), f("subscription_url", "订阅 URL", .list),
+            f("filter_nodes", "节点过滤", .choice(["disabled", "blacklist", "whitelist"])), f("filter_keywords", "过滤关键词", .list),
+            f("user_agent", "User-Agent"), f("allow_insecure", "允许不安全连接", .flag), f("packet_encoding", "默认数据包编码", .choice(["", "packetaddr", "xudp"]))])], addable: false, ids: ["subscription"]),
+        s("routing_node", "路由节点", [g("节点", [f("label", "说明"), f("enabled", "启用", .flag), f("node", "代理节点标识"),
+            f("domain_resolver", "域名解析服务器"), f("domain_strategy", "解析策略"), f("bind_interface", "绑定设备"),
+            f("outbound", "上级出口"), f("urltest_nodes", "URLTest 节点", .list), f("urltest_url", "测试 URL"),
+            f("urltest_interval", "测试间隔（秒）", .integer(1, 2_147_483_647)), f("urltest_tolerance", "测试容差（毫秒）", .integer(0, 2_147_483_647)),
+            f("urltest_idle_timeout", "空闲超时（秒）", .integer(0, 2_147_483_647)), f("urltest_interrupt_exist_connections", "中断已有连接", .flag)])], named: true),
+        s("dns_server", "DNS 服务器", [g("服务器", [f("label", "说明"), f("enabled", "启用", .flag),
+            f("type", "传输类型", .choice(["udp", "tcp", "tls", "https", "h3", "quic"]), required: true), f("server", "服务器地址", required: true),
+            f("server_port", "端口", .integer(1, 65535)), f("path", "DoH 路径", when: ("type", ["https", "h3"])), f("headers", "请求头", .list, when: ("type", ["https", "h3"])),
+            f("tls_sni", "TLS SNI", when: ("type", ["tls", "https", "h3", "quic"])), f("address_resolver", "地址解析器"), f("address_strategy", "地址策略"), f("outbound", "连接出口")])], named: true),
+        s("ruleset", "规则集", [g("规则集", [f("label", "说明"), f("enabled", "启用", .flag), f("type", "类型", .choice(["local", "remote"]), required: true),
+            f("format", "格式", .choice(["binary", "source"]), required: true), f("path", "本地路径", required: true, when: ("type", ["local"])),
+            f("url", "规则集 URL", required: true, when: ("type", ["remote"])), f("outbound", "下载出口"), f("update_interval", "更新间隔")])], named: true),
+        s("homeproxy", "访问控制", [g("接口控制", [f("listen_interfaces", "监听设备", .list), f("bind_interface", "出口绑定设备")]),
+            g("LAN IP 策略", [f("lan_proxy_mode", "代理过滤模式", .choice(["disabled", "listed_only", "except_listed"])),
+                f("lan_direct_ipv4_ips", "直连 IPv4", .list, items: .prefix), f("lan_direct_ipv6_ips", "直连 IPv6", .list, items: .prefix),
+                f("lan_direct_mac_addrs", "直连 MAC", .list, items: .mac), f("lan_proxy_ipv4_ips", "代理 IPv4", .list, items: .prefix),
+                f("lan_proxy_ipv6_ips", "代理 IPv6", .list, items: .prefix), f("lan_proxy_mac_addrs", "代理 MAC", .list, items: .mac)]),
+            g("WAN IP 策略", [f("wan_proxy_ipv4_ips", "代理 IPv4", .list, items: .prefix), f("wan_proxy_ipv6_ips", "代理 IPv6", .list, items: .prefix),
+                f("wan_direct_ipv4_ips", "直连 IPv4", .list, items: .prefix), f("wan_direct_ipv6_ips", "直连 IPv6", .list, items: .prefix)])], addable: false, ids: ["control"]),
+        s("routing_rule", "路由规则", homeproxyMatchGroups + [g("路由动作", [
+            f("action", "动作", .choice(["route", "route-options", "reject", "resolve"])), f("outbound", "出口节点", when: ("action", ["route"])),
+            f("override_address", "覆盖地址", when: ("action", ["route", "route-options"])), f("override_port", "覆盖端口", .integer(1, 65535), when: ("action", ["route", "route-options"])),
+            f("udp_disable_domain_unmapping", "禁用 UDP 域名反向映射", .flag), f("udp_connect", "UDP 使用 connect", .flag), f("udp_timeout", "UDP 超时"),
+            f("resolve_server", "解析服务器", when: ("action", ["resolve"])), f("resolve_strategy", "解析策略", when: ("action", ["resolve"])),
+            f("resolve_disable_cache", "禁用解析缓存", .flag, when: ("action", ["resolve"])), f("resolve_rewrite_ttl", "解析 TTL", .integer(0, 2_147_483_647), when: ("action", ["resolve"])),
+            f("resolve_client_subnet", "EDNS 客户端网段", .prefix, when: ("action", ["resolve"])),
+            f("reject_method", "拒绝方式", .choice(["default", "drop"]), when: ("action", ["reject"])), f("reject_no_drop", "不自动丢弃", .flag, when: ("action", ["reject"]))])], named: true),
+        s("dns_rule", "DNS 规则", homeproxyMatchGroups + [g("DNS 动作", [f("query_type", "查询类型", .list),
+            f("action", "动作", .choice(["route", "route-options", "reject", "predefined"])), f("server", "DNS 服务器", when: ("action", ["route"])),
+            f("domain_strategy", "域名策略", when: ("action", ["route"])), f("dns_disable_cache", "禁用缓存", .flag, when: ("action", ["route", "route-options"])),
+            f("rewrite_ttl", "改写 TTL", .integer(0, 2_147_483_647), when: ("action", ["route", "route-options"])),
+            f("client_subnet", "EDNS 客户端网段", .prefix, when: ("action", ["route", "route-options"])), f("rule_set_ip_cidr_accept_empty", "接受空查询响应", .flag),
+            f("reject_method", "拒绝方式", .choice(["default", "drop"]), when: ("action", ["reject"])), f("reject_no_drop", "不自动丢弃", .flag, when: ("action", ["reject"])),
+            f("predefined_rcode", "响应码", .choice(["NOERROR", "FORMERR", "SERVFAIL", "NXDOMAIN", "NOTIMP", "REFUSED"]), when: ("action", ["predefined"])),
+            f("predefined_answer", "响应记录", .list, when: ("action", ["predefined"])), f("predefined_ns", "名称服务器记录", .list, when: ("action", ["predefined"])),
+            f("predefined_extra", "附加记录", .list, when: ("action", ["predefined"]))])], named: true)
+    ], note: "节点、订阅、分流和 DNS 使用专用配置草稿；状态页单独读取内核能力、资源版本、连通性及日志。保存订阅 URL 不等于已经更新节点。服务端、证书、导入和部分协议高级参数仍待适配。")
 }

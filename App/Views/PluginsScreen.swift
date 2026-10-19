@@ -63,6 +63,15 @@ struct PluginDetailView: View {
                 AppSection(title: "软件包") {
                     AppGroup { AppRow(title: current.package.name, detail: current.package.description, symbol: "shippingbox", value: current.package.version) }
                 }
+                if let adapter = NativeConfigurationSchema.pluginAdapter(packageName: current.package.name) {
+                    AppSection(title: "专用原生管理") {
+                        AppGroup {
+                            NavigationLink { NativePluginManagementView(schema: adapter, title: current.title) } label: {
+                                AppRow(title: adapter.title, symbol: "slider.horizontal.3", chevron: true)
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                }
                 AppSection(title: store.inventory.configsRead ? "配置 · \(current.configs.count)" : "关联配置") {
                     AppGroup {
                         ForEach(current.configs, id: \.self) { name in
@@ -88,7 +97,7 @@ struct PluginDetailView: View {
                         }
                     }
                 }
-                AppSection(title: "适配范围", note: "当前提供原生 UCI 字段管理与系统服务控制。节点订阅、规则下载、统计等插件专有操作仍需逐项适配。") {
+                AppSection(title: "适配范围", note: "已适配的专用表单与操作在上方单列。通用配置和服务控制不代表插件全部业务已适配。") {
                     AppGroup {
                         NavigationLink { PackageDetailView(package: current.package) } label: { AppRow(title: "依赖与安装文件", symbol: "doc.text.magnifyingglass", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("plugin-package-details")
                     }

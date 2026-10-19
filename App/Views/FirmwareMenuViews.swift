@@ -31,12 +31,7 @@ struct FirmwareMenuSection: View {
 private struct FirmwareMenuRow: View {
     let entry: RouterMenuEntry
     private var adapter: NativeConfigurationSchema? {
-        switch entry.id {
-        case "admin/services/ddns": return .ddns
-        case "admin/network/sqm": return .sqm
-        case "admin/network/upnp": return .upnp
-        default: return nil
-        }
+        NativeConfigurationSchema.pluginAdapter(menuID: entry.id)
     }
     var body: some View {
         if let adapter {
@@ -46,14 +41,22 @@ private struct FirmwareMenuRow: View {
         } else {
             VStack(alignment: .leading, spacing: 0) {
                 AppRow(title: entry.title, detail: "暂不支持原生管理", symbol: "puzzlepiece.extension")
-                if !entry.children.isEmpty {
-                    Text(entry.children.map(\.title).joined(separator: " · "))
-                        .font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
-                        .padding(.horizontal, 14).padding(.bottom, 12)
-                }
+                ForEach(entry.children) { child in FirmwareMenuDescription(entry: child).padding(.horizontal, 14) }
             }
             .accessibilityElement(children: .combine)
         }
+    }
+}
+
+private struct FirmwareMenuDescription: View {
+    let entry: RouterMenuEntry
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(entry.title + " · 未适配原生操作").font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
+            ForEach(entry.children) { child in
+                FirmwareMenuDescription(entry: child).padding(.leading, 12)
+            }
+        }.padding(.bottom, 8)
     }
 }
 
@@ -69,6 +72,24 @@ struct NativePluginManagementView: View {
         AppPage(title: "", subtitle: nil) {
             AppSection(title: title) {
                 AppGroup { NativeConfigurationLink(schema: schema) }
+            }
+            if ["homeproxy", "mosdns", "zerotier"].contains(schema.id) {
+                AppSection(title: "运行管理") {
+                    AppGroup {
+                        NavigationLink { NativePluginOperationsView(pluginID: schema.id) } label: {
+                            AppRow(title: "状态与操作", detail: "读取实际响应与任务结果", symbol: "waveform.path.ecg", chevron: true)
+                        }.buttonStyle(.plain)
+                    }
+                }
+            }
+            if schema.id == "upnp" {
+                AppSection(title: "运行管理") {
+                    AppGroup {
+                        NavigationLink { UPnPMappingsView() } label: {
+                            AppRow(title: "活动端口映射", detail: "实际映射、详情与删除", symbol: "arrow.left.arrow.right", chevron: true)
+                        }.buttonStyle(.plain)
+                    }
+                }
             }
             AppSection(title: "系统服务", note: "启动项与进程状态只代表系统服务，不证明插件业务成功。") {
                 AppGroup {

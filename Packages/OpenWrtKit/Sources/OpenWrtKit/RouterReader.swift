@@ -70,6 +70,170 @@ public struct RouterReader: Sendable {
         return handlers.keys.sorted()
     }
 
+    public func homeProxyCapabilities() async throws -> HomeProxyCapabilities {
+        try HomeProxyCapabilities(value: await pluginCall("luci.homeproxy", "singbox_get_features"))
+    }
+
+    public func upnpMappings() async throws -> [UPnPMapping] {
+        try UPnPMapping.parse(await pluginCall("luci.upnp", "get_status"))
+    }
+
+    public func zeroTierNetworks() async throws -> [ZeroTierNetwork] {
+        try ZeroTierNetwork.parse(await zeroTierRead(networks: true))
+    }
+
+    private func zeroTierRead(networks: Bool) async throws -> JSONValue {
+        let value = try await client.call(session: session, object: "file", method: "exec", parameters: [
+            "command": .string("/usr/bin/zerotier-cli"),
+            "params": .array([.string("-j"), .string(networks ? "listnetworks" : "info")])
+        ])
+        let result = try RouterCommandResult(value: value)
+        guard result.exitCode == 0 else {
+            throw OpenWrtKitError.unsupported("ZeroTier 查询失败（\(result.exitCode)）：\(result.stderr)\n\(result.stdout)")
+        }
+        guard let data = result.stdout.data(using: .utf8) else { throw OpenWrtKitError.malformedResponse }
+        do { return try JSONDecoder().decode(JSONValue.self, from: data) }
+        catch { throw OpenWrtKitError.malformedResponse }
+    }
+
+    public func deleteUPnPMapping(_ mapping: UPnPMapping, observed: [UPnPMapping]) async throws -> [UPnPMapping] {
+        try await pluginAccess("luci.upnp", "delete_rule")
+        let current = try await upnpMappings()
+        // The firmware addresses rules by a volatile row token, not a stable ID.
+        guard observed.contains(where: { $0.isSameRule(as: mapping) }), current.count == observed.count,
+              zip(current, observed).allSatisfy({ $0.0.isSameRule(as: $0.1) }) else {
+            throw OpenWrtKitError.unsupported("映射列表已变化，未发送删除请求。请重新读取后选择。")
+        }
+        // luci.upnp deletes a lease-file line by row number. Firewall rule order
+        // need not match lease order, so verify the addressed line as well.
+        let configuration = try await client.call(session: session, object: "uci", method: "get", parameters: [
+            "config": .string("upnpd"), "section": .string("config"), "option": .string("upnp_lease_file")
+        ])
+        guard let path = configuration["value"].stringValue, path.hasPrefix("/"),
+              !path.contains("\0"), !path.contains("\n"), path.utf8.count <= 4096 else {
+            throw OpenWrtKitError.unsupported("未确认固件的 UPnP 租约文件，未发送删除请求。")
+        }
+        let leaseFile = try await client.call(session: session, object: "file", method: "read", parameters: ["path": .string(path)])
+        guard let content = leaseFile["data"].stringValue, let index = Int(mapping.token), index > 0 else {
+            throw OpenWrtKitError.malformedResponse
+        }
+        let lines = content.components(separatedBy: "\n")
+        guard index <= lines.count else {
+            throw OpenWrtKitError.unsupported("映射序号与租约文件不一致，未发送删除请求。")
+        }
+        let lease = lines[index - 1].split(separator: ":", maxSplits: 5, omittingEmptySubsequences: false)
+        guard lease.count == 6, lease[0].uppercased() == mapping.transport,
+              Int(lease[1]) == mapping.externalPort, String(lease[2]) == mapping.internalAddress,
+              Int(lease[3]) == mapping.internalPort,
+              lease[5].trimmingCharacters(in: .whitespacesAndNewlines) == mapping.description else {
+            throw OpenWrtKitError.unsupported("固件映射序号未指向所选租约，未发送删除请求。请重新读取。")
+        }
+        let result = try await pluginCall("luci.upnp", "delete_rule", ["token": .string(mapping.token)])
+        guard result["result"].stringValue == "OK" else {
+            throw OpenWrtKitError.unsupported("固件未接受映射删除请求。")
+        }
+        let refreshed = try await upnpMappings()
+        guard !refreshed.contains(where: { $0.hasSameEndpoint(as: mapping) }) else {
+            throw OpenWrtKitError.unsupported("删除请求已接受，但映射仍存在或已被客户端重新建立；尚未确认删除成功，请重新读取。")
+        }
+        return refreshed
+    }
+
+    /// Fixed plugin methods only; callers cannot supply objects, executables or paths.
+    public func nativePluginRead(_ request: NativePluginRead) async throws -> String {
+        switch request {
+        case .homeProxyFeatures:
+            let capabilities = try await homeProxyCapabilities()
+            let flags = capabilities.features.keys.sorted().map { key in
+                "\(key)：\(capabilities.features[key] == true ? "支持" : "不支持")"
+            }
+            return (["sing-box：" + capabilities.version] + flags).joined(separator: "\n")
+        case .homeProxyResource(let resource):
+            let value = try await pluginCall("luci.homeproxy", "resources_get_version", ["type": .string(resource.rawValue)])
+            guard let version = value["version"].stringValue else { throw OpenWrtKitError.malformedResponse }
+            return version.isEmpty ? "资源版本为空，请核对资源是否安装。" : version
+        case .homeProxyConnection(let google):
+            let value = try await pluginCall("luci.homeproxy", "connection_check", ["site": .string(google ? "google" : "baidu")])
+            guard let result = value["result"].boolValue else { throw OpenWrtKitError.malformedResponse }
+            return result ? "路由器访问该站点成功。此结果仅代表本次站点检查。" : "路由器访问该站点失败。请检查 DNS、上联及代理配置。"
+        case .homeProxyLog(let log):
+            // A fixed, bounded tail avoids loading an unbounded router log into memory.
+            let value = try await client.call(session: session, object: "file", method: "exec", parameters: [
+                "command": .string("/usr/bin/tail"),
+                "params": .array([.string("-n"), .string("200"), .string("/var/run/homeproxy/" + log.rawValue + ".log")])
+            ])
+            let result = try RouterCommandResult(value: value)
+            guard result.exitCode == 0 else { throw OpenWrtKitError.unsupported("日志读取失败（\(result.exitCode)）：\(result.stderr)") }
+            return result.stdout
+        case .mosDNSVersion:
+            let value = try await pluginCall("luci.mosdns", "get_version")
+            guard let version = value["version"].stringValue, !version.isEmpty else { throw OpenWrtKitError.malformedResponse }
+            return version
+        case .mosDNSLog, .mosDNSUpdateLog:
+            let method = if case .mosDNSLog = request { "print_log" } else { "get_update_log" }
+            let value = try await pluginCall("luci.mosdns", method)
+            guard let log = value["log"].stringValue else { throw OpenWrtKitError.malformedResponse }
+            return log.split(separator: "\n", omittingEmptySubsequences: false).suffix(200).joined(separator: "\n")
+        case .zeroTierInfo:
+            let value = try await zeroTierRead(networks: false)
+            guard let address = value["address"].stringValue, !address.isEmpty,
+                  let version = value["version"].stringValue, let online = value["online"].boolValue else { throw OpenWrtKitError.malformedResponse }
+            return "节点：\(address)\n版本：\(version)\nZeroTier 客户端：\(online ? "ONLINE" : "OFFLINE")\n此状态不代表某个虚拟网络已授权或已连通。"
+        }
+    }
+
+    public func nativePluginAction(_ action: NativePluginAction) async throws -> String {
+        switch action {
+        case .homeProxyResource(let resource):
+            try await pluginAccess("luci.homeproxy", "resources_update")
+            let value = try await pluginCall("luci.homeproxy", "resources_update", ["type": .string(resource.rawValue)])
+            guard let status = value["status"].intValue else { throw OpenWrtKitError.malformedResponse }
+            switch status {
+            case 0: return "资源更新程序返回成功。请重新读取资源版本。"
+            case 2: return "固件报告已有更新正在进行；本次没有启动新的更新。请稍后重新读取版本。"
+            case 3: return "固件报告当前资源已是最新版本。"
+            default: throw OpenWrtKitError.unsupported("资源更新失败，固件状态码：\(status)。")
+            }
+        case .homeProxySubscriptions:
+            try await pluginAccess("file", "exec")
+            let changes = try await client.call(session: session, object: "uci", method: "changes")
+            guard let existing = changes["changes"].objectValue else { throw OpenWrtKitError.malformedResponse }
+            guard existing.isEmpty else { throw ConfigurationError.existingChanges }
+            let value = try await client.call(session: session, object: "file", method: "exec", parameters: [
+                "command": .string("/etc/homeproxy/scripts/update_subscriptions.uc"), "params": .array([])
+            ])
+            let result = try RouterCommandResult(value: value)
+            guard result.exitCode == 0 else { throw OpenWrtKitError.unsupported("订阅更新程序失败（\(result.exitCode)）：\(result.stderr)\n\(result.stdout)") }
+            return "订阅更新程序返回退出码 0；请重新读取节点配置及日志核对各订阅结果。\n" + result.stdout + result.stderr
+        case .mosDNSFlushCache, .mosDNSUpdate:
+            let method = if case .mosDNSFlushCache = action { "flush_cache" } else { "start_update" }
+            try await pluginAccess("luci.mosdns", method)
+            let value = try await pluginCall("luci.mosdns", method)
+            guard let success = value["success"].boolValue else { throw OpenWrtKitError.malformedResponse }
+            guard success else { throw OpenWrtKitError.unsupported("MosDNS 未确认操作成功。") }
+            if case .mosDNSUpdate = action { return "固件已接受后台更新请求。尚未确认更新完成，请读取规则更新日志。" }
+            return "MosDNS 已确认清空缓存。"
+        }
+    }
+
+    private func pluginCall(_ object: String, _ method: String, _ parameters: [String: JSONValue] = [:]) async throws -> JSONValue {
+        let value = try await client.call(session: session, object: object, method: method, parameters: parameters)
+        guard value.objectValue != nil else { throw OpenWrtKitError.malformedResponse }
+        if value["error"] != .null {
+            guard let message = value["error"].stringValue else { throw OpenWrtKitError.malformedResponse }
+            if !message.isEmpty { throw OpenWrtKitError.unsupported(message) }
+        }
+        return value
+    }
+
+    private func pluginAccess(_ object: String, _ method: String) async throws {
+        let value = try await client.call(session: session, object: "session", method: "access", parameters: [
+            "scope": .string("ubus"), "object": .string(object), "function": .string(method)
+        ])
+        guard let allowed = value["access"].boolValue else { throw OpenWrtKitError.malformedResponse }
+        guard allowed else { throw OpenWrtKitError.permissionDenied }
+    }
+
     public func diagnose(tool: DiagnosticTool, host: String) async throws -> RouterCommandResult {
         let arguments = try tool.arguments(host: host)
         let result = try await client.call(session: session, object: "file", method: "exec", parameters: [
