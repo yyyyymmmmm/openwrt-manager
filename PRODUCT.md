@@ -37,7 +37,7 @@ ios
 
 ## Brand Commitments
 
-用户指定 iOS 26 原生工具风，参考系统设置/家庭 App。玻璃材质用于原生导航和操作，数据内容保持清晰。暂用 OpenWrt Manager 工作名称，未宣称官方出品。
+用户指定 iOS 26 原生工具风，参考系统设置/家庭 App。玻璃材质用于原生导航和操作，数据内容保持清晰。软件名称为 Zirox-openwrt，品牌图标采用用户提供的 zhifi-icon-final.zip 原稿；作为第三方管理客户端，未宣称官方出品。
 
 ## Product Principles
 

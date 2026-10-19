@@ -71,8 +71,11 @@ struct AppAboutView: View {
     var body: some View {
         List {
             Section {
-                Label("OpenWrt Manager", systemImage: "wifi.router")
-                    .font(AppTypography.rowTitle)
+                HStack(spacing: 12) {
+                    AppBrandIcon(size: 48).accessibilityHidden(true)
+                    Text("Zirox-openwrt").font(AppTypography.rowTitle)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 LabeledContent("版本", value: version)
                 Text("第三方 OpenWrt 路由器管理客户端，与 OpenWrt 或 iStore 官方项目无隶属关系。")
                     .font(AppTypography.secondary)

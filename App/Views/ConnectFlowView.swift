@@ -135,11 +135,8 @@ struct ConnectFlowView: View {
 
     private var welcome: some View {
         AppPage(title: "", setup: true) {
-            HStack(spacing: 8) {
-                Image(systemName: "wifi.router").foregroundStyle(AppPalette.accent)
-                Text("OpenWrt Manager").font(AppTypography.navigation)
-            }.padding(.top, 12)
-            Image(systemName: "wifi.router").font(.system(size: 64)).foregroundStyle(AppPalette.accent)
+            Text("Zirox-openwrt").font(AppTypography.navigation).padding(.top, 12)
+            AppBrandIcon(size: 88)
                 .frame(maxWidth: .infinity, minHeight: 170).padding(.top, 24).accessibilityHidden(true)
             Text("连接 OpenWrt").font(AppTypography.display).padding(.top, 24)
             Text("使用路由器账户管理网络配置、插件与系统服务。")

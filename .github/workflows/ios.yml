@@ -63,16 +63,16 @@ jobs:
           mkdir -p "$RUNNER_TEMP/ipa/Payload"
           ditto "$RUNNER_TEMP/device-build/Build/Products/Release-iphoneos/OpenWrtManager.app" "$RUNNER_TEMP/ipa/Payload/OpenWrtManager.app"
           cd "$RUNNER_TEMP/ipa"
-          zip -qr "$GITHUB_WORKSPACE/artifacts/OpenWrtManager-unsigned.ipa" Payload
+          zip -qr "$GITHUB_WORKSPACE/artifacts/Zirox-openwrt-unsigned.ipa" Payload
 
       - name: Audit unsigned release bundle
-        run: python3 scripts/audit_release.py --ipa artifacts/OpenWrtManager-unsigned.ipa
+        run: python3 scripts/audit_release.py --ipa artifacts/Zirox-openwrt-unsigned.ipa
 
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
         with:
-          name: OpenWrtManager-unsigned-IPA
-          path: artifacts/OpenWrtManager-unsigned.ipa
+          name: Zirox-openwrt-unsigned-IPA
+          path: artifacts/Zirox-openwrt-unsigned.ipa
           if-no-files-found: error
           retention-days: 30
 

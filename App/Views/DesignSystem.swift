@@ -41,6 +41,18 @@ enum AppTypography {
     static let chrome: Font = .caption2
 }
 
+struct AppBrandIcon: View {
+    let size: CGFloat
+
+    var body: some View {
+        Image("BrandIcon")
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .clipShape(RoundedRectangle(cornerRadius: size * 0.225, style: .continuous))
+    }
+}
+
 struct AppPage<Content: View>: View {
     let title: String
     var subtitle: String? = nil

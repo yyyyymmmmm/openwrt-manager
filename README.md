@@ -1,6 +1,8 @@
-# OpenWrt Manager
+# Zirox-openwrt
 
 适用于 iPhone 的第三方原生 OpenWrt 管理客户端。目标是在手机上管理路由器的网络、系统和插件；目前实现范围与尚未完成项目分别记录在 [TASKS.md](TASKS.md)，不将通用配置编辑视为全部插件适配完成。本项目与 OpenWrt、iStore 官方项目无隶属关系。
+
+应用显示名称为 `Zirox-openwrt`，品牌图标使用用户提供的 `zhifi-icon-final.zip` 原稿，覆盖 iOS App 图标、启动画面、引导页和关于页。资源来源与尺寸见 [design/app-icon.md](design/app-icon.md)。
 
 ## 当前实现
 
