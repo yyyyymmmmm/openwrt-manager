@@ -14,12 +14,14 @@ struct OverviewScreen: View {
     var body: some View {
         NavigationStack {
             AppRootPage(showingRouterPicker: $showingRouterPicker, title: "概览",
-                        subtitle: store.isDemo ? "家庭网络 · 当前显示演示数据" : "家庭网络 · 路由器状态与管理") {
+                        subtitle: "路由器状态与管理") {
                 ReadStatus(updatedAt: store.overviewUpdatedAt, error: store.overviewError)
                 health
                 HStack(spacing: 8) {
-                    NavigationLink { WirelessDetailView() } label: {
-                        overviewTile("Wi-Fi 状态", store.wirelessUpdatedAt == nil ? "尚未读取" : "\(store.radios.count) 个无线电", "wifi")
+                    if !store.radios.isEmpty || store.inventory.menu("admin/network/wireless") != nil {
+                        NavigationLink { WirelessDetailView() } label: {
+                            overviewTile("Wi-Fi 状态", store.wirelessUpdatedAt == nil ? "尚未读取" : "\(store.radios.count) 个无线电", "wifi")
+                        }
                     }
                     NavigationLink { DevicesContent() } label: {
                         overviewTile("设备状态", store.devicesUpdatedAt == nil ? "尚未读取" : "\(store.leases.count) 条 DHCP 租约", "desktopcomputer")
@@ -28,13 +30,15 @@ struct OverviewScreen: View {
                 AppSection(title: "常用管理") {
                     VStack(spacing: 0) {
                         HStack(spacing: 0) {
-                            NavigationLink { WirelessDetailView() } label: { quickItem("无线网络", "名称、信道与广播", "wifi") }
-                            NavigationLink { NetworkManagementView(task: .firewall) } label: { quickItem("防火墙", "区域与端口规则", "checkmark.shield") }
+                            NavigationLink { InterfaceDetailView() } label: { quickItem("网络接口", "地址与连接状态", "network") }
+                            if store.inventory.configNames.contains("firewall") {
+                                NavigationLink { ConfigurationEditorView(name: "firewall") } label: { quickItem("防火墙", "区域与端口规则", "checkmark.shield") }
+                            }
                         }
                         AppDivider(inset: 12)
                         HStack(spacing: 0) {
-                            NavigationLink { PluginDirectoryView() } label: { quickItem("插件中心", "服务、软件包、iStore", "puzzlepiece.extension") }
-                            NavigationLink { SystemManagementView(kind: .backup) } label: { quickItem("配置备份", "导出与恢复", "arrow.down.to.line") }
+                            NavigationLink { PluginDirectoryView() } label: { quickItem("插件中心", "配置、服务与软件包", "puzzlepiece.extension") }
+                            NavigationLink { ConfigurationDirectoryView() } label: { quickItem("全部配置", "读取与编辑", "slider.horizontal.3") }
                         }
                     }.buttonStyle(.plain).background(AppPalette.surface, in: RoundedRectangle(cornerRadius: 15))
                 }
@@ -73,28 +77,12 @@ struct OverviewScreen: View {
                         .background(wan?.up == true ? AppPalette.greenSoft : AppPalette.canvas, in: RoundedRectangle(cornerRadius: 13))
                     VStack(alignment: .leading, spacing: 4) {
                         Text(wan.map { $0.up ? "WAN 接口已连接" : "WAN 接口未连接" } ?? "WAN 状态尚未读取").font(AppTypography.rowTitle).foregroundStyle(AppPalette.text)
-                        Text("互联网可达性尚未检测").font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                        Text(wan?.addresses.joined(separator: " · ") ?? "路由器未报告 WAN 接口").font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                     }.frame(maxWidth: .infinity, alignment: .leading)
                     Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(AppPalette.muted)
                 }
-                AppDivider(inset: 0)
-                HStack {
-                    speedSlot("下载")
-                    Rectangle().fill(AppPalette.line).frame(width: 0.5, height: 31)
-                    speedSlot("上传")
-                    Text("速率未接入").font(AppTypography.chrome).foregroundStyle(AppPalette.muted)
-                }.padding(.top, 1)
             }.padding(15).background(AppPalette.surface, in: RoundedRectangle(cornerRadius: 16))
         }.buttonStyle(.plain)
-    }
-    private func speedSlot(_ title: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text("—").font(AppTypography.title).foregroundStyle(AppPalette.text)
-                Text("Mb/s").font(AppTypography.chrome).foregroundStyle(AppPalette.muted)
-            }
-        }.frame(maxWidth: .infinity, alignment: .leading)
     }
     private func overviewTile(_ title: String, _ detail: String, _ symbol: String) -> some View {
         HStack(spacing: 7) {

@@ -11,7 +11,6 @@ struct ConnectFlowView: View {
     @Environment(\.dismiss) private var dismiss
 
     let isModal: Bool
-    let allowsDemo: Bool
 
     @State private var address = ""
     @State private var path: [ConnectRoute] = []
@@ -22,7 +21,7 @@ struct ConnectFlowView: View {
     var body: some View {
         NavigationStack(path: $path) {
             Group {
-                if allowsDemo && !isModal && store.profiles.isEmpty && showingWelcome {
+                if !isModal && store.profiles.isEmpty && showingWelcome {
                     welcome
                 } else {
                     addressPage
@@ -130,16 +129,6 @@ struct ConnectFlowView: View {
                     }
                 }
 
-                if allowsDemo {
-                    AppSection(title: "") {
-                        Button {
-                            store.enterDemo()
-                        } label: {
-                            Label("试用演示数据", systemImage: "play.circle")
-                        }
-                        .buttonStyle(AppSecondaryButtonStyle()).accessibilityIdentifier("demoModeButton")
-                    }
-                }
             privacyLinks.padding(.top, 28)
         }
     }
@@ -150,39 +139,15 @@ struct ConnectFlowView: View {
                 Image(systemName: "wifi.router").foregroundStyle(AppPalette.accent)
                 Text("OpenWrt Manager").font(AppTypography.navigation)
             }.padding(.top, 12)
-            VStack(spacing: 22) {
-                HStack(spacing: 14) {
-                    Image(systemName: "wifi.router").font(.system(size: 30)).foregroundStyle(.white)
-                        .frame(width: 64, height: 64).background(AppPalette.accent, in: RoundedRectangle(cornerRadius: 16))
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("你的 OpenWrt").font(AppTypography.rowTitle)
-                        Text("家庭网络").font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
-                    }
-                    Spacer()
-                    Circle().fill(AppPalette.green).frame(width: 6, height: 6)
-                }.padding(18).background(AppPalette.surface, in: RoundedRectangle(cornerRadius: 16))
-                HStack(spacing: 0) {
-                    endpoint("iphone", "手机")
-                    endpoint("laptopcomputer", "电脑")
-                    endpoint("square.stack.3d.up", "更多设备")
-                }
-            }.padding(.top, 52).padding(.bottom, 42)
-            Text("你的网络，\n尽在掌握。").font(AppTypography.display).lineSpacing(4)
-            Text("连接 OpenWrt，随时查看设备、管理网络与插件。")
+            Image(systemName: "wifi.router").font(.system(size: 64)).foregroundStyle(AppPalette.accent)
+                .frame(maxWidth: .infinity, minHeight: 170).padding(.top, 24).accessibilityHidden(true)
+            Text("连接 OpenWrt").font(AppTypography.display).padding(.top, 24)
+            Text("使用路由器账户管理网络配置、插件与系统服务。")
                 .font(AppTypography.reading).foregroundStyle(AppPalette.muted).lineSpacing(5).padding(.top, 12)
             Button { showingWelcome = false } label: { Text("连接路由器") }
                 .buttonStyle(AppPrimaryButtonStyle()).padding(.top, 32).accessibilityIdentifier("startConnectionButton")
-            Button { store.enterDemo() } label: { Text("先试用演示") }
-                .buttonStyle(AppSecondaryButtonStyle()).padding(.top, 10).accessibilityIdentifier("demoModeButton")
             privacyLinks.padding(.top, 28)
         }
-    }
-
-    private func endpoint(_ symbol: String, _ name: String) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: symbol).font(.system(size: 25)).foregroundStyle(AppPalette.accent)
-            Text(name).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
-        }.frame(maxWidth: .infinity)
     }
 
     private var privacyLinks: some View {

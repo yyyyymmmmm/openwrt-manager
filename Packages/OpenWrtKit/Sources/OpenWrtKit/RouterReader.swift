@@ -55,6 +55,67 @@ public struct RouterReader: Sendable {
         return SnapshotParser.services(value)
     }
 
+    public func inventory() async -> RouterInventory {
+        async let menu = capture { try InventoryParser.menus(await client.menu(session: session)) }
+        async let packages = capture { try await client.installedPackages(session: session) }
+        async let configs = capture { try InventoryParser.configNames(await client.call(session: session, object: "file", method: "list", parameters: ["path": .string("/etc/config")])) }
+        async let startup = capture { try InventoryParser.initServices(await client.call(session: session, object: "luci", method: "getInitList")) }
+        let results = await (menu, packages, configs, startup)
+        var inventory = RouterInventory()
+        switch results.0 {
+        case .success(let value): inventory.menus = value; inventory.menuRead = true
+        case .failure(let error): inventory.warnings.append("功能目录：\(error.localizedDescription)")
+        }
+        switch results.1 {
+        case .success(let value): inventory.packages = value; inventory.packagesRead = true
+        case .failure(let error): inventory.warnings.append("软件包：\(error.localizedDescription)")
+        }
+        switch results.2 {
+        case .success(let value): inventory.configNames = value; inventory.configsRead = true
+        case .failure(let error): inventory.warnings.append("配置目录：\(error.localizedDescription)")
+        }
+        switch results.3 {
+        case .success(let value): inventory.initServices = value; inventory.initRead = true
+        case .failure(let error): inventory.warnings.append("启动项：\(error.localizedDescription)")
+        }
+        return inventory
+    }
+
+    public func serviceAction(name: String, action: ServiceAction) async throws {
+        guard InventoryParser.validIdentifier(name) else { throw ConfigurationError.invalidIdentifier }
+        let initList = try InventoryParser.initServices(await client.call(session: session, object: "luci", method: "getInitList"))
+        guard initList.contains(where: { $0.name == name }) else { throw OpenWrtKitError.unsupported("此服务不在路由器的启动项目录中。") }
+        let access = try await client.call(session: session, object: "session", method: "access", parameters: [
+            "scope": .string("ubus"), "object": .string("luci"), "function": .string("setInitAction")
+        ])
+        guard access["access"].boolValue == true else { throw OpenWrtKitError.permissionDenied }
+        let value = try await client.call(session: session, object: "luci", method: "setInitAction", parameters: [
+            "name": .string(name), "action": .string(action.rawValue)
+        ])
+        guard value["result"].boolValue == true else { throw OpenWrtKitError.unsupported("路由器未确认服务操作成功，请检查日志和当前状态。") }
+    }
+
+    public func records(_ kind: RouterRecordKind) async throws -> [JSONValue] {
+        switch kind {
+        case .logs:
+            let value = try await client.call(session: session, object: "log", method: "read", parameters: [
+                "lines": .number(200), "oneshot": .bool(true), "stream": .bool(false)
+            ])
+            guard let records = value["log"].arrayValue else { throw OpenWrtKitError.malformedResponse }
+            return records
+        case .processes, .mounts:
+            let method = kind == .processes ? "getProcessList" : "getMountPoints"
+            let value = try await client.call(session: session, object: "luci", method: method)
+            guard let records = value["result"].arrayValue else { throw OpenWrtKitError.malformedResponse }
+            return records
+        }
+    }
+
+    private func capture<T: Sendable>(_ operation: @Sendable () async throws -> T) async -> Result<T, Error> {
+        do { return .success(try await operation()) }
+        catch { return .failure(error) }
+    }
+
     public func logout() async {
         _ = try? await client.call(session: session, object: "session", method: "destroy")
     }
@@ -66,6 +127,18 @@ public struct RouterReader: Sendable {
             return .success(value)
         }
         catch { return .failure(error) }
+    }
+}
+
+public enum RouterRecordKind: String, CaseIterable, Identifiable, Sendable {
+    case logs, processes, mounts
+    public var id: String { rawValue }
+    public var title: String {
+        switch self {
+        case .logs: return "系统日志"
+        case .processes: return "运行进程"
+        case .mounts: return "存储挂载"
+        }
     }
 }
 

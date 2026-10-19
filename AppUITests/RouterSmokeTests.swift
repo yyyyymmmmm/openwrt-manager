@@ -1,173 +1,210 @@
 import XCTest
 
+// All fixture data comes through ordinary HTTP requests to a CI-only server.
+// The production target has no test mode, injected data or launch switches.
 final class RouterSmokeTests: XCTestCase {
     @MainActor
-    func testConnectEntryAndReadOnlyTabsInDemoMode() throws {
+    func testAOnboardingPrivacyAndScan() {
+        let app = launch()
+        XCTAssertFalse(app.buttons["demoModeButton"].exists)
+        attach("00-welcome", app)
+        openAddress(app)
+        attach("01-connect", app)
+        app.buttons["scanLocalNetworkLink"].tap()
+        XCTAssertTrue(app.buttons["startScanButton"].waitForExistence(timeout: 5))
+        attach("09-scan-entry", app)
+        back(app)
+        app.buttons["appSettingsLink"].tap()
+        tapVisible(app.buttons["privacyLink"], app)
+        XCTAssertTrue(app.staticTexts["连接与本地存储"].waitForExistence(timeout: 5))
+        attach("13-privacy", app)
+    }
+
+    @MainActor
+    func testBRealLoginPathAndNativeTabs() {
+        let app = launch()
+        connect(app, captureLogin: true)
+        attach("02-overview", app)
+        visit("设备", app)
+        let device = app.buttons["device-02:00:00:00:00:01|192.0.2.10"]
+        XCTAssertTrue(device.waitForExistence(timeout: 15))
+        attach("03-devices", app)
+        device.tap()
+        XCTAssertTrue(app.staticTexts["设备名称"].waitForExistence(timeout: 5))
+        attach("11-device-detail", app)
+        back(app)
+        let search = app.textFields["deviceSearchField"]
+        search.tap(); search.typeText("no-match")
+        XCTAssertFalse(device.exists)
+        attach("12-device-search", app)
+        visit("网络", app)
+        attach("04-network", app)
+        visit("插件", app)
+        XCTAssertTrue(app.buttons["plugin-luci-app-ci-extension"].waitForExistence(timeout: 15))
+        attach("05-plugins", app)
+        visit("系统", app)
+        attach("06-system", app)
+        tapVisible(app.buttons["系统日志"], app)
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "CI fixture log")).firstMatch.waitForExistence(timeout: 5))
+        attach("20-records", app)
+    }
+
+    @MainActor
+    func testCConfigurationApplyConfirmAndServiceControl() {
+        let app = launch()
+        connect(app)
+        visit("插件", app)
+        let plugin = app.buttons["plugin-luci-app-ci-extension"]
+        XCTAssertTrue(plugin.waitForExistence(timeout: 15)); plugin.tap()
+        attach("21-plugin-detail", app)
+        app.buttons["plugin-config-ci_extension"].tap()
+        let section = app.buttons["config-section-main"]
+        XCTAssertTrue(section.waitForExistence(timeout: 10)); section.tap()
+        app.buttons["config-field-enabled"].tap()
+        let input = app.textFields["configValueInput"].exists ? app.textFields["configValueInput"] : app.textViews["configValueInput"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5)); replace(input, with: "0")
+        app.buttons["完成"].tap()
+        back(app)
+        app.buttons["previewConfigChanges"].tap()
+        XCTAssertTrue(app.buttons["applyConfigurationButton"].waitForExistence(timeout: 5))
+        attach("22-config-preview", app)
+        app.buttons["applyConfigurationButton"].tap()
+        app.buttons["应用修改"].tap()
+        let confirm = app.buttons["验证连接并保留修改"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10))
+        attach("23-config-confirm", app)
+        confirm.tap()
+        XCTAssertTrue(section.waitForExistence(timeout: 15))
+        back(app)
+        tapVisible(app.buttons["plugin-service-ci_extension"], app)
+        XCTAssertTrue(app.buttons["停止"].waitForExistence(timeout: 5))
+        app.buttons["停止"].tap(); app.buttons["确认停止"].tap()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "路由器已确认执行停止")).firstMatch.waitForExistence(timeout: 15))
+        attach("24-service-result", app)
+    }
+
+    @MainActor
+    func testDReadOnlyAccountCannotEdit() {
+        let app = launch()
+        connect(app, username: "readonly")
+        visit("插件", app)
+        let plugin = app.buttons["plugin-luci-app-ci-extension"]
+        XCTAssertTrue(plugin.waitForExistence(timeout: 15)); plugin.tap()
+        app.buttons["plugin-config-ci_extension"].tap()
+        let section = app.buttons["config-section-main"]
+        XCTAssertTrue(section.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["当前账户仅可读取"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["previewConfigChanges"].isEnabled)
+        section.tap()
+        XCTAssertFalse(app.buttons["config-field-enabled"].isEnabled)
+        attach("25-readonly-config", app)
+    }
+
+    @MainActor
+    func testEAppearanceAndTextSizePersistThroughSettings() {
+        let app = launch()
+        app.buttons["appSettingsLink"].tap()
+        app.buttons["textSizePicker"].tap(); app.buttons["加大"].tap()
+        XCTAssertEqual(app.buttons["textSizePicker"].value as? String, "加大")
+        attach("10-text-size-large", app)
+        app.terminate(); app.launch()
+        app.buttons["appSettingsLink"].tap()
+        XCTAssertEqual(app.buttons["textSizePicker"].value as? String, "加大")
+        attach("16-text-size-restored", app)
+        app.buttons["textSizePicker"].tap(); app.buttons["紧凑"].tap()
+        app.buttons["appearancePicker"].tap(); app.buttons["深色"].tap()
+        back(app)
+        connect(app)
+        attach("08-dark-overview", app)
+        visit("设备", app); attach("14-dark-devices", app)
+        visit("插件", app)
+        XCTAssertTrue(app.buttons["plugin-luci-app-ci-extension"].waitForExistence(timeout: 15))
+        attach("15-dark-plugins", app)
+    }
+
+    @MainActor
+    func testFRejectedCredentialsNeverOpenDashboard() {
+        let app = launch()
+        enterCredentials(app, password: "wrong")
+        submit(app)
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "登录失败")).firstMatch.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.tabBars.buttons["概览"].exists)
+        attach("26-login-error", app)
+    }
+
+    @MainActor
+    private func launch() -> XCUIApplication {
+        continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
         app.launch()
-        let connect = app.buttons["startConnectionButton"]
-        XCTAssertTrue(connect.waitForExistence(timeout: 10))
-        attachScreenshot(named: "00-welcome", from: app)
-        connect.tap()
-        XCTAssertTrue(app.staticTexts["连接你的路由器"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.textFields["routerAddressField"].exists)
-        attachScreenshot(named: "01-connect", from: app)
-        let demoButton = app.buttons["demoModeButton"]
-        if !demoButton.isHittable { app.swipeUp() }
-        XCTAssertTrue(demoButton.waitForExistence(timeout: 5))
-        demoButton.tap()
-        XCTAssertTrue(app.staticTexts["演示数据 · 未连接路由器"].waitForExistence(timeout: 5))
-        attachScreenshot(named: "02-overview", from: app)
-        visitTab("设备", in: app)
-        XCTAssertTrue(app.staticTexts["我的 iPhone"].waitForExistence(timeout: 5))
-        attachScreenshot(named: "03-devices", from: app)
-        visitTab("网络", in: app)
-        XCTAssertTrue(app.buttons["network-wireless"].waitForExistence(timeout: 5))
-        attachScreenshot(named: "04-network", from: app)
-        app.buttons["network-lan"].tap()
-        XCTAssertTrue(app.staticTexts["lan"].waitForExistence(timeout: 5))
-        app.navigationBars.buttons.firstMatch.tap()
-        app.buttons["network-wireless"].tap()
-        XCTAssertTrue(app.staticTexts["Home · 2.4 GHz"].waitForExistence(timeout: 5))
-        attachScreenshot(named: "04-wifi", from: app)
-        visitTab("插件", in: app)
-        XCTAssertTrue(app.staticTexts["SmartDNS"].waitForExistence(timeout: 5))
-        attachScreenshot(named: "05-plugins", from: app)
-        visitTab("系统", in: app)
-        let firmware = app.staticTexts.containing(
-            NSPredicate(format: "label CONTAINS %@", "OpenWrt 24.10")
-        ).firstMatch
-        XCTAssertTrue(firmware.waitForExistence(timeout: 5))
-        attachScreenshot(named: "06-system", from: app)
+        XCTAssertTrue(app.buttons["appSettingsLink"].waitForExistence(timeout: 10))
+        return app
     }
 
     @MainActor
-    func testManualAddressOpensLogin() {
-        let app = XCUIApplication()
-        app.launch()
-        XCTAssertTrue(app.buttons["startConnectionButton"].waitForExistence(timeout: 10))
-        app.buttons["startConnectionButton"].tap()
-        let field = app.textFields["routerAddressField"]
-        XCTAssertTrue(field.waitForExistence(timeout: 10))
-        field.tap()
-        field.typeText("https://router.example:8443")
+    private func openAddress(_ app: XCUIApplication) {
+        if app.buttons["startConnectionButton"].exists { app.buttons["startConnectionButton"].tap() }
+        XCTAssertTrue(app.textFields["routerAddressField"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    private func enterCredentials(_ app: XCUIApplication, username: String = "root", password: String = "ci-only-password", capture: Bool = false) {
+        openAddress(app)
+        replace(app.textFields["routerAddressField"], with: "http://127.0.0.1:18795")
         app.buttons["continueToLoginButton"].tap()
-        XCTAssertTrue(app.secureTextFields["routerPasswordField"].waitForExistence(timeout: 5))
-        let address = app.staticTexts.containing(
-            NSPredicate(format: "label CONTAINS %@", "https://router.example:8443")
-        ).firstMatch
-        XCTAssertTrue(address.waitForExistence(timeout: 5))
-        attachScreenshot(named: "07-login", from: app)
+        let field = app.secureTextFields["routerPasswordField"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        replace(app.textFields["routerUsernameField"], with: username)
+        field.tap(); field.typeText(password)
+        app.swipeUp()
+        if capture { attach("07-login", app) }
     }
 
     @MainActor
-    func testScanEntryWaitsForUserToStart() {
-        let app = XCUIApplication()
-        app.launch()
-        XCTAssertTrue(app.buttons["startConnectionButton"].waitForExistence(timeout: 10))
-        app.buttons["startConnectionButton"].tap()
-        let scanLink = app.buttons["scanLocalNetworkLink"]
-        XCTAssertTrue(scanLink.waitForExistence(timeout: 10))
-        scanLink.tap()
-        XCTAssertTrue(app.buttons["startScanButton"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["手动输入地址"].exists)
-        attachScreenshot(named: "09-scan-entry", from: app)
+    private func submit(_ app: XCUIApplication) {
+        tapVisible(app.buttons["loginButton"], app)
+        let warning = app.alerts.buttons["继续使用 HTTP"]
+        XCTAssertTrue(warning.waitForExistence(timeout: 5)); warning.tap()
     }
 
     @MainActor
-    func testTextSizePreferencePersists() {
-        let app = XCUIApplication()
-        app.launch()
-        app.buttons["App 设置"].tap()
-        let picker = app.buttons["textSizePicker"]
-        XCTAssertTrue(picker.waitForExistence(timeout: 5))
-        picker.tap()
-        app.buttons["加大"].tap()
-        attachScreenshot(named: "10-text-size-large", from: app)
-        app.terminate()
-        app.launch()
-        app.buttons["App 设置"].tap()
-        XCTAssertTrue(app.buttons["textSizePicker"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.buttons["textSizePicker"].value as? String, "加大")
-        attachScreenshot(named: "16-text-size-restored", from: app)
-        app.buttons["textSizePicker"].tap()
-        app.buttons["紧凑"].tap()
+    private func connect(_ app: XCUIApplication, username: String = "root", captureLogin: Bool = false) {
+        enterCredentials(app, username: username, capture: captureLogin)
+        submit(app)
+        XCTAssertTrue(app.tabBars.buttons["概览"].waitForExistence(timeout: 15))
+        visit("设备", app)
+        XCTAssertTrue(app.buttons["device-02:00:00:00:00:01|192.0.2.10"].waitForExistence(timeout: 15))
+        visit("概览", app)
     }
 
     @MainActor
-    func testDeviceDetailsAndSearch() {
-        let app = XCUIApplication()
-        app.launchArguments = ["--demo", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
-        app.launch()
-        visitTab("设备", in: app)
-        let device = app.buttons["device-02:00:00:00:00:01|192.168.1.102"]
-        XCTAssertTrue(device.waitForExistence(timeout: 5))
-        device.tap()
-        XCTAssertTrue(app.staticTexts["设备名称"].waitForExistence(timeout: 5))
-        let onlineStatus = app.descendants(matching: .any).matching(
-            NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "尚未确认", "尚未确认")
-        ).firstMatch
-        XCTAssertTrue(onlineStatus.waitForExistence(timeout: 5))
-        attachScreenshot(named: "11-device-detail", from: app)
-        app.navigationBars.buttons.firstMatch.tap()
-        let search = app.textFields["deviceSearchField"]
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
-        search.tap()
-        search.typeText("192.168.1.108")
-        XCTAssertTrue(app.staticTexts["书房电脑"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["我的 iPhone"].exists)
-        attachScreenshot(named: "12-device-search", from: app)
+    private func replace(_ field: XCUIElement, with value: String) {
+        field.tap()
+        if let existing = field.value as? String, !existing.isEmpty, existing != field.placeholderValue {
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existing.count))
+        }
+        field.typeText(value)
     }
 
     @MainActor
-    func testPrivacyIsAccessibleBeforeLogin() {
-        let app = XCUIApplication()
-        app.launch()
-        app.buttons["appSettingsLink"].tap()
-        let privacy = app.buttons["privacyLink"]
-        if !privacy.isHittable { app.swipeUp() }
-        XCTAssertTrue(privacy.waitForExistence(timeout: 5))
-        privacy.tap()
-        XCTAssertTrue(app.staticTexts["连接与本地存储"].waitForExistence(timeout: 5))
-        attachScreenshot(named: "13-privacy", from: app)
+    private func visit(_ title: String, _ app: XCUIApplication) {
+        let tab = app.tabBars.buttons[title]
+        XCTAssertTrue(tab.waitForExistence(timeout: 5)); tab.tap()
     }
 
     @MainActor
-    func testDarkModeAndLargeType() {
-        let app = XCUIApplication()
-        app.launchArguments = ["--demo", "--dark", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
-        app.launch()
-        XCTAssertTrue(app.staticTexts["演示数据 · 未连接路由器"].waitForExistence(timeout: 10))
-        attachScreenshot(named: "08-dark-overview", from: app)
-        visitTab("设备", in: app)
-        attachScreenshot(named: "14-dark-devices", from: app)
-        visitTab("插件", in: app)
-        attachScreenshot(named: "15-dark-plugins", from: app)
-        app.terminate()
-        app.launchArguments += ["--large-type"]
-        app.launch()
-        XCTAssertTrue(app.buttons["overviewTab"].waitForExistence(timeout: 10))
-        attachScreenshot(named: "17-accessibility-overview", from: app)
-        visitTab("设备", in: app)
-        attachScreenshot(named: "18-accessibility-devices", from: app)
-        visitTab("插件", in: app)
-        attachScreenshot(named: "19-accessibility-plugins", from: app)
+    private func back(_ app: XCUIApplication) { app.navigationBars.buttons.firstMatch.tap() }
+
+    @MainActor
+    private func tapVisible(_ element: XCUIElement, _ app: XCUIApplication) {
+        for _ in 0..<4 where !element.isHittable { app.swipeUp() }
+        XCTAssertTrue(element.waitForExistence(timeout: 5)); XCTAssertTrue(element.isHittable); element.tap()
     }
 
     @MainActor
-    private func visitTab(_ title: String, in app: XCUIApplication) {
-        let identifiers = ["概览": "overviewTab", "设备": "devicesTab", "网络": "networkTab", "插件": "pluginsTab", "系统": "systemTab"]
-        let button = app.buttons[identifiers[title]!]
-        XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing tab: \(title)")
-        button.tap()
-    }
-
-    @MainActor
-    private func attachScreenshot(named name: String, from app: XCUIApplication) {
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
+    private func attach(_ name: String, _ app: XCUIApplication) {
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = name; screenshot.lifetime = .keepAlways; add(screenshot)
     }
 }

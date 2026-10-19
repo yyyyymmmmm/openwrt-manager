@@ -47,8 +47,6 @@ struct DevicesContent: View {
             ReadStatus(updatedAt: store.devicesUpdatedAt, error: store.devicesError)
             HStack(spacing: 12) {
                 summary("DHCP 租约", store.devicesUpdatedAt == nil ? "—" : "\(store.leases.count)")
-                summary("当前在线", "—")
-                summary("无线关联", "—")
             }.padding(.vertical, 14)
             AppDivider(inset: 0).padding(.bottom, 18)
             AppSearchField(prompt: "名称、IP、MAC 或 DUID", text: $search, identifier: "deviceSearchField")
@@ -57,7 +55,7 @@ struct DevicesContent: View {
                     FilterButton(title: item, selected: filter == item) { filter = item }
                 }
             }.padding(.top, 12)
-            AppSection(title: "客户端设备 · \(filteredLeases.count)", note: "来源：DHCP 租约。在线与无线关联状态尚未读取。") {
+            AppSection(title: "DHCP 租约 · \(filteredLeases.count)", note: "租约不代表设备当前在线；固定 IP 设备可能不会出现在此列表。") {
                 AppGroup {
                 if store.isRefreshing && !store.hasLoaded {
                     DataUnavailableView(title: "", message: "", error: nil, isLoading: true)
@@ -120,14 +118,6 @@ private struct DeviceDetailView: View {
                     LabeledContent("读取时剩余租期", value: lease.remainingLeaseDescription)
                 }
                 .textSelection(.enabled)
-                Section {
-                    LabeledContent("在线状态", value: "尚未确认")
-                    LabeledContent("无线关联", value: "尚未读取")
-                } header: {
-                    Text("连接状态")
-                } footer: {
-                    Text("租约表示路由器曾分配过地址，不能据此判断设备当前是否在线。租期是上次成功读取时的值。")
-                }
                 Section {
                     ShareLink(item: "设备：\(lease.hostname.isEmpty ? "未命名设备" : lease.hostname)\nIP：\(lease.address)\nMAC：\(lease.mac)") {
                         Label("分享设备信息", systemImage: "square.and.arrow.up")

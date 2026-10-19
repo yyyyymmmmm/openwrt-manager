@@ -126,7 +126,7 @@ struct RouterLoginView: View {
                 .buttonStyle(AppPrimaryButtonStyle()).padding(.top, 24)
                 .disabled(isConnecting || username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || password.isEmpty)
                 .accessibilityIdentifier("loginButton")
-                Label("仅使用路由器提供的 ubus 权限读取信息。缺少权限或模块时会单独提示。", systemImage: "lock.shield")
+                Label("使用路由器账户的实际权限。缺少权限或模块时会单独提示；配置与服务修改需另行确认。", systemImage: "lock.shield")
                     .font(.footnote)
                     .foregroundStyle(AppPalette.muted).padding(.top, 18)
         }

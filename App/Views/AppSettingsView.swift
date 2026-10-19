@@ -15,23 +15,7 @@ struct AppSettingsView: View {
                     AppDivider()
                     NavigationLink { AppearanceSelection() } label: {
                         AppRow(title: "外观", symbol: "circle.lefthalf.filled", value: appearanceTitle, chevron: true)
-                    }.buttonStyle(.plain)
-                }
-            }
-            AppSection(title: "预览", note: "文字大小适用于本机 App，设置自动保存。系统辅助功能的大字优先。") {
-                AppGroup {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("家庭网络").font(AppTypography.title)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("无线网络").font(AppTypography.rowTitle)
-                            Text("Home-WiFi-5G").font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
-                        }
-                        AppDivider(inset: 0)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("已读取路由器状态").font(AppTypography.rowTitle)
-                            Text("2 分钟前").font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
-                        }
-                    }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                    }.buttonStyle(.plain).accessibilityIdentifier("appearancePicker")
                 }
             }
             AppSection(title: "支持与隐私") {
@@ -78,7 +62,7 @@ private struct AppearanceSelection: View {
                         Button { selected = value; dismiss() } label: {
                             AppRow(title: value == "system" ? "跟随系统" : value == "light" ? "浅色" : "深色",
                                    symbol: selected == value ? "checkmark" : nil)
-                        }.buttonStyle(.plain)
+                    }.buttonStyle(.plain)
                         if value != "dark" { AppDivider(inset: 12) }
                     }
                 }

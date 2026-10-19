@@ -6,7 +6,7 @@ struct SystemScreen: View {
     @State private var showDisconnectConfirmation = false
     var body: some View {
         NavigationStack {
-            AppRootPage(showingRouterPicker: $showingRouterPicker, title: "系统", subtitle: "设备、日志、备份与维护") {
+            AppRootPage(showingRouterPicker: $showingRouterPicker, title: "系统", subtitle: "设备、服务与系统记录") {
                 ReadStatus(updatedAt: store.overviewUpdatedAt, error: store.overviewError)
                 NavigationLink { SystemInformationView() } label: {
                     HStack(spacing: 12) {
@@ -25,18 +25,20 @@ struct SystemScreen: View {
                         AppDivider()
                         NavigationLink { ServicesScreen(showingRouterPicker: $showingRouterPicker) } label: { AppRow(title: "系统服务", detail: "查看服务与实例状态", symbol: "gearshape.2", chevron: true) }.buttonStyle(.plain)
                         AppDivider()
-                        managementLink(.logs)
+                        NavigationLink { RouterRecordsView(kind: .logs) } label: { AppRow(title: "系统日志", symbol: "doc.text", chevron: true) }.buttonStyle(.plain)
                         AppDivider()
-                        managementLink(.startup)
+                        NavigationLink { RouterRecordsView(kind: .processes) } label: { AppRow(title: "运行进程", symbol: "cpu", chevron: true) }.buttonStyle(.plain)
+                        AppDivider()
+                        NavigationLink { RouterRecordsView(kind: .mounts) } label: { AppRow(title: "存储挂载", symbol: "externaldrive", chevron: true) }.buttonStyle(.plain)
                     }
                 }
-                AppSection(title: "备份与设备维护") {
+                AppSection(title: "路由器配置") {
                     AppGroup {
-                        managementLink(.backup)
-                        AppDivider()
-                        managementLink(.upgrade)
-                        AppDivider()
-                        managementLink(.reboot)
+                        ForEach(store.inventory.configNames.filter { ["system", "dropbear", "uhttpd", "rpcd", "fstab"].contains($0) }, id: \.self) { name in
+                            NavigationLink { ConfigurationEditorView(name: name) } label: { AppRow(title: name, symbol: "slider.horizontal.3", chevron: true) }.buttonStyle(.plain)
+                            AppDivider()
+                        }
+                        NavigationLink { ConfigurationDirectoryView() } label: { AppRow(title: "全部路由器配置", symbol: "slider.horizontal.3", chevron: true) }.buttonStyle(.plain)
                     }
                 }
                 AppSection(title: "本机 App 设置") {
@@ -44,10 +46,10 @@ struct SystemScreen: View {
                         NavigationLink { AppSettingsView() } label: { AppRow(title: "App 设置", detail: "外观、文字大小与隐私", symbol: "slider.horizontal.3", chevron: true) }
                             .buttonStyle(.plain).accessibilityIdentifier("appSettingsLink")
                         AppDivider()
-                        Button { showingRouterPicker = true } label: { AppRow(title: "切换或添加路由器", symbol: "arrow.left.arrow.right", chevron: true) }.buttonStyle(.plain)
+                        Button { showingRouterPicker = true } label: { AppRow(title: "切换或添加路由器", symbol: "arrow.left.arrow.right", chevron: true) }.buttonStyle(.plain).disabled(store.isMutating || store.pendingConfiguration != nil)
                         AppDivider()
                         Button { showDisconnectConfirmation = true } label: { AppRow(title: "断开连接", symbol: "wifi.slash", destructive: true) }
-                            .buttonStyle(.plain).accessibilityIdentifier("disconnectRouterButton")
+                            .buttonStyle(.plain).accessibilityIdentifier("disconnectRouterButton").disabled(store.isMutating || store.pendingConfiguration != nil)
                     }
                 }
             }
@@ -56,57 +58,6 @@ struct SystemScreen: View {
                 Button("取消", role: .cancel) {}
             } message: { Text("这不会删除保存的地址或修改路由器设置。") }
         }
-    }
-    private func managementLink(_ kind: SystemManagementKind) -> some View {
-        NavigationLink { SystemManagementView(kind: kind) } label: {
-            AppRow(title: kind.title, detail: kind.detail, symbol: kind.symbol, badge: "LuCI", chevron: true)
-        }.buttonStyle(.plain)
-    }
-}
-
-enum SystemManagementKind {
-    case logs, startup, backup, upgrade, reboot
-    var title: String {
-        switch self {
-        case .logs: return "系统日志"
-        case .startup: return "启动项与计划任务"
-        case .backup: return "配置备份与恢复"
-        case .upgrade: return "固件升级"
-        case .reboot: return "重启路由器"
-        }
-    }
-    var detail: String {
-        switch self {
-        case .logs: return "系统事件、内核日志与排障"
-        case .startup: return "开机服务与定时执行"
-        case .backup: return "导出配置、恢复备份与重置"
-        case .upgrade: return "镜像校验与版本更新"
-        case .reboot: return "结束运行并重新启动设备"
-        }
-    }
-    var symbol: String {
-        switch self {
-        case .logs: return "doc.text"
-        case .startup: return "clock"
-        case .backup: return "arrow.down.to.line"
-        case .upgrade: return "arrow.up.circle"
-        case .reboot: return "power"
-        }
-    }
-}
-
-struct SystemManagementView: View {
-    let kind: SystemManagementKind
-    var body: some View {
-        AppPage(title: kind.title, subtitle: kind.detail) {
-            AppSection(title: "管理方式", note: "当前通过路由器的 LuCI 页面完成此操作。原生操作将在权限、任务状态和失败恢复机制接入后开放。") {
-                AppGroup {
-                    NavigationLink { RouterWebEntryView(page: .luci) } label: {
-                        AppRow(title: "前往 LuCI 管理", symbol: "safari", chevron: true)
-                    }.buttonStyle(.plain)
-                }
-            }
-        }.appDetailStyle(kind.title)
     }
 }
 

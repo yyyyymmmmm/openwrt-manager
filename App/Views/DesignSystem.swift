@@ -291,16 +291,16 @@ struct RootPageHeader: View {
                         .frame(width: 36, height: 36)
                         .background(AppPalette.accentSoft, in: RoundedRectangle(cornerRadius: 11))
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(store.activeProfile?.name ?? "家庭主路由器")
+                        Text(store.activeProfile?.name ?? "未连接")
                             .font(AppTypography.secondary.weight(.semibold)).foregroundStyle(AppPalette.text)
-                        Text(store.isDemo ? "OpenWrt · 演示路由器" : store.activeProfile?.address ?? "OpenWrt")
+                        Text(store.activeProfile?.address ?? "")
                             .font(AppTypography.metadata).foregroundStyle(AppPalette.muted).lineLimit(1)
                     }
                     Image(systemName: "chevron.down").font(.system(size: 9)).foregroundStyle(AppPalette.muted)
                 }
                 .frame(minHeight: 48)
             }
-            .buttonStyle(.plain).accessibilityLabel("切换或添加路由器")
+            .buttonStyle(.plain).accessibilityLabel("切换或添加路由器").disabled(store.isMutating || store.pendingConfiguration != nil)
             Spacer(minLength: 0)
             Button { Task { await store.refresh() } } label: {
                 Group {
@@ -356,6 +356,5 @@ struct AppRootPage<Content: View>: View {
         }
         .background(AppPalette.canvas.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
-        .toolbar(.hidden, for: .tabBar)
     }
 }
