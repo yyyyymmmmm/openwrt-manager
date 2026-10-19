@@ -16,11 +16,9 @@ struct OverviewScreen: View {
                 ReadStatus(updatedAt: store.overviewUpdatedAt, error: store.overviewError)
                 health
                 HStack(spacing: 8) {
-                    if true {
-                        NavigationLink { WirelessDetailView() } label: {
-                            overviewTile("Wi-Fi 状态", store.wirelessUpdatedAt == nil ? "尚未读取" : "\(store.radios.count) 个无线电", "wifi")
-                        }.accessibilityIdentifier("overview-wireless")
-                    }
+                    NavigationLink { WirelessDetailView() } label: {
+                        overviewTile("Wi-Fi 状态", store.wirelessError != nil ? "读取失败" : store.wirelessUpdatedAt == nil ? "尚未读取" : "\(store.radios.count) 个无线电", "wifi")
+                    }.accessibilityIdentifier("overview-wireless")
                     NavigationLink { DevicesContent() } label: {
                         overviewTile("设备状态", store.devicesUpdatedAt == nil ? "尚未读取" : "\(store.leases.count) 条 DHCP 租约", "desktopcomputer")
                     }.accessibilityIdentifier("overview-leases")

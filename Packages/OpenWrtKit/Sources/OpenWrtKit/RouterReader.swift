@@ -70,6 +70,23 @@ public struct RouterReader: Sendable {
         return handlers.keys.sorted()
     }
 
+    public func diagnose(tool: DiagnosticTool, host: String) async throws -> RouterCommandResult {
+        let arguments = try tool.arguments(host: host)
+        let result = try await client.call(session: session, object: "file", method: "exec", parameters: [
+            "command": .string(tool.executable), "params": .array(arguments.map(JSONValue.string))
+        ])
+        return try RouterCommandResult(value: result)
+    }
+
+    public func reboot() async throws {
+        let access = try await client.call(session: session, object: "session", method: "access", parameters: [
+            "scope": .string("ubus"), "object": .string("system"), "function": .string("reboot")
+        ])
+        guard let allowed = access["access"].boolValue else { throw OpenWrtKitError.malformedResponse }
+        guard allowed else { throw OpenWrtKitError.permissionDenied }
+        _ = try await client.call(session: session, object: "system", method: "reboot")
+    }
+
     public func services() async throws -> [RouterService] {
         let value = try await client.call(session: session, object: "service", method: "list")
         return try SnapshotParser.services(value)

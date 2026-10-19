@@ -32,9 +32,12 @@ struct NetworkTaskGroups: View {
                 }
                 if matches("DNS 缓存 记录 DNSSEC 转发") { NativeConfigurationLink(schema: .dns, symbol: "server.rack") }
                 if matches("防火墙 区域 端口转发 通信规则 NAT IP集合") { NativeConfigurationLink(schema: .firewall, symbol: "checkmark.shield") }
+                if matches("网络诊断 Ping Traceroute DNS查询") {
+                    NavigationLink { RouterDiagnosticsView() } label: { AppRow(title: "网络诊断", symbol: "stethoscope", chevron: true) }.buttonStyle(.plain)
+                }
             }
         }
-        FirmwareMenuSection(group: "network", excluding: ["network", "wireless", "routes", "dhcp", "dns", "firewall"], query: query)
+        FirmwareMenuSection(group: "network", excluding: ["network", "wireless", "routes", "dhcp", "dns", "firewall", "diagnostics"], query: query)
         AppSection(title: "高级配置", note: "通用 UCI 编辑保留给固件扩展字段，不代表专用功能已经适配。") {
             AppGroup {
                 NavigationLink { ConfigurationDirectoryView() } label: { AppRow(title: "全部配置文件", symbol: "slider.horizontal.3", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("network-configurations")
@@ -96,11 +99,9 @@ struct WirelessDetailView: View {
             if store.radios.isEmpty {
                 ContentUnavailableView("没有读取到无线电", systemImage: "wifi.slash", description: Text(store.wirelessError == nil ? "当前未返回无线硬件。" : "读取失败不能据此判断设备没有无线硬件。"))
             }
-            if true {
-                AppSection(title: "无线配置") {
-                    AppGroup {
-                        NavigationLink { NativeConfigurationView(schema: .wireless) } label: { AppRow(title: "编辑无线配置", symbol: "slider.horizontal.3", chevron: true) }.buttonStyle(.plain)
-                    }
+            AppSection(title: "无线配置") {
+                AppGroup {
+                    NavigationLink { NativeConfigurationView(schema: .wireless) } label: { AppRow(title: "编辑无线配置", symbol: "slider.horizontal.3", chevron: true) }.buttonStyle(.plain)
                 }
             }
         }.appDetailStyle("无线网络").refreshable { await store.refresh() }

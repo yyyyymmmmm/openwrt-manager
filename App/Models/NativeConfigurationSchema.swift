@@ -74,7 +74,7 @@ struct NativeConfigurationSchema: Identifiable {
                      f("conloglevel", "内核控制台日志等级", .integer(0, 8)), f("cronloglevel", "计划任务日志等级", .integer(0, 9))])
         ], addable: false),
         s("timeserver", "时间同步", [g("NTP", [f("enabled", "启用 NTP 客户端", .flag),
-            f("enable_server", "提供 NTP 服务", .flag), f("interface", "监听接口"),
+            f("enable_server", "提供 NTP 服务", .flag, "sysntpd 需已启用；开机启动在系统→启动项中单独管理。"), f("interface", "监听接口"),
             f("use_dhcp", "使用 DHCP 下发的服务器", .flag), f("server", "NTP 服务器", .list)])], addable: false)
     ])
 
@@ -102,6 +102,10 @@ struct NativeConfigurationSchema: Identifiable {
                 f("peerdns", "使用对端 DNS", .flag), f("dns", "DNS 服务器", .list),
                 f("dns_search", "DNS 搜索域", .list), f("mtu", "MTU", .integer(68, 65535)),
                 f("delegate", "委派 IPv6 前缀", .flag), f("ip4table", "IPv4 路由表"), f("ip6table", "IPv6 路由表")]),
+            g("WireGuard", [f("private_key", "私钥", .secret, when: ("proto", ["wireguard"])),
+                f("listen_port", "监听端口", .integer(1, 65535), when: ("proto", ["wireguard"])),
+                f("addresses", "隧道地址", .list, when: ("proto", ["wireguard"])),
+                f("nohostroute", "不创建端点主机路由", .flag, when: ("proto", ["wireguard"]))]),
             g("IPv6", [f("ip6addr", "IPv6 地址", .list, when: ("proto", ["static"])),
                 f("ip6gw", "IPv6 网关", .address, when: ("proto", ["static"])),
                 f("ip6assign", "IPv6 分配长度", .integer(0, 128)), f("ip6hint", "IPv6 子网提示"),
@@ -128,7 +132,7 @@ struct NativeConfigurationSchema: Identifiable {
         s("globals", "全局网络选项", [g("全局", [f("ula_prefix", "IPv6 ULA 前缀", .prefix), f("packet_steering", "数据包分流", .choice(["0", "1", "2"]))])], addable: false)
     ])
 
-    private static let routeGroups = [g("常规设置", [f("interface", "逻辑接口", required: true),
+    private static let routeGroups = [g("常规设置", [f("interface", "逻辑接口"),
         f("type", "路由类型", .choice(["unicast", "local", "broadcast", "multicast", "unreachable", "prohibit", "blackhole", "throw"])),
         f("target", "目标地址/网段", .prefix, required: true), f("gateway", "网关", .address), f("netmask", "IPv4 子网掩码", .address)]),
         g("高级设置", [f("metric", "跃点", .integer(0, 2_147_483_647)), f("mtu", "MTU", .integer(68, 65535)),
@@ -283,7 +287,7 @@ struct NativeConfigurationSchema: Identifiable {
     static let upnp = Self(id: "upnp", title: "UPnP / PCP 配置", config: "upnpd", sections: [
         s("upnpd", "服务设置", [g("常规设置", [f("enabled", "启用服务", .flag), f("enable_upnp", "UPnP IGD", .flag),
             f("enable_natpmp", "PCP / NAT-PMP", .flag), f("ext_allow_private_ipv4", "允许私网 IPv4", .flag), f("igdv1", "IGDv1 兼容模式", .flag),
-            f("download", "下行速率（kbit/s）", .integer(0, 2_147_483_647)), f("upload", "上行速率（kbit/s）", .integer(0, 2_147_483_647))]),
+            f("download", "下行速率（kByte/s）", .integer(0, 2_147_483_647)), f("upload", "上行速率（kByte/s）", .integer(0, 2_147_483_647))]),
             g("高级设置", [f("use_stun", "使用 STUN", .flag), f("stun_host", "STUN 主机"), f("stun_port", "STUN 端口", .integer(1, 65535)),
             f("secure_mode", "安全模式", .flag), f("notify_interval", "通告间隔（秒）", .integer(1, 2_147_483_647)),
             f("port", "SOAP / HTTP 端口", .integer(0, 65535)), f("presentation_url", "设备展示 URL"), f("uuid", "设备 UUID"),

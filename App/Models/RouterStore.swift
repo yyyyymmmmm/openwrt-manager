@@ -264,6 +264,19 @@ final class RouterStore {
         return try await reader.networkProtocols()
     }
 
+    func diagnose(tool: DiagnosticTool, host: String) async throws -> RouterCommandResult {
+        guard let reader else { throw OpenWrtKitError.authenticationFailed }
+        return try await reader.diagnose(tool: tool, host: host)
+    }
+
+    func reboot() async throws {
+        guard !isMutating, pendingConfiguration == nil, let reader else { throw ConfigurationError.busy }
+        isMutating = true
+        defer { isMutating = false }
+        try await reader.reboot()
+        recordActivity("重启请求已接受", detail: "路由器已响应重启请求；重启完成后需要重新连接。", isWarning: true)
+    }
+
     private nonisolated func capture<T: Sendable>(_ operation: @Sendable () async throws -> T) async -> Result<T, Error> {
         do { return .success(try await operation()) }
         catch { return .failure(error) }
