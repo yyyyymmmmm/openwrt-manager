@@ -126,7 +126,9 @@ final class ConfigurationTests: XCTestCase {
         XCTAssertEqual(routing.ipv6Neighbors.first?.state, "STALE")
         XCTAssertEqual(fixture.calls.count, 4)
         XCTAssertTrue(fixture.calls.allSatisfy { $0.object == "file" && $0.method == "exec" && $0.parameters["command"] == .string("/sbin/ip") })
-        let queries = Set(fixture.calls.map { $0.parameters["params"].arrayValue!.compactMap(\.stringValue).joined(separator: " ") })
+        let queries = Set(try fixture.calls.map { call in
+            try XCTUnwrap(call.parameters["params"]?.arrayValue).compactMap(\.stringValue).joined(separator: " ")
+        })
         XCTAssertEqual(queries, Set(["-4 route show", "-6 route show", "-4 neigh show", "-6 neigh show"]))
     }
 
@@ -216,7 +218,7 @@ private final class RouterFixture: @unchecked Sendable {
         case "read": result = .object(["log": .array([.object(["msg": .string("event")])])])
         case "exec":
             code = denyRoutes ? 6 : 0
-            let query = call.parameters["params"].arrayValue?.compactMap(\.stringValue).joined(separator: " ") ?? ""
+            let query = call.parameters["params"]?.arrayValue?.compactMap(\.stringValue).joined(separator: " ") ?? ""
             let outputs = [
                 "-4 route show": "default via 192.0.2.254 dev br-lan proto static metric 10",
                 "-6 route show": "fd00::/64 dev br-lan proto kernel metric 256",
