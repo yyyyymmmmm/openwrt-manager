@@ -4,6 +4,11 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      run_tests:
+        description: Run protocol and simulator tests
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -40,10 +45,14 @@ jobs:
 
       - name: Audit production sources
         run: |
-          python3 -m unittest discover -s scripts -p 'test_*.py'
           python3 scripts/audit_release.py
 
+      - name: Test audit and HTTP fixture
+        if: github.event_name != 'workflow_dispatch' || inputs.run_tests
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+
       - name: Test OpenWrtKit
+        if: github.event_name != 'workflow_dispatch' || inputs.run_tests
         run: swift test --package-path Packages/OpenWrtKit
 
       - name: Generate Xcode project
@@ -77,6 +86,7 @@ jobs:
           retention-days: 30
 
       - name: Build and run UI tests
+        if: github.event_name != 'workflow_dispatch' || inputs.run_tests
         run: |
           mkdir -p artifacts
           python3 scripts/ui_test_router.py > "$RUNNER_TEMP/ui-test-router.log" 2>&1 &

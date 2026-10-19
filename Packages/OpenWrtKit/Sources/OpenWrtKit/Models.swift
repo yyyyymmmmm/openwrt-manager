@@ -53,16 +53,30 @@ public struct SystemSnapshot: Equatable, Sendable {
     public init() {}
 }
 
+public struct InterfaceDefaultRoute: Equatable, Sendable {
+    public let ipv6: Bool
+    public let gateway: String?
+    public let metric: Int?
+    public init(ipv6: Bool, gateway: String?, metric: Int?) {
+        self.ipv6 = ipv6; self.gateway = gateway; self.metric = metric
+    }
+}
+
 public struct NetworkInterfaceSnapshot: Identifiable, Equatable, Sendable {
     public let name: String
     public let protocolName: String
     public let addresses: [String]
     public let up: Bool?
     public let device: String?
+    public let defaultRoutes: [InterfaceDefaultRoute]
+    public let dnsServers: [String]
+    public let errors: [String]
     public var id: String { name }
-    public init(name: String, protocolName: String, addresses: [String], up: Bool?, device: String? = nil) {
+    public init(name: String, protocolName: String, addresses: [String], up: Bool?, device: String? = nil,
+                defaultRoutes: [InterfaceDefaultRoute] = [], dnsServers: [String] = [], errors: [String] = []) {
         self.name = name; self.protocolName = protocolName
         self.addresses = addresses; self.up = up; self.device = device
+        self.defaultRoutes = defaultRoutes; self.dnsServers = dnsServers; self.errors = errors
     }
 }
 
@@ -71,6 +85,16 @@ public struct RouterSnapshot: Equatable, Sendable {
     public var interfaces: [NetworkInterfaceSnapshot] = []
     public var warnings: [String] = []
     public var refreshedAt = Date()
+    /// netifd reports actual default routes on LAN as well as WAN (including side routers).
+    public var upstreamInterfaces: [NetworkInterfaceSnapshot] {
+        interfaces.filter { $0.up == true && !$0.defaultRoutes.isEmpty }.sorted { left, right in
+            let l4 = left.defaultRoutes.contains { !$0.ipv6 }, r4 = right.defaultRoutes.contains { !$0.ipv6 }
+            if l4 != r4 { return l4 }
+            let lm = left.defaultRoutes.compactMap(\.metric).min() ?? Int.max
+            let rm = right.defaultRoutes.compactMap(\.metric).min() ?? Int.max
+            return lm == rm ? left.name < right.name : lm < rm
+        }
+    }
     public init() {}
 }
 

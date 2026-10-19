@@ -259,6 +259,11 @@ final class RouterStore {
         return try await reader.records(kind)
     }
 
+    func networkProtocols() async throws -> [String] {
+        guard let reader else { throw OpenWrtKitError.authenticationFailed }
+        return try await reader.networkProtocols()
+    }
+
     private nonisolated func capture<T: Sendable>(_ operation: @Sendable () async throws -> T) async -> Result<T, Error> {
         do { return .success(try await operation()) }
         catch { return .failure(error) }

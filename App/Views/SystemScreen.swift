@@ -5,7 +5,7 @@ struct SystemScreen: View {
     @Binding var showingRouterPicker: Bool
     var body: some View {
         NavigationStack {
-            AppRootPage(showingRouterPicker: $showingRouterPicker, title: "系统", subtitle: "固件信息、运行状态与系统记录") {
+            AppRootPage(showingRouterPicker: $showingRouterPicker, title: "系统", subtitle: "系统设置、管理权限与维护") {
                 ReadStatus(updatedAt: store.overviewUpdatedAt, error: store.overviewError)
                 NavigationLink { SystemInformationView() } label: {
                     HStack(spacing: 12) {
@@ -18,29 +18,22 @@ struct SystemScreen: View {
                         Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(AppPalette.muted)
                     }.padding(14).background(AppPalette.surface, in: RoundedRectangle(cornerRadius: 15))
                 }.buttonStyle(.plain)
-                AppSection(title: "运行与诊断") {
+                InventoryStatus()
+                AppSection(title: "系统") {
                     AppGroup {
-                        NavigationLink { SystemInformationView() } label: { AppRow(title: "系统状态", detail: "负载、内存、存储与运行时间", symbol: "chart.bar", chevron: true) }.buttonStyle(.plain)
+                        NativeConfigurationLink(schema: .system, symbol: "gearshape")
                         AppDivider()
-                        NavigationLink { RouterRecordsView(kind: .logs) } label: { AppRow(title: "系统日志", symbol: "doc.text", chevron: true) }.buttonStyle(.plain)
+                        NavigationLink { RouterAdministrationView() } label: { AppRow(title: "管理权", detail: "SSH 访问设置", symbol: "lock.shield", chevron: true) }.buttonStyle(.plain)
                         AppDivider()
-                        NavigationLink { RouterRecordsView(kind: .processes) } label: { AppRow(title: "运行进程", symbol: "cpu", chevron: true) }.buttonStyle(.plain)
+                        NavigationLink { PackagesView() } label: { AppRow(title: "软件包", detail: "已安装软件与依赖", symbol: "shippingbox", chevron: true) }.buttonStyle(.plain)
                         AppDivider()
-                        NavigationLink { RouterRecordsView(kind: .mounts) } label: { AppRow(title: "存储挂载", symbol: "externaldrive", chevron: true) }.buttonStyle(.plain)
+                        NavigationLink { ServiceDirectoryView() } label: { AppRow(title: "启动项", detail: "运行实例、启停与开机启动", symbol: "gearshape.2", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("services-directory")
+                        AppDivider()
+                        NavigationLink { RouterRecordsView(kind: .mounts) } label: { AppRow(title: "挂载记录", detail: "只读存储挂载信息", symbol: "externaldrive", chevron: true) }.buttonStyle(.plain)
                     }
                 }
-                AppSection(title: "系统配置") {
-                    AppGroup {
-                        ForEach(store.inventory.configNames.filter { ["system", "dropbear", "uhttpd", "rpcd", "fstab", "luci"].contains($0) }, id: \.self) { name in
-                            NavigationLink { ConfigurationEditorView(name: name) } label: { AppRow(title: name, symbol: "slider.horizontal.3", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("system-config-\(name)")
-                            if name != store.inventory.configNames.filter({ ["system", "dropbear", "uhttpd", "rpcd", "fstab", "luci"].contains($0) }).last { AppDivider() }
-                        }
-                        if store.inventory.configNames.filter({ ["system", "dropbear", "uhttpd", "rpcd", "fstab", "luci"].contains($0) }).isEmpty {
-                            Text(store.inventory.configsRead ? "路由器未报告系统配置文件" : "配置目录尚未读取")
-                                .font(AppTypography.secondary).foregroundStyle(AppPalette.muted).padding(12)
-                        }
-                    }
-                }
+                FirmwareMenuSection(group: "system", excluding: ["system", "admin", "package-manager", "startup"])
+
             }
         }
     }

@@ -259,7 +259,7 @@ private struct AddConfigurationSectionView: View {
     }
 }
 
-private struct ConfigurationPreviewView: View {
+struct ConfigurationPreviewView: View {
     @Environment(RouterStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let plan: ConfigurationPlan
@@ -351,7 +351,7 @@ struct PendingConfigurationView: View {
 
 enum ConfigurationDisplay {
     static func sensitive(_ key: String) -> Bool {
-        ["password", "passwd", "secret", "token", "key", "credential"].contains { key.lowercased().contains($0) }
+        ["password", "passwd", "secret", "token", "key", "credential", "proxy", "url", "param_enc", "param_opt"].contains { key.lowercased().contains($0) }
     }
     static func value(_ value: JSONValue?, key: String) -> String {
         if sensitive(key) { return "••••••••" }

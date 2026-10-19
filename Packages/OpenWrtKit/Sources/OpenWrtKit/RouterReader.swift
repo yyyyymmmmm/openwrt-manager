@@ -62,6 +62,14 @@ public struct RouterReader: Sendable {
         return try SnapshotParser.wireless(value)
     }
 
+    public func networkProtocols() async throws -> [String] {
+        let value = try await client.call(session: session, object: "network", method: "get_proto_handlers")
+        guard let handlers = value.objectValue, handlers.values.allSatisfy({ $0.objectValue != nil }) else {
+            throw OpenWrtKitError.malformedResponse
+        }
+        return handlers.keys.sorted()
+    }
+
     public func services() async throws -> [RouterService] {
         let value = try await client.call(session: session, object: "service", method: "list")
         return try SnapshotParser.services(value)
@@ -203,8 +211,38 @@ public enum SnapshotParser {
                     return ip + (address["mask"].intValue.map { "/\($0)" } ?? "")
                 }
             }
+            let routes: [JSONValue]
+            if item["route"] == .null { routes = [] }
+            else if let reported = item["route"].arrayValue { routes = reported }
+            else { throw OpenWrtKitError.malformedResponse }
+            let defaults = try routes.compactMap { route -> InterfaceDefaultRoute? in
+                guard let target = route["target"].stringValue, let mask = route["mask"].intValue else {
+                    throw OpenWrtKitError.malformedResponse
+                }
+                guard mask == 0, ["0.0.0.0", "::"].contains(target) else { return nil }
+                let gateway = route["nexthop"].stringValue
+                if let gateway, !validIPAddress(gateway) { throw OpenWrtKitError.malformedResponse }
+                return InterfaceDefaultRoute(ipv6: target == "::", gateway: gateway, metric: route["metric"].intValue)
+            }
+            let dns: [String]
+            if item["dns-server"] == .null { dns = [] }
+            else {
+                guard let list = item["dns-server"].arrayValue,
+                      list.allSatisfy({ $0.stringValue.map(validIPAddress) == true }) else { throw OpenWrtKitError.malformedResponse }
+                dns = list.compactMap(\.stringValue)
+            }
+            let errors: [String]
+            if item["errors"] == .null { errors = [] }
+            else {
+                guard let list = item["errors"].arrayValue else { throw OpenWrtKitError.malformedResponse }
+                errors = try list.map { error in
+                    guard let code = error["code"].stringValue else { throw OpenWrtKitError.malformedResponse }
+                    return [error["subsystem"].stringValue, code].compactMap { $0 }.joined(separator: ": ")
+                }
+            }
             return NetworkInterfaceSnapshot(name: name, protocolName: item["proto"].stringValue ?? "—", addresses: addresses,
-                                            up: item["up"].boolValue, device: item["l3_device"].stringValue)
+                                            up: item["up"].boolValue, device: item["l3_device"].stringValue,
+                                            defaultRoutes: defaults, dnsServers: dns, errors: errors)
         }.sorted { $0.name < $1.name }
     }
 

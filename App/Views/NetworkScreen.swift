@@ -15,69 +15,30 @@ struct NetworkScreen: View {
 struct NetworkTaskGroups: View {
     @Environment(RouterStore.self) private var store
     var query = ""
-    private var hasWireless: Bool { !store.radios.isEmpty || store.inventory.menu("admin/network/wireless") != nil }
-    private var configs: [String] {
-        let discovered = store.inventory.allMenus.filter { $0.group == "network" }.flatMap(\.configs)
-        let existing = Set(store.inventory.configNames)
-        return Set(discovered + ["network", "dhcp", "firewall"] + (hasWireless ? ["wireless"] : []))
-            .intersection(existing).sorted().filter { query.isEmpty || ($0 + title($0)).localizedCaseInsensitiveContains(query) }
-    }
     private func matches(_ text: String) -> Bool { query.isEmpty || text.localizedCaseInsensitiveContains(query) }
     var body: some View {
         InventoryStatus()
-        AppSection(title: "连接状态") {
+        AppSection(title: "网络") {
             AppGroup {
-                if matches("路由 邻居 在线设备 ARP NDP") {
-                    NavigationLink { RoutingTablesView() } label: {
-                        AppRow(title: "路由表与邻居设备", detail: "内核路由、IPv4/IPv6 邻居", symbol: "point.3.connected.trianglepath.dotted", chevron: true)
-                    }.buttonStyle(.plain).accessibilityIdentifier("network-routing")
+                if matches("接口 设备 网桥 VLAN 全局网络 WAN LAN IPv6") {
+                    NavigationLink { NetworkInterfacesView() } label: { AppRow(title: "接口", detail: "逻辑接口、设备、网桥与 VLAN", symbol: "network", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("network-interfaces")
                 }
-                if matches("DHCP 地址租约") {
-                    NavigationLink { DevicesContent() } label: { AppRow(title: "DHCP 租约", detail: "已分配的 IPv4/IPv6 地址", symbol: "rectangle.connected.to.line.below", chevron: true) }
-                        .buttonStyle(.plain).accessibilityIdentifier("network-dhcp-leases")
+                if matches("无线网络 Wi-Fi SSID 访客") {
+                    NavigationLink { WirelessDetailView() } label: { AppRow(title: "无线网络", detail: "无线电、SSID 与安全", symbol: "wifi", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("network-wireless")
                 }
-                if hasWireless && matches("无线网络 Wi-Fi") {
-                    NavigationLink { WirelessDetailView() } label: { AppRow(title: "无线网络", symbol: "wifi", chevron: true) }
-                        .buttonStyle(.plain).accessibilityIdentifier("network-wireless")
+                if matches("静态 策略 路由 IPv4 IPv6") { NativeConfigurationLink(schema: .routes, symbol: "arrow.triangle.branch") }
+                if matches("DHCP 租约 静态绑定 分配 IPv6 RA") {
+                    NavigationLink { DHCPManagementView() } label: { AppRow(title: "DHCP", detail: "地址分配、静态租约与 IPv6 RA", symbol: "rectangle.connected.to.line.below", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("network-dhcp-leases")
                 }
-                if store.snapshot?.interfaces.contains(where: { $0.name.hasPrefix("wan") }) == true && matches("互联网 WAN") {
-                    NavigationLink { InterfaceDetailView(scope: "wan") } label: { AppRow(title: "互联网 · WAN", symbol: "globe", chevron: true) }
-                        .buttonStyle(.plain).accessibilityIdentifier("network-wan")
-                }
-                if store.snapshot?.interfaces.contains(where: { $0.name.hasPrefix("lan") }) == true && matches("局域网 LAN") {
-                    NavigationLink { InterfaceDetailView(scope: "lan") } label: { AppRow(title: "局域网 · LAN", symbol: "network", chevron: true) }
-                        .buttonStyle(.plain).accessibilityIdentifier("network-lan")
-                }
-                if matches("全部网络接口") {
-                    NavigationLink { InterfaceDetailView() } label: { AppRow(title: "全部网络接口", symbol: "point.3.connected.trianglepath.dotted", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("network-interfaces")
-                }
+                if matches("DNS 缓存 记录 DNSSEC 转发") { NativeConfigurationLink(schema: .dns, symbol: "server.rack") }
+                if matches("防火墙 区域 端口转发 通信规则 NAT IP集合") { NativeConfigurationLink(schema: .firewall, symbol: "checkmark.shield") }
             }
         }
-        AppSection(title: "网络配置") {
+        FirmwareMenuSection(group: "network", excluding: ["network", "wireless", "routes", "dhcp", "dns", "firewall"], query: query)
+        AppSection(title: "高级配置", note: "通用 UCI 编辑保留给固件扩展字段，不代表专用功能已经适配。") {
             AppGroup {
-                ForEach(configs, id: \.self) { config in
-                    NavigationLink { ConfigurationEditorView(name: config) } label: {
-                        AppRow(title: title(config), detail: config, symbol: "slider.horizontal.3", chevron: true)
-                    }.buttonStyle(.plain).accessibilityIdentifier("network-config-\(config)")
-                    if config != configs.last { AppDivider() }
-                }
+                NavigationLink { ConfigurationDirectoryView() } label: { AppRow(title: "全部配置文件", symbol: "slider.horizontal.3", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("network-configurations")
             }
-        }
-        AppSection(title: "扩展配置") {
-            AppGroup {
-                NavigationLink { PluginDirectoryView() } label: { AppRow(title: "已安装插件", symbol: "puzzlepiece.extension", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("network-plugins")
-                AppDivider()
-                NavigationLink { ConfigurationDirectoryView() } label: { AppRow(title: "全部路由器配置", symbol: "slider.horizontal.3", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("network-configurations")
-            }
-        }
-    }
-    private func title(_ config: String) -> String {
-        switch config {
-        case "network": return "接口、设备与路由"
-        case "wireless": return "无线配置"
-        case "dhcp": return "DHCP、DNS 与静态租约"
-        case "firewall": return "防火墙、NAT 与端口转发"
-        default: return config
         }
     }
 }
@@ -92,13 +53,22 @@ struct InterfaceDetailView: View {
         AppPage(title: "", subtitle: nil) {
             ReadStatus(updatedAt: store.overviewUpdatedAt, error: store.overviewError)
             ForEach(interfaces) { interface in
-                AppSection(title: interface.name) { AppGroup { InterfaceRow(interface: interface, showAddresses: true).padding(12) } }
+                AppSection(title: interface.name) { AppGroup {
+                    InterfaceRow(interface: interface, showAddresses: true).padding(12)
+                    if let device = interface.device { AppDivider(); AppRow(title: "网络设备", value: device) }
+                    ForEach(Array(interface.defaultRoutes.enumerated()), id: \.offset) { _, route in
+                        AppDivider()
+                        AppRow(title: route.ipv6 ? "IPv6 默认网关" : "IPv4 默认网关", detail: route.metric.map { "跃点 \($0)" }, value: route.gateway ?? "无下一跳（链路路由）")
+                    }
+                    if !interface.dnsServers.isEmpty { AppDivider(); AppRow(title: "DNS", value: interface.dnsServers.joined(separator: " · ")) }
+                    ForEach(interface.errors, id: \.self) { error in AppDivider(); AppRow(title: "固件错误", detail: error, symbol: "exclamationmark.triangle") }
+                } }
             }
             if interfaces.isEmpty { ContentUnavailableView("暂无接口信息", systemImage: "network", description: Text("路由器没有返回匹配接口。请核对读取权限与错误信息。")) }
             if store.inventory.configNames.contains("network") {
                 AppSection(title: "接口配置") {
                     AppGroup {
-                        NavigationLink { ConfigurationEditorView(name: "network") } label: { AppRow(title: "编辑网络配置", symbol: "slider.horizontal.3", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("interface-edit-config")
+                        NavigationLink { NativeConfigurationView(schema: .interfaces) } label: { AppRow(title: "编辑网络配置", symbol: "slider.horizontal.3", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("interface-edit-config")
                     }
                 }
             }
@@ -126,10 +96,10 @@ struct WirelessDetailView: View {
             if store.radios.isEmpty {
                 ContentUnavailableView("没有读取到无线电", systemImage: "wifi.slash", description: Text(store.wirelessError == nil ? "当前未返回无线硬件。" : "读取失败不能据此判断设备没有无线硬件。"))
             }
-            if store.inventory.configNames.contains("wireless") && (!store.radios.isEmpty || store.inventory.menu("admin/network/wireless") != nil) {
+            if true {
                 AppSection(title: "无线配置") {
                     AppGroup {
-                        NavigationLink { ConfigurationEditorView(name: "wireless") } label: { AppRow(title: "编辑无线配置", symbol: "slider.horizontal.3", chevron: true) }.buttonStyle(.plain)
+                        NavigationLink { NativeConfigurationView(schema: .wireless) } label: { AppRow(title: "编辑无线配置", symbol: "slider.horizontal.3", chevron: true) }.buttonStyle(.plain)
                     }
                 }
             }

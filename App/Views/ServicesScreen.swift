@@ -6,15 +6,15 @@ struct ServicesScreen: View {
     @Binding var showingRouterPicker: Bool
     var body: some View {
         NavigationStack {
-            AppRootPage(showingRouterPicker: $showingRouterPicker, title: "服务", subtitle: "已安装插件、系统服务与路由器软件") {
-                PluginCollection()
-                AppSection(title: "系统服务") {
+            AppRootPage(showingRouterPicker: $showingRouterPicker, title: "服务", subtitle: "对应固件服务菜单的原生管理") {
+                InventoryStatus()
+                FirmwareMenuSection(group: "services")
+                AppSection(title: "扩展信息", note: "软件包关联与通用字段不等同于插件专有管理。") {
                     AppGroup {
-                        NavigationLink { ServiceDirectoryView() } label: {
-                            AppRow(title: "服务与启动项", detail: "运行实例、启停与开机启动", symbol: "gearshape.2", chevron: true)
-                        }.buttonStyle(.plain).accessibilityIdentifier("services-directory")
+                        NavigationLink { PluginDirectoryView() } label: { AppRow(title: "已安装扩展包", detail: "版本、依赖及配置关联", symbol: "shippingbox", chevron: true) }.buttonStyle(.plain)
                     }
                 }
+
             }
         }
     }
