@@ -104,7 +104,7 @@ final class RouterSmokeTests: XCTestCase {
         let device = app.buttons["device-02:00:00:00:00:01|192.168.1.102"]
         XCTAssertTrue(device.waitForExistence(timeout: 5))
         device.tap()
-        XCTAssertTrue(app.staticTexts["DHCP 租约"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["设备名称"].waitForExistence(timeout: 5))
         let onlineStatus = app.descendants(matching: .any).matching(
             NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "尚未确认", "尚未确认")
         ).firstMatch

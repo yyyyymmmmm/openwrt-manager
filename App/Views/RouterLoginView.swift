@@ -57,7 +57,8 @@ struct RouterLoginView: View {
             AppGroup {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("用户名").font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
-                    TextField("用户名", text: $username)
+                    TextField("用户名", text: $username,
+                              prompt: Text("用户名").foregroundStyle(AppPalette.muted))
                         .font(AppTypography.reading)
                         .textContentType(.username)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -70,8 +71,13 @@ struct RouterLoginView: View {
                     VStack(alignment: .leading, spacing: 5) {
                         Text("密码").font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
                         Group {
-                            if revealPassword { TextField("路由器密码", text: $password) }
-                            else { SecureField("路由器密码", text: $password) }
+                            if revealPassword {
+                                TextField("路由器密码", text: $password,
+                                          prompt: Text("路由器密码").foregroundStyle(AppPalette.muted))
+                            } else {
+                                SecureField("路由器密码", text: $password,
+                                            prompt: Text("路由器密码").foregroundStyle(AppPalette.muted))
+                            }
                         }.font(AppTypography.reading).textContentType(.password)
                             .textInputAutocapitalization(.never).autocorrectionDisabled()
                             .focused($focusedField, equals: .password)
@@ -87,7 +93,8 @@ struct RouterLoginView: View {
             Text("密码仅在你选择记住时保存到 iOS 钥匙串。")
                 .font(AppTypography.secondary).foregroundStyle(AppPalette.muted).padding(.top, 6)
             AppSection(title: "路由器名称") {
-                TextField("名称", text: $routerName)
+                TextField("名称", text: $routerName,
+                          prompt: Text("名称").foregroundStyle(AppPalette.muted))
                     .font(AppTypography.reading)
                     .textContentType(.nickname)
                     .focused($focusedField, equals: .name)

@@ -76,7 +76,8 @@ struct ConnectFlowView: View {
                 Text("管理地址").font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                 HStack(spacing: 10) {
                     Image(systemName: "link").foregroundStyle(AppPalette.muted)
-                    TextField("192.168.1.1 或 https://router.example", text: $address)
+                    TextField("管理地址", text: $address,
+                              prompt: Text(verbatim: "192.168.1.1 或 https://router.example").foregroundStyle(AppPalette.muted))
                         .font(AppTypography.reading)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)

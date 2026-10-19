@@ -181,6 +181,7 @@ struct DeviceRow: View {
         }
         .foregroundStyle(AppPalette.text)
         .padding(.horizontal, 12).padding(.vertical, 12)
+        .contentShape(Rectangle())
     }
 
     private var deviceSymbol: String {

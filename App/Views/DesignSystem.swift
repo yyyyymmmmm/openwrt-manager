@@ -214,7 +214,8 @@ struct AppSearchField: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass").foregroundStyle(AppPalette.muted)
-            TextField(prompt, text: $text)
+            TextField(prompt, text: $text,
+                      prompt: Text(verbatim: prompt).foregroundStyle(AppPalette.muted))
                 .font(AppTypography.reading)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .accessibilityIdentifier(identifier)
