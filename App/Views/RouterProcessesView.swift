@@ -78,7 +78,7 @@ private struct RouterProcessDetail: View {
                 LabeledContent("内存", value: process.memory ?? "固件未返回")
                 Text(process.command).textSelection(.enabled)
             }
-            Section("进程控制") {
+            Section {
                 if loading { ProgressView("正在核对进程身份…") }
                 if running { ProgressView("正在发送信号并核对…") }
                 ForEach(RouterProcessSignal.allCases) { signal in
@@ -88,7 +88,7 @@ private struct RouterProcessDetail: View {
                 if process.pid == 1 { Text("PID 1 不提供进程信号操作。").foregroundStyle(AppPalette.muted) }
                 if let error { Text(error).foregroundStyle(AppPalette.red).textSelection(.enabled) }
                 if let result { Text(result).textSelection(.enabled) }
-            } footer: {
+            } header: { Text("进程控制") } footer: {
                 Text("信号可能中断网络和管理会话；procd 可能自动重启服务。核对与发送之间仍有进程变化风险。操作后返回列表重新读取，再决定下一步。")
             }
         }.font(AppTypography.row).tint(AppPalette.accent).appDetailStyle("进程详情")

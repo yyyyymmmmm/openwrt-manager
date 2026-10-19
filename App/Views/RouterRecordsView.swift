@@ -51,7 +51,7 @@ struct RouterRecordsView: View {
                 ReadStatus(updatedAt: updatedAt, error: error, retry: { Task { await load() } }, loading: loading)
             }
             if isLog {
-                Section("筛选与排序") {
+                Section {
                     Picker("最低严重程度", selection: $severity) {
                         Text("全部（包含未返回级别）").tag(-1)
                         ForEach(0..<8, id: \.self) { Text(Self.severities[$0] + "及更严重").tag($0) }
@@ -64,7 +64,7 @@ struct RouterRecordsView: View {
                     }
                     Toggle("排除匹配文字", isOn: $invertText)
                     Toggle("倒序显示", isOn: $reverse)
-                } footer: {
+                } header: { Text("筛选与排序") } footer: {
                     Text(kind == .logs ? "读取最近 200 条，日期按手机时区显示。筛选作用于已读取数据；具体级别或类别筛选不包含缺少相应信息的记录。" : "读取当前内核环形日志；方括号时间为开机后的秒数。级别筛选按 dmesg 原始优先级处理。")
                 }
             }
