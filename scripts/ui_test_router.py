@@ -32,6 +32,7 @@ def new_state(readonly):
         "wireless": {"radio0": {".type": "wifi-device", ".index": 0, ".anonymous": False, "disabled": "0", "channel": "auto"}},
         "ci_extension": {"main": {".type": "service", ".index": 0, ".anonymous": False, "enabled": "1", "servers": ["one", "two"]}},
     }, "staged": {}, "before": None, "deadline": None, "running": True, "enabled": True, "route_mode": "normal",
+        "crontab": "# CI fixture scheduled tasks\n",
         "processes": [{"PID": 1, "USER": "root", "COMMAND": "/sbin/procd", "%CPU": 0, "%MEM": 0.1},
                       {"PID": 432, "USER": "root", "COMMAND": "CI fixture process preserved", "%CPU": 1.2, "%MEM": 0.5}]}
 
@@ -104,6 +105,10 @@ class Handler(BaseHTTPRequestHandler):
             return 0, {"interface": [{"interface": "lan", "up": True, "proto": "static", "l3_device": "br-lan", "route": [{"target": "0.0.0.0", "mask": 0, "nexthop": "192.0.2.254", "metric": 10}], "dns-server": ["192.0.2.254"], "ipv4-address": [{"address": "192.0.2.1", "mask": 24}]}, {"interface": "wan", "up": False, "proto": "dhcp", "l3_device": "eth1"}]}
         if (obj, method) == ("file", "exec"):
             command, params = args.get("command"), args.get("params", [])
+            if command == "/etc/init.d/cron" and params == ["reload"]:
+                if state["readonly"]:
+                    return 6, {}
+                return 0, {"code": 0, "stdout": "CI fixture cron reload accepted", "stderr": ""}
             if command == "/bin/dmesg" and params == ["-r"]:
                 return 0, {"code": 0, "stdout": "<4>[ 12.000000] CI fixture kernel warning\n<6>[ 13.000000] CI fixture kernel info\n", "stderr": ""}
             if command == "/bin/kill":
@@ -132,12 +137,21 @@ class Handler(BaseHTTPRequestHandler):
             return 0, {"code": 0, "stdout": outputs[query], "stderr": ""}
         if (obj, method) == ("file", "read"):
             path = args.get("path")
+            if path == "/etc/crontabs/root":
+                return 0, {"data": state["crontab"]}
             for process in state["processes"]:
                 pid = process["PID"]
                 if path == f"/proc/{pid}/stat":
                     # PID, comm, state, fields 4...21, then starttime (field 22).
                     return 0, {"data": f"{pid} (fixture name) S " + " ".join(["0"] * 18 + [str(pid * 100)]) + "\n"}
             return 4, {}
+        if (obj, method) == ("file", "write"):
+            if state["readonly"]:
+                return 6, {}
+            if args.get("path") != "/etc/crontabs/root" or not isinstance(args.get("data"), str) or args.get("append") is not False or args.get("mode") != 384:
+                return 2, {}
+            state["crontab"] = args["data"]
+            return 0, {}
         if (obj, method) == ("luci-rpc", "getDHCPLeases"):
             return 0, {"dhcp_leases": [{"hostname": "CI Phone", "ipaddr": "192.0.2.10", "macaddr": "02:00:00:00:00:01", "expires": 1800}], "dhcp6_leases": []}
         if (obj, method) == ("network", "get_proto_handlers"):

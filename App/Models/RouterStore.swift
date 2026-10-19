@@ -264,6 +264,34 @@ final class RouterStore {
         return try await reader.processes()
     }
 
+    func scheduledTasks() async throws -> ScheduledTasksSnapshot {
+        guard let reader else { throw OpenWrtKitError.authenticationFailed }
+        return try await reader.scheduledTasks()
+    }
+
+    func scheduledTasksWritable() async throws -> Bool {
+        guard let reader else { throw OpenWrtKitError.authenticationFailed }
+        return try await reader.scheduledTasksWritable()
+    }
+
+    func saveScheduledTasks(observed: ScheduledTasksSnapshot, text: String) async throws -> ScheduledTasksSaveResult {
+        guard !isMutating, pendingConfiguration == nil, let reader else { throw ConfigurationError.busy }
+        isMutating = true
+        defer { isMutating = false }
+        let result = try await reader.saveScheduledTasks(observed: observed, text: text)
+        recordActivity("计划任务文件已重读核对", detail: "cron 重载和任务执行情况请查看计划任务页与系统日志。", isWarning: true)
+        return result
+    }
+
+    func reloadScheduledTasks(observed: ScheduledTasksSnapshot) async throws -> ScheduledTasksSaveResult {
+        guard !isMutating, pendingConfiguration == nil, let reader else { throw ConfigurationError.busy }
+        isMutating = true
+        defer { isMutating = false }
+        let result = await reader.reloadScheduledTasks(observed: observed)
+        recordActivity("计划任务重载请求已返回", detail: "实际退出码和错误见计划任务页，任务执行结果仍需核对。", isWarning: true)
+        return result
+    }
+
     func processIdentity(_ process: RouterProcess) async throws -> RouterProcessIdentity {
         guard let reader else { throw OpenWrtKitError.authenticationFailed }
         return try await reader.processIdentity(process)

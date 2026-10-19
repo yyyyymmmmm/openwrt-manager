@@ -381,6 +381,42 @@ final class RouterSmokeTests: XCTestCase {
     }
 
     @MainActor
+    func testPScheduledTasksNativeHelpPreviewSaveAndRead() {
+        let app = launch(); connect(app); visit("系统", app)
+        tapVisible(app.buttons["system-crontab"], app)
+        tapVisible(app.buttons["cron-help"], app)
+        expectText("分钟 小时 日期 月份 星期 命令", app); back(app)
+        let editor = app.textViews["cron-editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 10))
+        XCTAssertTrue(editor.isEnabled)
+        replace(editor, with: "# CI fixture edited tasks\n")
+        app.buttons["收起键盘"].tap()
+        tapVisible(app.buttons["cron-preview"], app)
+        expectText("读取时内容", app); expectText("将保存的完整内容", app)
+        app.buttons["完成"].tap()
+        XCTAssertTrue((editor.value as? String)?.contains("edited tasks") == true)
+        tapVisible(app.buttons["cron-preview"], app)
+        tapVisible(app.buttons["cron-save"], app)
+        lastButton("确认保存并请求重载", app).tap()
+        expectText("重读内容与提交内容一致", app)
+        expectText("重载程序返回 0", app)
+        app.buttons["完成"].tap()
+        tapVisible(app.buttons["cron-read"], app)
+        XCTAssertTrue((editor.value as? String)?.contains("edited tasks") == true)
+        attach("45-native-crontab", app)
+    }
+
+    @MainActor
+    func testQScheduledTasksReadOnlyKeepsRealContents() {
+        let app = launch(); connect(app, username: "readonly"); visit("系统", app)
+        tapVisible(app.buttons["system-crontab"], app)
+        expectText("没有计划任务文件的写入权限", app)
+        XCTAssertFalse(app.textViews["cron-editor"].isEnabled)
+        XCTAssertTrue((app.textViews["cron-editor"].value as? String)?.contains("CI fixture scheduled tasks") == true)
+        XCTAssertFalse(app.buttons["cron-preview"].isEnabled)
+    }
+
+    @MainActor
     private func checkRoutingFailure(username: String, message: String, screenshot: String) {
         let app = launch(); connect(app, username: username); visit("概览", app)
         tapVisible(app.buttons["network-routing"], app)

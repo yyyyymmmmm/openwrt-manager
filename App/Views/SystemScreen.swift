@@ -29,12 +29,14 @@ struct SystemScreen: View {
                         AppDivider()
                         NavigationLink { ServiceDirectoryView() } label: { AppRow(title: "启动项", detail: "运行实例、启停与开机启动", symbol: "gearshape.2", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("services-directory")
                         AppDivider()
+                        NavigationLink { ScheduledTasksView() } label: { AppRow(title: "计划任务", detail: "任务文件、变更预览与 cron 重载", symbol: "calendar.badge.clock", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("system-crontab")
+                        AppDivider()
                         NavigationLink { RouterRecordsView(kind: .mounts) } label: { AppRow(title: "挂载记录", detail: "只读存储挂载信息", symbol: "externaldrive", chevron: true) }.buttonStyle(.plain)
                         AppDivider()
                         NavigationLink { RouterRebootView() } label: { AppRow(title: "重启", symbol: "restart", chevron: true) }.buttonStyle(.plain)
                     }
                 }
-                FirmwareMenuSection(group: "system", excluding: ["system", "admin", "package-manager", "startup", "reboot"])
+                FirmwareMenuSection(group: "system", excluding: ["system", "admin", "package-manager", "startup", "crontab", "reboot"])
 
             }
         }

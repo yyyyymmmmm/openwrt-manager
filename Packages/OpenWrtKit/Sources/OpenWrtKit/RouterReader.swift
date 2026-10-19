@@ -325,6 +325,22 @@ public struct RouterReader: Sendable {
         try RouterProcess.parse(await records(.processes))
     }
 
+    public func scheduledTasks() async throws -> ScheduledTasksSnapshot {
+        try await ScheduledTasksClient(client: client, session: session).read()
+    }
+
+    public func scheduledTasksWritable() async throws -> Bool {
+        try await ScheduledTasksClient(client: client, session: session).writable()
+    }
+
+    public func saveScheduledTasks(observed: ScheduledTasksSnapshot, text: String) async throws -> ScheduledTasksSaveResult {
+        try await ScheduledTasksClient(client: client, session: session).save(observed: observed, text: text)
+    }
+
+    public func reloadScheduledTasks(observed: ScheduledTasksSnapshot) async -> ScheduledTasksSaveResult {
+        await ScheduledTasksClient(client: client, session: session).reload(observed)
+    }
+
     public func processIdentity(_ observed: RouterProcess) async throws -> RouterProcessIdentity {
         let before = try await processStartTime(observed.pid)
         guard let current = try await processes().first(where: { $0.pid == observed.pid }), current.matches(observed),
