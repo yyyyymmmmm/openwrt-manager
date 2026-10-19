@@ -9,6 +9,8 @@ final class SnapshotParserTests: XCTestCase {
         XCTAssertEqual(leases.count, 2)
         XCTAssertEqual(leases.first(where: { $0.hostname == "tablet" })?.address, "fd00::2")
         XCTAssertEqual(leases.first(where: { $0.hostname == "tablet" })?.expires, -1)
+        XCTAssertEqual(leases.first(where: { $0.hostname == "tablet" })?.duid, "00010001")
+        XCTAssertEqual(leases.first(where: { $0.hostname == "tablet" })?.mac, "—")
     }
 
     func testSystemLoadUsesUbusFixedPointAndAvailableMemory() throws {

@@ -12,6 +12,7 @@ final class RouterStore {
     private(set) var leases: [DHCPLease] = []
     private(set) var radios: [WirelessRadio] = []
     private(set) var services: [RouterService] = []
+    private(set) var activities: [RouterActivity] = []
     private(set) var overviewError: String?
     private(set) var devicesError: String?
     private(set) var wirelessError: String?
@@ -79,6 +80,7 @@ final class RouterStore {
         isDemo = false
         connectionID = UUID()
         clearData()
+        recordActivity("已连接路由器", detail: "通过路由器账户建立管理会话。")
         profiles.removeAll { $0.id == saved.id }
         profiles.insert(saved, at: 0)
         persist()
@@ -91,6 +93,8 @@ final class RouterStore {
         if isDemo { loadDemo(); return }
         guard let reader else { return }
         let generation = connectionID
+        let previouslyFailed = overviewError != nil || devicesError != nil || wirelessError != nil || servicesError != nil
+        let wasLoaded = hasLoaded
         isRefreshing = true
         defer { if generation == connectionID { isRefreshing = false } }
         async let overview = capture { try await reader.snapshot() }
@@ -114,6 +118,14 @@ final class RouterStore {
         switch results.3 {
         case .success(let value): services = value; servicesError = nil; servicesUpdatedAt = Date()
         case .failure(let error): servicesError = FriendlyError.message(error)
+        }
+        let errors = [overviewError, devicesError, wirelessError, servicesError].compactMap { $0 }
+        if !errors.isEmpty && (!wasLoaded || !previouslyFailed) {
+            recordActivity("部分信息读取失败", detail: "\(errors.count) 项数据未能更新，请在对应页面查看原因。", isWarning: true)
+        } else if errors.isEmpty && previouslyFailed {
+            recordActivity("状态读取已恢复", detail: "概览、租约、无线和服务状态已重新读取。")
+        } else if !wasLoaded && errors.isEmpty {
+            recordActivity("首次读取完成", detail: "概览、租约、无线和服务状态已读取。")
         }
         hasLoaded = true
     }
@@ -150,6 +162,7 @@ final class RouterStore {
 
     private func clearData() {
         snapshot = nil; leases = []; radios = []; services = []
+        activities = []
         overviewError = nil; devicesError = nil; wirelessError = nil; servicesError = nil
         overviewUpdatedAt = nil; devicesUpdatedAt = nil; wirelessUpdatedAt = nil; servicesUpdatedAt = nil
         hasLoaded = false; isRefreshing = false
@@ -159,8 +172,19 @@ final class RouterStore {
         snapshot = DemoData.snapshot
         leases = DemoData.leases; radios = DemoData.radios; services = DemoData.services
         let now = Date()
+        if activities.isEmpty {
+            activities = [
+                RouterActivity("状态已更新", detail: "示例路由器的状态读取完成。", date: now.addingTimeInterval(-120)),
+                RouterActivity("进入演示模式", detail: "未连接真实路由器。", date: now.addingTimeInterval(-240))
+            ]
+        }
         overviewUpdatedAt = now; devicesUpdatedAt = now; wirelessUpdatedAt = now; servicesUpdatedAt = now
         hasLoaded = true
+    }
+
+    private func recordActivity(_ title: String, detail: String, isWarning: Bool = false) {
+        activities.insert(RouterActivity(title, detail: detail, isWarning: isWarning), at: 0)
+        activities = Array(activities.prefix(50))
     }
 
     private nonisolated func capture<T: Sendable>(_ operation: @Sendable () async throws -> T) async -> Result<T, Error> {

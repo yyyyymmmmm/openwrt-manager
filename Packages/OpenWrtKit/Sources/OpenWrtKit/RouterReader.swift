@@ -115,8 +115,8 @@ public enum SnapshotParser {
                 ?? item["ip6addrs"].arrayValue?.first?.stringValue
             guard let address else { return nil }
             let lease = DHCPLease(hostname: item["hostname"].stringValue ?? "未命名设备", address: address,
-                                  mac: item["macaddr"].stringValue ?? item["duid"].stringValue ?? "—",
-                                  expires: item["expires"].intValue)
+                                  mac: item["macaddr"].stringValue ?? "—",
+                                  expires: item["expires"].intValue, duid: item["duid"].stringValue)
             return seen.insert(lease.id).inserted ? lease : nil
         }.sorted { $0.hostname.localizedStandardCompare($1.hostname) == .orderedAscending }
     }

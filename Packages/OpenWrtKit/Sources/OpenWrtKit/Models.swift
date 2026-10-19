@@ -78,10 +78,11 @@ public struct DHCPLease: Identifiable, Equatable, Sendable {
     public let hostname: String
     public let address: String
     public let mac: String
+    public let duid: String?
     public let expires: Int?
     public var id: String { mac + "|" + address }
-    public init(hostname: String, address: String, mac: String, expires: Int?) {
-        self.hostname = hostname; self.address = address; self.mac = mac; self.expires = expires
+    public init(hostname: String, address: String, mac: String, expires: Int?, duid: String? = nil) {
+        self.hostname = hostname; self.address = address; self.mac = mac; self.expires = expires; self.duid = duid
     }
 }
 

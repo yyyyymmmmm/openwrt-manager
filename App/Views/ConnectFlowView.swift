@@ -25,8 +25,10 @@ struct ConnectFlowView: View {
                     Text("连接你的路由器")
                         .font(.title2.weight(.semibold))
                     Text("输入管理地址，或扫描当前 Wi-Fi 中开放 Web 管理端口的设备。")
+                        .font(AppTypography.reading)
                         .foregroundStyle(.secondary)
                     TextField("192.168.1.1 或 https://router.example", text: $address)
+                        .font(AppTypography.reading)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
@@ -76,12 +78,11 @@ struct ConnectFlowView: View {
                                         .frame(width: 32)
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text(profile.name)
-                                            .font(.body.weight(.medium))
+                                            .font(AppTypography.rowTitle)
                                             .foregroundStyle(.primary)
                                         Text(profile.address)
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
-                                            .lineLimit(1)
                                             .textSelection(.enabled)
                                     }
                                     Spacer(minLength: 8)
@@ -115,8 +116,17 @@ struct ConnectFlowView: View {
                 }
             }
             .navigationTitle("路由器")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        AppSettingsView()
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("App 设置")
+                    .accessibilityIdentifier("appSettingsLink")
+                }
                 if isModal {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("取消") { dismiss() }

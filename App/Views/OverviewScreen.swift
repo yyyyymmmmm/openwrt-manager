@@ -20,9 +20,9 @@ struct OverviewScreen: View {
                                 .background(.teal.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(store.snapshot?.system.hostname ?? profile.name)
-                                    .font(.headline)
+                                    .font(AppTypography.rowTitle)
                                 Text(profile.address)
-                                    .font(.subheadline)
+                                    .font(AppTypography.secondary)
                                     .foregroundStyle(.secondary)
                                     .textSelection(.enabled)
                             }
@@ -41,9 +41,9 @@ struct OverviewScreen: View {
                                 .background(.teal.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(store.snapshot?.system.hostname ?? "OpenWrt")
-                                    .font(.headline)
+                                    .font(AppTypography.rowTitle)
                                 Text("示例路由器")
-                                    .font(.subheadline)
+                                    .font(AppTypography.secondary)
                                     .foregroundStyle(.secondary)
                             }
                             Spacer()
@@ -105,6 +105,22 @@ struct OverviewScreen: View {
                     }
                 }
 
+                Section {
+                    if store.activities.isEmpty {
+                        Text("本次连接暂无管理记录")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(store.activities.prefix(2)) { activity in
+                            ActivityRow(activity: activity)
+                        }
+                        NavigationLink("查看全部活动") { ActivityListView() }
+                    }
+                } header: {
+                    Text("最近活动")
+                } footer: {
+                    Text("本次会话记录，不代表路由器完整日志。")
+                }
+
                 if let snapshot = store.snapshot, !snapshot.warnings.isEmpty {
                     Section("部分信息不可用") {
                         ForEach(Array(snapshot.warnings.enumerated()), id: \.offset) { _, warning in
@@ -117,6 +133,7 @@ struct OverviewScreen: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("概览")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar { ScreenToolbar(showingRouterPicker: $showingRouterPicker) }
             .refreshable { await store.refresh() }
         }

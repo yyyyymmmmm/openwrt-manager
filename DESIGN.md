@@ -6,7 +6,8 @@
 
 ## Tokens
 
-- 字体：系统语义字体 largeTitle/title2/headline/body/subheadline/caption，支持 Dynamic Type。
+- 字体：页面内容标题 title2（默认 22pt），列表 subheadline（15pt），阅读/输入 callout（16pt），说明 footnote（13pt），元信息 caption（12pt）。导航保持原生系统字号。使用语义字体与 Dynamic Type，不以固定数值锁死大字模式。
+- 用户选择紧凑信息密度，五个工具页采用 inline 导航标题；用排版层级与分组组织内容，避免大标题占据扫描空间。设置提供跟随系统/紧凑/标准/加大；系统辅助功能大字优先。
 - 颜色：primary/secondary、systemGroupedBackground、secondarySystemGroupedBackground；交互 tint 为系统 teal，状态使用系统语义色并配文字。
 - 间距：8、12、16、24、32 pt；控件触摸区域至少 44×44 pt。
 - 圆角：内容分组使用系统 insetGrouped，独立内容容器 16 pt；不嵌套装饰卡片。
@@ -29,4 +30,4 @@
 
 ## Verification boundary
 
-当前 Windows 环境无法运行 iOS Simulator。本轮可以交付源代码、协议测试、CI 与 UI 截图测试，但没有本机原生截图，不以网页截图替代 iOS 截图。GitHub Actions 应产出 .xcresult 和演示页截图以便后续检查。
+Windows 本机无法运行 iOS Simulator，构建与 UI 测试由 GitHub macOS 执行。交付检查对应提交的 .xcresult 与原生模拟器截图，包含深色与较大字号；网页仅作设计参考。实体 iPhone 上的手势、网络权限和实际路由器兼容性仍需单独联调。

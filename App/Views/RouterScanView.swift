@@ -11,9 +11,9 @@ struct RouterScanView: View {
         List {
             Section {
                 Label("连接路由器所在的 Wi-Fi", systemImage: "wifi")
-                    .font(.headline)
+                    .font(AppTypography.rowTitle)
                 Text("扫描只检查当前网络，不需要路由器密码。检测到 Web 端口后，仍需你确认地址并登录。")
-                    .font(.subheadline)
+                    .font(AppTypography.reading)
                     .foregroundStyle(.secondary)
                 if discovery.isScanning {
                     ProgressView(value: Double(discovery.completed), total: Double(max(discovery.total, 1)))
@@ -58,10 +58,10 @@ struct RouterScanView: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(result.name)
-                                        .font(.headline)
+                                        .font(AppTypography.rowTitle)
                                         .foregroundStyle(.primary)
                                     Text(result.address)
-                                        .font(.subheadline)
+                                        .font(AppTypography.secondary)
                                     Text(result.source)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)

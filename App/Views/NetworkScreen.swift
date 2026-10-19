@@ -63,7 +63,7 @@ struct NetworkScreen: View {
                                     Image(systemName: radio.up ? "wifi" : "wifi.slash")
                                         .foregroundStyle(radio.up ? .green : .secondary)
                                     Text(radio.name)
-                                        .font(.headline)
+                                        .font(AppTypography.rowTitle)
                                     Spacer()
                                     Text(radio.up ? "已启用" : "未启用")
                                         .font(.caption)
@@ -78,7 +78,7 @@ struct NetworkScreen: View {
                                     ForEach(radio.networks, id: \.self) { ssid in
                                         Label(ssid, systemImage: "dot.radiowaves.left.and.right")
                                             .font(.subheadline)
-                                            .lineLimit(1)
+                                            .fixedSize(horizontal: false, vertical: true)
                                     }
                                 }
                             }
@@ -93,6 +93,7 @@ struct NetworkScreen: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("网络")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar { ScreenToolbar(showingRouterPicker: $showingRouterPicker) }
             .refreshable { await store.refresh() }
         }
@@ -110,7 +111,7 @@ struct InterfaceRow: View {
                     .fill(interface.up ? Color.green : Color.secondary)
                     .frame(width: 8, height: 8)
                 Text(interface.name)
-                    .font(.headline)
+                    .font(AppTypography.rowTitle)
                 Spacer()
                 Text(interface.up ? "在线" : "离线")
                     .font(.caption)

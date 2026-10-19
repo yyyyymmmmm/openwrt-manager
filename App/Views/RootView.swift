@@ -41,9 +41,9 @@ private struct RouterTabs: View {
                 .tabItem { Label("网络", systemImage: "network") }
                 .accessibilityIdentifier("networkTab")
 
-            ServicesScreen(showingRouterPicker: $showingRouterPicker)
-                .tabItem { Label("服务", systemImage: "gearshape.2") }
-                .accessibilityIdentifier("servicesTab")
+            PluginsScreen(showingRouterPicker: $showingRouterPicker)
+                .tabItem { Label("插件", systemImage: "puzzlepiece.extension") }
+                .accessibilityIdentifier("pluginsTab")
 
             SystemScreen(showingRouterPicker: $showingRouterPicker)
                 .tabItem { Label("系统", systemImage: "info.circle") }
@@ -108,6 +108,11 @@ struct DataUnavailableView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
+                if !message.isEmpty {
+                    Text(message)
+                        .font(AppTypography.secondary)
+                        .foregroundStyle(.secondary)
+                }
                 if let retry {
                     Button("重试", action: retry)
                 }

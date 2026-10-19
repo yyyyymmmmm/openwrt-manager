@@ -68,6 +68,15 @@ struct SystemScreen: View {
                     Text("断开连接只会结束本机的管理会话，不会更改路由器配置。")
                 }
 
+                Section("本机偏好") {
+                    NavigationLink {
+                        AppSettingsView()
+                    } label: {
+                        Label("App 设置", systemImage: "gearshape")
+                    }
+                    .accessibilityIdentifier("appSettingsLink")
+                }
+
                 Section("关于") {
                     LabeledContent("应用", value: "OpenWrt Manager")
                     Text("第三方管理客户端，与 OpenWrt 官方项目无隶属关系。")
@@ -77,6 +86,7 @@ struct SystemScreen: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("系统")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar { ScreenToolbar(showingRouterPicker: $showingRouterPicker) }
             .refreshable { await store.refresh() }
             .confirmationDialog(

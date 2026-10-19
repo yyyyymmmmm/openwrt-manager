@@ -6,7 +6,6 @@ struct ServicesScreen: View {
     @Binding var showingRouterPicker: Bool
 
     var body: some View {
-        NavigationStack {
             List {
                 DataStatusSection(updatedAt: store.servicesUpdatedAt, error: store.servicesError)
                 Section {
@@ -34,13 +33,13 @@ struct ServicesScreen: View {
                                     .frame(width: 28)
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(service.name)
-                                        .font(.body.weight(.medium))
+                                        .font(AppTypography.rowTitle)
                                     Text("\(service.runningInstances) / \(service.totalInstances) 个实例运行")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
                                 Spacer()
-                                Text(service.runningInstances > 0 ? "运行中" : "已停止")
+                                Text(service.totalInstances == 0 ? "状态未知" : service.runningInstances > 0 ? "有运行实例" : "无运行实例")
                                     .font(.caption.weight(.medium))
                                     .foregroundStyle(service.runningInstances > 0 ? .green : .secondary)
                             }
@@ -49,13 +48,13 @@ struct ServicesScreen: View {
                 } header: {
                     Text("系统服务 · \(store.services.count)")
                 } footer: {
-                    Text("服务状态为只读。重启服务可能导致网络中断，当前版本不提供远程控制。")
+                    Text("来源：procd service.list。未报告实例不等于服务已停止；运行实例也不代表业务健康。服务状态为只读。")
                 }
             }
             .listStyle(.insetGrouped)
             .navigationTitle("服务")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar { ScreenToolbar(showingRouterPicker: $showingRouterPicker) }
             .refreshable { await store.refresh() }
-        }
     }
 }

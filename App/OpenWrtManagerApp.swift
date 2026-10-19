@@ -10,6 +10,7 @@ struct OpenWrtManagerApp: App {
             RootView()
                 .environment(store)
                 .tint(.teal)
+                .modifier(AppPreferences())
                 .modifier(LaunchAppearance(arguments: launchArguments))
                 .task {
                     if launchArguments.contains("--demo") {

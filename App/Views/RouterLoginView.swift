@@ -53,12 +53,14 @@ struct RouterLoginView: View {
                         .textSelection(.enabled)
                 }
                 TextField("名称", text: $routerName)
+                    .font(AppTypography.reading)
                     .textContentType(.nickname)
                     .focused($focusedField, equals: .name)
             }
 
             Section {
                 TextField("用户名", text: $username)
+                    .font(AppTypography.reading)
                     .textContentType(.username)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -66,6 +68,7 @@ struct RouterLoginView: View {
                     .accessibilityIdentifier("routerUsernameField")
 
                 SecureField("密码", text: $password)
+                    .font(AppTypography.reading)
                     .textContentType(.password)
                     .focused($focusedField, equals: .password)
                     .accessibilityIdentifier("routerPasswordField")

@@ -34,6 +34,8 @@ enum DemoData {
     static let services: [RouterService] = [
         .init(name: "dnsmasq", runningInstances: 1, totalInstances: 1),
         .init(name: "dropbear", runningInstances: 1, totalInstances: 1),
+        .init(name: "smartdns", runningInstances: 1, totalInstances: 1),
+        .init(name: "adblock", runningInstances: 0, totalInstances: 1),
         .init(name: "uhttpd", runningInstances: 1, totalInstances: 1)
     ]
 }
