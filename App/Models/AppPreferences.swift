@@ -25,12 +25,13 @@ enum AppTextSize: String, CaseIterable, Identifiable {
 
 struct AppPreferences: ViewModifier {
     @AppStorage("appearance.v1") private var appearance = "system"
-    @AppStorage("text-size.v1") private var textSize = AppTextSize.system.rawValue
+    @AppStorage("text-size.v1") private var textSize = AppTextSize.compact.rawValue
     @Environment(\.dynamicTypeSize) private var systemTextSize
 
     func body(content: Content) -> some View {
         content
             .font(AppTypography.row)
+            .tint(AppPalette.accent)
             .preferredColorScheme(appearance == "dark" ? .dark : appearance == "light" ? .light : nil)
             .dynamicTypeSize((AppTextSize(rawValue: textSize) ?? .system).resolved(system: systemTextSize))
     }

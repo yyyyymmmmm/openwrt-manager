@@ -6,11 +6,15 @@ final class RouterSmokeTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
         app.launch()
-        XCTAssertTrue(app.staticTexts["连接你的路由器"].waitForExistence(timeout: 10))
+        let connect = app.buttons["startConnectionButton"]
+        XCTAssertTrue(connect.waitForExistence(timeout: 10))
+        attachScreenshot(named: "00-welcome", from: app)
+        connect.tap()
+        XCTAssertTrue(app.staticTexts["连接你的路由器"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.textFields["routerAddressField"].exists)
         attachScreenshot(named: "01-connect", from: app)
         let demoButton = app.buttons["demoModeButton"]
-        app.swipeUp()
+        if !demoButton.isHittable { app.swipeUp() }
         XCTAssertTrue(demoButton.waitForExistence(timeout: 5))
         demoButton.tap()
         XCTAssertTrue(app.staticTexts["演示数据 · 未连接路由器"].waitForExistence(timeout: 5))
@@ -19,9 +23,12 @@ final class RouterSmokeTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["我的 iPhone"].waitForExistence(timeout: 5))
         attachScreenshot(named: "03-devices", from: app)
         visitTab("网络", in: app)
-        XCTAssertTrue(app.staticTexts["lan"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["network-wireless"].waitForExistence(timeout: 5))
         attachScreenshot(named: "04-network", from: app)
-        app.swipeUp()
+        app.buttons["network-lan"].tap()
+        XCTAssertTrue(app.staticTexts["lan"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons.firstMatch.tap()
+        app.buttons["network-wireless"].tap()
         XCTAssertTrue(app.staticTexts["Home · 2.4 GHz"].waitForExistence(timeout: 5))
         attachScreenshot(named: "04-wifi", from: app)
         visitTab("插件", in: app)
@@ -39,6 +46,8 @@ final class RouterSmokeTests: XCTestCase {
     func testManualAddressOpensLogin() {
         let app = XCUIApplication()
         app.launch()
+        XCTAssertTrue(app.buttons["startConnectionButton"].waitForExistence(timeout: 10))
+        app.buttons["startConnectionButton"].tap()
         let field = app.textFields["routerAddressField"]
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         field.tap()
@@ -56,6 +65,8 @@ final class RouterSmokeTests: XCTestCase {
     func testScanEntryWaitsForUserToStart() {
         let app = XCUIApplication()
         app.launch()
+        XCTAssertTrue(app.buttons["startConnectionButton"].waitForExistence(timeout: 10))
+        app.buttons["startConnectionButton"].tap()
         let scanLink = app.buttons["scanLocalNetworkLink"]
         XCTAssertTrue(scanLink.waitForExistence(timeout: 10))
         scanLink.tap()
@@ -72,16 +83,16 @@ final class RouterSmokeTests: XCTestCase {
         let picker = app.buttons["textSizePicker"]
         XCTAssertTrue(picker.waitForExistence(timeout: 5))
         picker.tap()
-        app.buttons["紧凑"].tap()
-        attachScreenshot(named: "10-text-size-compact", from: app)
+        app.buttons["加大"].tap()
+        attachScreenshot(named: "10-text-size-large", from: app)
         app.terminate()
         app.launch()
         app.buttons["App 设置"].tap()
         XCTAssertTrue(app.buttons["textSizePicker"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.buttons["textSizePicker"].value as? String, "紧凑")
+        XCTAssertEqual(app.buttons["textSizePicker"].value as? String, "加大")
         attachScreenshot(named: "16-text-size-restored", from: app)
         app.buttons["textSizePicker"].tap()
-        app.buttons["跟随系统"].tap()
+        app.buttons["紧凑"].tap()
     }
 
     @MainActor
@@ -100,7 +111,7 @@ final class RouterSmokeTests: XCTestCase {
         XCTAssertTrue(onlineStatus.waitForExistence(timeout: 5))
         attachScreenshot(named: "11-device-detail", from: app)
         app.navigationBars.buttons.firstMatch.tap()
-        let search = app.searchFields.firstMatch
+        let search = app.textFields["deviceSearchField"]
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.tap()
         search.typeText("192.168.1.108")
@@ -125,19 +136,29 @@ final class RouterSmokeTests: XCTestCase {
     @MainActor
     func testDarkModeAndLargeType() {
         let app = XCUIApplication()
-        app.launchArguments = ["--demo", "--dark", "--large-type"]
+        app.launchArguments = ["--demo", "--dark", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
         app.launch()
         XCTAssertTrue(app.staticTexts["演示数据 · 未连接路由器"].waitForExistence(timeout: 10))
-        attachScreenshot(named: "08-dark-large-type", from: app)
+        attachScreenshot(named: "08-dark-overview", from: app)
         visitTab("设备", in: app)
-        attachScreenshot(named: "14-dark-large-devices", from: app)
+        attachScreenshot(named: "14-dark-devices", from: app)
         visitTab("插件", in: app)
-        attachScreenshot(named: "15-dark-large-plugins", from: app)
+        attachScreenshot(named: "15-dark-plugins", from: app)
+        app.terminate()
+        app.launchArguments += ["--large-type"]
+        app.launch()
+        XCTAssertTrue(app.buttons["overviewTab"].waitForExistence(timeout: 10))
+        attachScreenshot(named: "17-accessibility-overview", from: app)
+        visitTab("设备", in: app)
+        attachScreenshot(named: "18-accessibility-devices", from: app)
+        visitTab("插件", in: app)
+        attachScreenshot(named: "19-accessibility-plugins", from: app)
     }
 
     @MainActor
     private func visitTab(_ title: String, in app: XCUIApplication) {
-        let button = app.tabBars.buttons.containing(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
+        let identifiers = ["概览": "overviewTab", "设备": "devicesTab", "网络": "networkTab", "插件": "pluginsTab", "系统": "systemTab"]
+        let button = app.buttons[identifiers[title]!]
         XCTAssertTrue(button.waitForExistence(timeout: 5), "Missing tab: \(title)")
         button.tap()
     }

@@ -32,8 +32,8 @@ struct AppHelpView: View {
             }
         }
         .font(AppTypography.reading)
-        .navigationTitle("帮助与连接")
-        .navigationBarTitleDisplayMode(.inline)
+        .scrollContentBackground(.hidden).background(AppPalette.canvas)
+        .appDetailStyle("帮助与连接")
     }
 }
 
@@ -55,7 +55,7 @@ struct AppPrivacyView: View {
                 Text("本地网络权限用于扫描和连接路由器，在你开始访问时由 iOS 请求。拒绝后可以在系统设置中修改。App 不请求位置、通讯录、照片或麦克风权限。")
             }
             Section("删除数据") {
-                Text("在连接页左滑已保存的路由器并确认删除，可移除此 App 保存的对应地址记录和钥匙串凭据。断开连接会清除本次会话的数据及最近活动，不更改路由器配置。")
+                Text("在连接页长按已保存的路由器，选择删除并确认，可移除此 App 保存的对应地址记录和钥匙串凭据。断开连接会清除本次会话的数据及最近活动，不更改路由器配置。")
             }
             Section("外部网页与分享") {
                 Text("LuCI、软件包和 iStore 网页直接访问路由器，使用独立的网页登录。App 不向网页注入保存的密码或会话。网页内容与其数据处理由路由器及所安装插件决定。")
@@ -63,8 +63,8 @@ struct AppPrivacyView: View {
             }
         }
         .font(AppTypography.reading)
-        .navigationTitle("隐私说明")
-        .navigationBarTitleDisplayMode(.inline)
+        .scrollContentBackground(.hidden).background(AppPalette.canvas)
+        .appDetailStyle("隐私说明")
     }
 }
 
@@ -94,7 +94,7 @@ struct AppAboutView: View {
                 NavigationLink("帮助与连接") { AppHelpView() }
             }
         }
-        .navigationTitle("关于")
-        .navigationBarTitleDisplayMode(.inline)
+        .scrollContentBackground(.hidden).background(AppPalette.canvas)
+        .appDetailStyle("关于")
     }
 }

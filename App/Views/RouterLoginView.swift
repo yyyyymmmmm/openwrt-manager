@@ -28,6 +28,7 @@ struct RouterLoginView: View {
     @State private var errorMessage: String?
     @State private var isConnecting = false
     @State private var passwordLoaded = false
+    @State private var revealPassword = false
     @State private var connectionTask: Task<Void, Never>?
     @FocusState private var focusedField: LoginField?
 
@@ -44,52 +45,64 @@ struct RouterLoginView: View {
     }
 
     var body: some View {
-        Form {
-            Section("路由器") {
-                LabeledContent("地址") {
-                    Text(address)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.trailing)
-                        .textSelection(.enabled)
+        AppPage(title: "登录路由器", subtitle: "使用路由器的管理员账户建立连接。", setup: true) {
+            AppGroup {
+                AppRow(title: existingProfile?.name ?? "OpenWrt 路由器", detail: address, symbol: "wifi.router")
+            }
+            Label(address.lowercased().hasPrefix("https:") ? "HTTPS · 加密连接" : "HTTP · 当前连接未加密",
+                  systemImage: address.lowercased().hasPrefix("https:") ? "lock" : "lock.open")
+                .font(AppTypography.secondary)
+                .foregroundStyle(address.lowercased().hasPrefix("https:") ? AppPalette.muted : AppPalette.orange)
+                .padding(.top, 12).padding(.bottom, 24)
+            AppGroup {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("用户名").font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
+                    TextField("用户名", text: $username)
+                        .font(AppTypography.reading)
+                        .textContentType(.username)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .focused($focusedField, equals: .username)
+                        .accessibilityIdentifier("routerUsernameField")
                 }
+                .padding(.horizontal, 14).padding(.vertical, 12).frame(minHeight: 64)
+                AppDivider(inset: 14)
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("密码").font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
+                        Group {
+                            if revealPassword { TextField("路由器密码", text: $password) }
+                            else { SecureField("路由器密码", text: $password) }
+                        }.font(AppTypography.reading).textContentType(.password)
+                            .textInputAutocapitalization(.never).autocorrectionDisabled()
+                            .focused($focusedField, equals: .password)
+                            .accessibilityIdentifier("routerPasswordField")
+                    }
+                    Button { revealPassword.toggle() } label: {
+                        Image(systemName: revealPassword ? "eye.slash" : "eye").frame(width: 44, height: 44)
+                    }.accessibilityLabel(revealPassword ? "隐藏密码" : "显示密码").foregroundStyle(AppPalette.muted)
+                }.padding(.horizontal, 14).padding(.vertical, 10).frame(minHeight: 64)
+            }
+            Toggle("在此设备记住密码", isOn: $rememberPassword)
+                .font(AppTypography.row).tint(AppPalette.accent).padding(.top, 18)
+            Text("密码仅在你选择记住时保存到 iOS 钥匙串。")
+                .font(AppTypography.secondary).foregroundStyle(AppPalette.muted).padding(.top, 6)
+            AppSection(title: "路由器名称") {
                 TextField("名称", text: $routerName)
                     .font(AppTypography.reading)
                     .textContentType(.nickname)
                     .focused($focusedField, equals: .name)
-            }
-
-            Section {
-                TextField("用户名", text: $username)
-                    .font(AppTypography.reading)
-                    .textContentType(.username)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .focused($focusedField, equals: .username)
-                    .accessibilityIdentifier("routerUsernameField")
-
-                SecureField("密码", text: $password)
-                    .font(AppTypography.reading)
-                    .textContentType(.password)
-                    .focused($focusedField, equals: .password)
-                    .accessibilityIdentifier("routerPasswordField")
-
-                Toggle("在此设备记住密码", isOn: $rememberPassword)
-            } header: {
-                Text("登录信息")
-            } footer: {
-                Text("密码仅在你选择记住时保存到 iOS 钥匙串。登录直接连接路由器，不使用云端账户。")
+                    .padding(.horizontal, 14).frame(minHeight: 54)
+                    .background(AppPalette.surface, in: RoundedRectangle(cornerRadius: 14))
             }
 
             if let errorMessage {
-                Section {
                     Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
                         .font(.footnote)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(AppPalette.red)
                         .textSelection(.enabled)
-                }
+                        .padding(.top, 14)
             }
 
-            Section {
                 Button(action: beginConnection) {
                     HStack {
                         Spacer()
@@ -98,24 +111,19 @@ struct RouterLoginView: View {
                                 .padding(.trailing, 8)
                             Text("正在连接…")
                         } else {
-                            Label("登录并连接", systemImage: "arrow.up.right.circle.fill")
+                            Text("登录并连接")
                         }
                         Spacer()
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(AppPrimaryButtonStyle()).padding(.top, 24)
                 .disabled(isConnecting || username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || password.isEmpty)
                 .accessibilityIdentifier("loginButton")
-            }
-
-            Section {
                 Label("仅使用路由器提供的 ubus 权限读取信息。缺少权限或模块时会单独提示。", systemImage: "lock.shield")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
+                    .foregroundStyle(AppPalette.muted).padding(.top, 18)
         }
-        .navigationTitle("登录路由器")
-        .navigationBarTitleDisplayMode(.inline)
+        .appDetailStyle("")
         .task {
             loadSavedCredential()
         }

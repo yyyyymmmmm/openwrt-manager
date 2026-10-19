@@ -7,7 +7,7 @@ struct DevicesScreen: View {
 
     var body: some View {
         NavigationStack {
-            DevicesContent(showingRouterPicker: $showingRouterPicker)
+            DevicesContent(showingRouterPicker: $showingRouterPicker, isRoot: true)
         }
     }
 }
@@ -16,23 +16,49 @@ struct DevicesContent: View {
     @Environment(RouterStore.self) private var store
     @Binding var showingRouterPicker: Bool
     @State private var search = ""
+    @State private var filter = "全部"
+    var isRoot = false
 
     private var filteredLeases: [DHCPLease] {
         let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return store.leases }
         return store.leases.filter { lease in
-            [lease.hostname, lease.address, lease.mac, lease.duid ?? ""].contains { $0.localizedCaseInsensitiveContains(query) }
+            (filter == "全部" || (filter == "IPv6" ? lease.address.contains(":") : !lease.address.contains(":"))) &&
+            (query.isEmpty || [lease.hostname, lease.address, lease.mac, lease.duid ?? ""].contains { $0.localizedCaseInsensitiveContains(query) })
         }
     }
 
-    init(showingRouterPicker: Binding<Bool> = .constant(false)) {
+    init(showingRouterPicker: Binding<Bool> = .constant(false), isRoot: Bool = false) {
         _showingRouterPicker = showingRouterPicker
+        self.isRoot = isRoot
     }
 
     var body: some View {
-        List {
-            DataStatusSection(updatedAt: store.devicesUpdatedAt, error: store.devicesError)
-            Section {
+        Group {
+            if isRoot {
+                AppRootPage(showingRouterPicker: $showingRouterPicker, title: "设备", subtitle: "局域网客户端与地址分配") { deviceBody }
+            } else {
+                AppPage(title: "设备", subtitle: "局域网客户端与地址分配") { deviceBody }.appDetailStyle("设备")
+            }
+        }
+    }
+
+    private var deviceBody: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ReadStatus(updatedAt: store.devicesUpdatedAt, error: store.devicesError)
+            HStack(spacing: 12) {
+                summary("DHCP 租约", store.devicesUpdatedAt == nil ? "—" : "\(store.leases.count)")
+                summary("当前在线", "—")
+                summary("无线关联", "—")
+            }.padding(.vertical, 14)
+            AppDivider(inset: 0).padding(.bottom, 18)
+            AppSearchField(prompt: "名称、IP、MAC 或 DUID", text: $search, identifier: "deviceSearchField")
+            HStack(spacing: 6) {
+                ForEach(["全部", "IPv4", "IPv6"], id: \.self) { item in
+                    FilterButton(title: item, selected: filter == item) { filter = item }
+                }
+            }.padding(.top, 12)
+            AppSection(title: "客户端设备 · \(filteredLeases.count)", note: "来源：DHCP 租约。在线与无线关联状态尚未读取。") {
+                AppGroup {
                 if store.isRefreshing && !store.hasLoaded {
                     DataUnavailableView(title: "", message: "", error: nil, isLoading: true)
                 } else if let error = store.devicesError, store.leases.isEmpty {
@@ -59,20 +85,20 @@ struct DevicesContent: View {
                             DeviceRow(lease: lease)
                         }
                         .accessibilityIdentifier("device-\(lease.id)")
+                        .buttonStyle(.plain)
+                        if lease.id != filteredLeases.last?.id { AppDivider(inset: 60) }
                     }
                 }
-            } header: {
-                Text(store.leases.isEmpty ? "客户端设备" : "客户端设备 · \(store.leases.count)")
-            } footer: {
-                Text("此列表来自 DHCP 租约，不代表网络中所有在线设备。")
+                }
             }
         }
-        .listStyle(.insetGrouped)
-        .navigationTitle("设备")
-        .navigationBarTitleDisplayMode(.inline)
-        .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "名称、IP、MAC 或 DUID")
-        .toolbar { ScreenToolbar(showingRouterPicker: $showingRouterPicker) }
-        .refreshable { await store.refresh() }
+    }
+
+    private func summary(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(value).font(AppTypography.title).monospacedDigit().foregroundStyle(AppPalette.text)
+            Text(title).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+        }.frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -112,8 +138,9 @@ private struct DeviceDetailView: View {
                                        description: Text("路由器的最新响应未包含此租约，可返回设备列表查看。"))
             }
         }
-        .navigationTitle("设备详情")
-        .navigationBarTitleDisplayMode(.inline)
+        .scrollContentBackground(.hidden).background(AppPalette.canvas)
+        .listRowBackground(AppPalette.surface)
+        .appDetailStyle("设备详情")
         .refreshable { await store.refresh() }
     }
 }
@@ -135,29 +162,25 @@ struct DeviceRow: View {
     let lease: DHCPLease
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(spacing: 10) {
             Image(systemName: deviceSymbol)
                 .font(.title3)
-                .foregroundStyle(.tint)
-                .frame(width: 32, height: 32)
+                .foregroundStyle(AppPalette.blue)
+                .frame(width: 38, height: 38)
+                .background(AppPalette.blueSoft, in: RoundedRectangle(cornerRadius: 11))
             VStack(alignment: .leading, spacing: 4) {
                 Text(lease.hostname.isEmpty ? "未命名设备" : lease.hostname)
                     .font(AppTypography.rowTitle)
                 Text(lease.address)
                     .font(AppTypography.secondary)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-                Text(lease.mac)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-                Text("读取时剩余 \(lease.remainingLeaseDescription)")
-                    .font(AppTypography.metadata)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppPalette.muted)
+                Text("仅租约 · 在线状态未确认").font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
             }
             Spacer(minLength: 0)
+            Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(AppPalette.muted)
         }
-        .padding(.vertical, 3)
+        .foregroundStyle(AppPalette.text)
+        .padding(.horizontal, 12).padding(.vertical, 12)
     }
 
     private var deviceSymbol: String {

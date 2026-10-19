@@ -1,72 +1,88 @@
 import SwiftUI
 
-enum AppTypography {
-    static let title: Font = .title2.weight(.semibold)
-    static let reading: Font = .callout
-    static let row: Font = .subheadline
-    static let rowTitle: Font = .subheadline.weight(.medium)
-    static let secondary: Font = .footnote
-    static let metadata: Font = .caption
+struct AppSettingsView: View {
+    @AppStorage("text-size.v1") private var textSize = AppTextSize.compact.rawValue
+    @AppStorage("appearance.v1") private var appearance = "system"
+    private var appearanceTitle: String { appearance == "dark" ? "深色" : appearance == "light" ? "浅色" : "跟随系统" }
+    var body: some View {
+        AppPage(title: "", subtitle: nil) {
+            AppSection(title: "显示") {
+                AppGroup {
+                    NavigationLink { TextSizeSelection() } label: {
+                        AppRow(title: "文字大小", symbol: "textformat.size", value: (AppTextSize(rawValue: textSize) ?? .compact).title, chevron: true)
+                    }.buttonStyle(.plain).accessibilityIdentifier("textSizePicker")
+                        .accessibilityValue((AppTextSize(rawValue: textSize) ?? .compact).title)
+                    AppDivider()
+                    NavigationLink { AppearanceSelection() } label: {
+                        AppRow(title: "外观", symbol: "circle.lefthalf.filled", value: appearanceTitle, chevron: true)
+                    }.buttonStyle(.plain)
+                }
+            }
+            AppSection(title: "预览", note: "文字大小适用于本机 App，设置自动保存。系统辅助功能的大字优先。") {
+                AppGroup {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("家庭网络").font(AppTypography.title)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("无线网络").font(AppTypography.rowTitle)
+                            Text("Home-WiFi-5G").font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                        }
+                        AppDivider(inset: 0)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("已读取路由器状态").font(AppTypography.rowTitle)
+                            Text("2 分钟前").font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
+                        }
+                    }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            AppSection(title: "支持与隐私") {
+                AppGroup {
+                    NavigationLink { AppHelpView() } label: { AppRow(title: "帮助与连接", symbol: "questionmark.circle", chevron: true) }.buttonStyle(.plain)
+                    AppDivider()
+                    NavigationLink { AppPrivacyView() } label: { AppRow(title: "隐私说明", symbol: "hand.raised", chevron: true) }
+                        .buttonStyle(.plain).accessibilityIdentifier("privacyLink")
+                    AppDivider()
+                    NavigationLink { AppAboutView() } label: { AppRow(title: "关于", symbol: "info.circle", chevron: true) }.buttonStyle(.plain)
+                }
+            }
+        }.appDetailStyle("App 设置")
+    }
 }
 
-struct AppSettingsView: View {
-    @AppStorage("text-size.v1") private var textSize = AppTextSize.system.rawValue
-    @AppStorage("appearance.v1") private var appearance = "system"
-
+private struct TextSizeSelection: View {
+    @AppStorage("text-size.v1") private var selected = AppTextSize.compact.rawValue
+    @Environment(\.dismiss) private var dismiss
     var body: some View {
-        Form {
-            Section("显示") {
-                Picker("文字大小", selection: $textSize) {
+        AppPage(title: "", subtitle: nil) {
+            AppSection(title: "文字大小", note: "跟随系统可使用 iOS 的动态字体。系统辅助功能的大字设置始终优先。") {
+                AppGroup {
                     ForEach(AppTextSize.allCases) { size in
-                        Text(size.title).tag(size.rawValue)
+                        Button { selected = size.rawValue; dismiss() } label: {
+                            AppRow(title: size.title, symbol: selected == size.rawValue ? "checkmark" : nil)
+                        }.buttonStyle(.plain).accessibilityLabel(size.title)
+                        if size != AppTextSize.allCases.last { AppDivider(inset: 12) }
                     }
                 }
-                .pickerStyle(.navigationLink)
-                .accessibilityIdentifier("textSizePicker")
-                Picker("外观", selection: $appearance) {
-                    Text("跟随系统").tag("system")
-                    Text("浅色").tag("light")
-                    Text("深色").tag("dark")
-                }
-                .pickerStyle(.navigationLink)
             }
+        }.appDetailStyle("文字大小")
+    }
+}
 
-            Section {
-                Text("家庭网络").font(AppTypography.title)
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("无线网络").font(AppTypography.rowTitle)
-                    Text("Home-WiFi-5G").font(AppTypography.secondary).foregroundStyle(.secondary)
-                }
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("已读取路由器状态").font(AppTypography.rowTitle)
-                    Text("2 分钟前").font(AppTypography.metadata).foregroundStyle(.secondary)
-                }
-            } header: {
-                Text("预览")
-            } footer: {
-                Text("文字大小适用于本机 App，设置会自动保存。系统辅助功能的大字优先。")
-            }
-
-            Section("支持与隐私") {
-                NavigationLink {
-                    AppHelpView()
-                } label: {
-                    Label("帮助与连接", systemImage: "questionmark.circle")
-                }
-                NavigationLink {
-                    AppPrivacyView()
-                } label: {
-                    Label("隐私说明", systemImage: "hand.raised")
-                }
-                .accessibilityIdentifier("privacyLink")
-                NavigationLink {
-                    AppAboutView()
-                } label: {
-                    Label("关于", systemImage: "info.circle")
+private struct AppearanceSelection: View {
+    @AppStorage("appearance.v1") private var selected = "system"
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        AppPage(title: "", subtitle: nil) {
+            AppSection(title: "外观") {
+                AppGroup {
+                    ForEach(["system", "light", "dark"], id: \.self) { value in
+                        Button { selected = value; dismiss() } label: {
+                            AppRow(title: value == "system" ? "跟随系统" : value == "light" ? "浅色" : "深色",
+                                   symbol: selected == value ? "checkmark" : nil)
+                        }.buttonStyle(.plain)
+                        if value != "dark" { AppDivider(inset: 12) }
+                    }
                 }
             }
-        }
-        .navigationTitle("App 设置")
-        .navigationBarTitleDisplayMode(.inline)
+        }.appDetailStyle("外观")
     }
 }

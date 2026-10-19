@@ -28,11 +28,11 @@ private struct LaunchAppearance: ViewModifier {
         if arguments.contains("--dark") && arguments.contains("--large-type") {
             content
                 .preferredColorScheme(.dark)
-                .environment(\.dynamicTypeSize, .xxxLarge)
+                .environment(\.dynamicTypeSize, .accessibility1)
         } else if arguments.contains("--dark") {
             content.preferredColorScheme(.dark)
         } else if arguments.contains("--large-type") {
-            content.environment(\.dynamicTypeSize, .xxxLarge)
+            content.environment(\.dynamicTypeSize, .accessibility1)
         } else {
             content
         }

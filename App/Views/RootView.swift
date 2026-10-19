@@ -26,30 +26,66 @@ struct RootView: View {
 private struct RouterTabs: View {
     @Environment(RouterStore.self) private var store
     @Binding var showingRouterPicker: Bool
+    @State private var selection = 0
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    private let titles = ["概览", "设备", "网络", "插件", "系统"]
+    private let symbols = ["house", "desktopcomputer", "dot.radiowaves.left.and.right", "puzzlepiece.extension", "gearshape"]
+    private let identifiers = ["overviewTab", "devicesTab", "networkTab", "pluginsTab", "systemTab"]
 
     var body: some View {
-        TabView {
+        TabView(selection: $selection) {
             OverviewScreen(showingRouterPicker: $showingRouterPicker)
                 .tabItem { Label("概览", systemImage: "square.grid.2x2") }
-                .accessibilityIdentifier("overviewTab")
+                .tag(0)
 
             DevicesScreen(showingRouterPicker: $showingRouterPicker)
                 .tabItem { Label("设备", systemImage: "iphone.and.arrow.forward") }
-                .accessibilityIdentifier("devicesTab")
+                .tag(1)
 
             NetworkScreen(showingRouterPicker: $showingRouterPicker)
                 .tabItem { Label("网络", systemImage: "network") }
-                .accessibilityIdentifier("networkTab")
+                .tag(2)
 
             PluginsScreen(showingRouterPicker: $showingRouterPicker)
                 .tabItem { Label("插件", systemImage: "puzzlepiece.extension") }
-                .accessibilityIdentifier("pluginsTab")
+                .tag(3)
 
             SystemScreen(showingRouterPicker: $showingRouterPicker)
                 .tabItem { Label("系统", systemImage: "info.circle") }
-                .accessibilityIdentifier("systemTab")
+                .tag(4)
         }
-        .tint(.accentColor)
+        .toolbar(.hidden, for: .tabBar)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 4) {
+                HStack(spacing: 0) {
+                    ForEach(0..<5) { index in
+                        Button { selection = index } label: {
+                            VStack(spacing: 4) {
+                                Image(systemName: symbols[index]).font(.system(size: 20))
+                                Text(titles[index]).font(AppTypography.chrome.weight(selection == index ? .semibold : .regular))
+                            }
+                            .frame(maxWidth: .infinity, minHeight: typeSize.isAccessibilitySize ? 72 : 54)
+                            .foregroundStyle(selection == index ? AppPalette.accentStrong : AppPalette.muted)
+                            .background(selection == index ? AppPalette.accentSoft : .clear,
+                                        in: RoundedRectangle(cornerRadius: 18))
+                        }
+                        .buttonStyle(.plain).accessibilityLabel(titles[index])
+                        .accessibilityIdentifier(identifiers[index])
+                        .accessibilityAddTraits(selection == index ? .isSelected : [])
+                    }
+                }
+                .padding(5)
+                .background(AppPalette.surface.opacity(0.97), in: RoundedRectangle(cornerRadius: 24))
+                .shadow(color: .black.opacity(0.07), radius: 9, x: 0, y: 4)
+                .padding(.horizontal, 12)
+                if store.isDemo {
+                    Text("演示数据 · 未连接路由器").font(AppTypography.chrome).foregroundStyle(AppPalette.muted)
+                }
+            }
+            .padding(.top, 8).background(AppPalette.canvas)
+        }
+        .tint(AppPalette.accent)
     }
 }
 
