@@ -1,0 +1,100 @@
+name: iOS build and tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Select installed Xcode 26
+        run: |
+          XCODE_APP="$(find /Applications -maxdepth 1 -name 'Xcode_26*.app' | sort -V | tail -n 1)"
+          if [[ -z "$XCODE_APP" ]]; then
+            echo "This runner needs an installed Xcode 26 SDK." >&2
+            exit 1
+          fi
+          sudo xcode-select -s "$XCODE_APP/Contents/Developer"
+          xcodebuild -version
+          xcodebuild -showsdks
+
+      - name: Install XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+
+      - name: Test OpenWrtKit
+        run: swift test --package-path Packages/OpenWrtKit
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build unsigned iPhone app for personal signing
+        run: |
+          mkdir -p artifacts
+          xcodebuild build \
+            -project OpenWrtManager.xcodeproj \
+            -scheme OpenWrtManager \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/device-build" \
+            CODE_SIGNING_ALLOWED=NO
+          test -f "$RUNNER_TEMP/device-build/Build/Products/Release-iphoneos/OpenWrtManager.app/PrivacyInfo.xcprivacy"
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          ditto "$RUNNER_TEMP/device-build/Build/Products/Release-iphoneos/OpenWrtManager.app" "$RUNNER_TEMP/ipa/Payload/OpenWrtManager.app"
+          cd "$RUNNER_TEMP/ipa"
+          zip -qr "$GITHUB_WORKSPACE/artifacts/OpenWrtManager-unsigned.ipa" Payload
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenWrtManager-unsigned-IPA
+          path: artifacts/OpenWrtManager-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Build and run UI tests
+        run: |
+          mkdir -p artifacts
+          SIMULATOR_ID="$(xcrun simctl list devices available --json | python3 scripts/select_simulator.py)"
+          xcodebuild test \
+            -project OpenWrtManager.xcodeproj \
+            -scheme OpenWrtManager \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -parallel-testing-enabled NO \
+            -derivedDataPath "$RUNNER_TEMP/derived-data" \
+            -resultBundlePath artifacts/OpenWrtManager.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Export screenshots
+        if: always()
+        run: |
+          if [[ -d artifacts/OpenWrtManager.xcresult ]]; then
+            xcrun xcresulttool export attachments \
+              --path artifacts/OpenWrtManager.xcresult \
+              --output-path artifacts/screenshots
+          fi
+
+      - name: Upload build results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-results
+          path: artifacts/
+          if-no-files-found: warn
+          retention-days: 14

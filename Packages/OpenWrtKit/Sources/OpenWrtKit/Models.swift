@@ -1,0 +1,131 @@
+import Foundation
+
+public struct UbusRequest: Encodable, Sendable {
+    public let jsonrpc = "2.0"
+    public let id: Int
+    public let method = "call"
+    public let params: [JSONValue]
+
+    public init(id: Int = 1, session: String, object: String, method: String, parameters: [String: JSONValue]) {
+        self.id = id
+        self.params = [.string(session), .string(object), .string(method), .object(parameters)]
+    }
+
+    public static func login(id: Int = 1, username: String, password: String) -> UbusRequest {
+        UbusRequest(id: id, session: String(repeating: "0", count: 32), object: "session", method: "login", parameters: [
+            "username": .string(username), "password": .string(password), "timeout": .number(3600)
+        ])
+    }
+}
+
+public struct UbusResponse: Decodable, Sendable {
+    public let jsonrpc: String?
+    public let id: Int?
+    public let result: [JSONValue]?
+    public let error: UbusError?
+}
+
+public struct UbusError: Decodable, Error, Sendable {
+    public let code: Int?
+    public let message: String?
+}
+
+public struct UbusSession: Sendable, Equatable {
+    public let token: String
+    public let expiresIn: Int
+    public init(token: String, expiresIn: Int = 3600) {
+        self.token = token; self.expiresIn = expiresIn
+    }
+}
+
+public struct SystemSnapshot: Equatable, Sendable {
+    public var hostname = "—"
+    public var model = "—"
+    public var firmware = "—"
+    public var kernel = "—"
+    public var architecture = "—"
+    public var uptime: TimeInterval?
+    public var memoryUsed: Int64?
+    public var memoryTotal: Int64?
+    public var storageUsed: Int64?
+    public var storageTotal: Int64?
+    public var loadAverage: [Double] = []
+    public init() {}
+}
+
+public struct NetworkInterfaceSnapshot: Identifiable, Equatable, Sendable {
+    public let name: String
+    public let protocolName: String
+    public let addresses: [String]
+    public let up: Bool
+    public let device: String?
+    public var id: String { name }
+    public init(name: String, protocolName: String, addresses: [String], up: Bool, device: String? = nil) {
+        self.name = name; self.protocolName = protocolName
+        self.addresses = addresses; self.up = up; self.device = device
+    }
+}
+
+public struct RouterSnapshot: Equatable, Sendable {
+    public var system = SystemSnapshot()
+    public var interfaces: [NetworkInterfaceSnapshot] = []
+    public var warnings: [String] = []
+    public var refreshedAt = Date()
+    public init() {}
+}
+
+public struct DHCPLease: Identifiable, Equatable, Sendable {
+    public let hostname: String
+    public let address: String
+    public let mac: String
+    public let expires: Int?
+    public var id: String { mac + "|" + address }
+    public init(hostname: String, address: String, mac: String, expires: Int?) {
+        self.hostname = hostname; self.address = address; self.mac = mac; self.expires = expires
+    }
+}
+
+public struct WirelessRadio: Identifiable, Equatable, Sendable {
+    public let name: String
+    public let up: Bool
+    public let channel: String
+    public let networks: [String]
+    public var id: String { name }
+    public init(name: String, up: Bool, channel: String, networks: [String]) {
+        self.name = name; self.up = up; self.channel = channel; self.networks = networks
+    }
+}
+
+public struct RouterService: Identifiable, Equatable, Sendable {
+    public let name: String
+    public let runningInstances: Int
+    public let totalInstances: Int
+    public var id: String { name }
+    public init(name: String, runningInstances: Int, totalInstances: Int) {
+        self.name = name; self.runningInstances = runningInstances; self.totalInstances = totalInstances
+    }
+}
+
+public enum OpenWrtKitError: LocalizedError, Equatable, Sendable {
+    case invalidAddress
+    case transport(String)
+    case http(Int)
+    case authenticationFailed
+    case permissionDenied
+    case unsupported(String)
+    case malformedResponse
+    case ubus(code: Int, message: String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .invalidAddress: return "地址无效，请输入 IP、主机名或 HTTP/HTTPS 网址。不要在网址中填写密码。"
+        case .transport(let message): return message
+        case .http(let code): return "路由器返回 HTTP \(code)，请检查管理端口和 /ubus 接口。"
+        case .authenticationFailed: return "登录失败。请检查用户名、密码以及 rpcd 登录设置。"
+        case .permissionDenied: return "会话已过期或账户权限不足。请重新登录，或检查 rpcd ACL。"
+        case .unsupported(let message): return message
+        case .malformedResponse: return "路由器响应不符合 ubus JSON-RPC 格式。"
+        case .ubus(let code, let message): return "\(message)（ubus \(code)）"
+        }
+    }
+}

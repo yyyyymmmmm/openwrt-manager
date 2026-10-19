@@ -1,0 +1,30 @@
+import Foundation
+import XCTest
+@testable import OpenWrtKit
+
+final class SnapshotParserTests: XCTestCase {
+    func testLuCIIPv4AndIPv6LeasesIncludingInfiniteLease() throws {
+        let data = Data(#"{"dhcp_leases":[{"hostname":"phone","ipaddr":"192.168.1.2","macaddr":"02:00:00:00:00:01","expires":3600}],"dhcp6_leases":[{"hostname":"tablet","ip6addr":"fd00::2","duid":"00010001","expires":-1}]}"#.utf8)
+        let leases = SnapshotParser.leases(try JSONDecoder().decode(JSONValue.self, from: data))
+        XCTAssertEqual(leases.count, 2)
+        XCTAssertEqual(leases.first(where: { $0.hostname == "tablet" })?.address, "fd00::2")
+        XCTAssertEqual(leases.first(where: { $0.hostname == "tablet" })?.expires, -1)
+    }
+
+    func testSystemLoadUsesUbusFixedPointAndAvailableMemory() throws {
+        let data = Data(#"{"uptime":86400,"load":[65536,32768,0],"memory":{"total":1024,"free":64,"available":256}}"#.utf8)
+        let info = try JSONDecoder().decode(JSONValue.self, from: data)
+        let system = SnapshotParser.system(board: .object([:]), info: info)
+        XCTAssertEqual(system.loadAverage, [1, 0.5, 0])
+        XCTAssertEqual(system.memoryUsed, 768)
+        XCTAssertEqual(system.uptime, 86400)
+    }
+
+    func testMissingFieldsStayUnknownRatherThanInventingZero() {
+        let system = SnapshotParser.system(board: .object([:]), info: .object([:]))
+        XCTAssertNil(system.memoryUsed)
+        XCTAssertNil(system.memoryTotal)
+        XCTAssertNil(system.uptime)
+        XCTAssertTrue(system.loadAverage.isEmpty)
+    }
+}
