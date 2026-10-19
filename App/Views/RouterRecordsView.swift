@@ -5,8 +5,8 @@ struct RouterLogDirectoryView: View {
     var body: some View {
         List {
             Section("日志来源") {
-                NavigationLink("系统日志") { RouterRecordsView(kind: .logs) }
-                NavigationLink("内核日志") { RouterRecordsView(kind: .kernelLogs) }
+                NavigationLink("系统日志") { RouterRecordsView(kind: .logs) }.accessibilityIdentifier("router-system-log")
+                NavigationLink("内核日志") { RouterRecordsView(kind: .kernelLogs) }.accessibilityIdentifier("router-kernel-log")
             }
         }.font(AppTypography.row).tint(AppPalette.accent).appDetailStyle("系统日志")
     }

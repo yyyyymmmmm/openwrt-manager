@@ -32,7 +32,7 @@ struct RouterProcessesView: View {
                             Text("PID \(process.pid) · \(process.user) · CPU \(process.cpu ?? "未返回") · 内存 \(process.memory ?? "未返回")")
                                 .font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
                         }
-                    }.disabled(error != nil || loading)
+                    }.disabled(error != nil || loading).accessibilityIdentifier("router-process-\(process.pid)")
                 }
             }
         }.font(AppTypography.row).tint(AppPalette.accent).appDetailStyle("进程")

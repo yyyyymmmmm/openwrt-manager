@@ -31,7 +31,9 @@ def new_state(readonly):
         "firewall": {"defaults": {".type": "defaults", ".index": 0, ".anonymous": False, "input": "REJECT", "forward": "REJECT"}},
         "wireless": {"radio0": {".type": "wifi-device", ".index": 0, ".anonymous": False, "disabled": "0", "channel": "auto"}},
         "ci_extension": {"main": {".type": "service", ".index": 0, ".anonymous": False, "enabled": "1", "servers": ["one", "two"]}},
-    }, "staged": {}, "before": None, "deadline": None, "running": True, "enabled": True, "route_mode": "normal"}
+    }, "staged": {}, "before": None, "deadline": None, "running": True, "enabled": True, "route_mode": "normal",
+        "processes": [{"PID": 1, "USER": "root", "COMMAND": "/sbin/procd", "%CPU": 0, "%MEM": 0.1},
+                      {"PID": 432, "USER": "root", "COMMAND": "CI fixture process preserved", "%CPU": 1.2, "%MEM": 0.5}]}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -101,6 +103,19 @@ class Handler(BaseHTTPRequestHandler):
         if (obj, method) == ("network.interface", "dump"):
             return 0, {"interface": [{"interface": "lan", "up": True, "proto": "static", "l3_device": "br-lan", "route": [{"target": "0.0.0.0", "mask": 0, "nexthop": "192.0.2.254", "metric": 10}], "dns-server": ["192.0.2.254"], "ipv4-address": [{"address": "192.0.2.1", "mask": 24}]}, {"interface": "wan", "up": False, "proto": "dhcp", "l3_device": "eth1"}]}
         if (obj, method) == ("file", "exec"):
+            command, params = args.get("command"), args.get("params", [])
+            if command == "/bin/dmesg" and params == ["-r"]:
+                return 0, {"code": 0, "stdout": "<4>[ 12.000000] CI fixture kernel warning\n<6>[ 13.000000] CI fixture kernel info\n", "stderr": ""}
+            if command == "/bin/kill":
+                if state["readonly"]:
+                    return 6, {}
+                if len(params) != 2 or params[0] not in ("-1", "-15", "-9") or params[1] != "432":
+                    return 2, {}
+                if not any(process["PID"] == 432 for process in state["processes"]):
+                    return 0, {"code": 1, "stdout": "", "stderr": "No such process"}
+                if params[0] != "-1":
+                    state["processes"] = [process for process in state["processes"] if process["PID"] != 432]
+                return 0, {"code": 0, "stdout": "", "stderr": ""}
             outputs = {
                 ("-4", "route", "show"): "default via 192.0.2.254 dev br-lan proto static metric 10\n192.0.2.0/24 dev br-lan proto kernel scope link src 192.0.2.1",
                 ("-6", "route", "show"): "fd00::/64 dev br-lan proto kernel metric 256",
@@ -115,6 +130,14 @@ class Handler(BaseHTTPRequestHandler):
             if state["route_mode"] == "route-failure":
                 return 0, {"code": 1, "stdout": "", "stderr": "ip: CI command unavailable"}
             return 0, {"code": 0, "stdout": outputs[query], "stderr": ""}
+        if (obj, method) == ("file", "read"):
+            path = args.get("path")
+            for process in state["processes"]:
+                pid = process["PID"]
+                if path == f"/proc/{pid}/stat":
+                    # PID, comm, state, fields 4...21, then starttime (field 22).
+                    return 0, {"data": f"{pid} (fixture name) S " + " ".join(["0"] * 18 + [str(pid * 100)]) + "\n"}
+            return 4, {}
         if (obj, method) == ("luci-rpc", "getDHCPLeases"):
             return 0, {"dhcp_leases": [{"hostname": "CI Phone", "ipaddr": "192.0.2.10", "macaddr": "02:00:00:00:00:01", "expires": 1800}], "dhcp6_leases": []}
         if (obj, method) == ("network", "get_proto_handlers"):
@@ -143,8 +166,10 @@ class Handler(BaseHTTPRequestHandler):
                 return 2, {}
             return 0, {"result": True}
         if (obj, method) == ("log", "read"):
-            return 0, {"log": [{"msg": "CI fixture log", "metadata": {"test_only": True}}]}
-        if obj == "luci" and method in ("getProcessList", "getMountPoints"):
+            return 0, {"log": [{"msg": "CI fixture log", "time": 1700000000000, "priority": 27, "metadata": {"test_only": True}}]}
+        if (obj, method) == ("luci", "getProcessList"):
+            return 0, {"result": state["processes"]}
+        if (obj, method) == ("luci", "getMountPoints"):
             return 0, {"result": [{"name": "CI fixture", "active": True, "nested": {"value": "preserved"}}]}
         if obj == "uci":
             if method == "get":

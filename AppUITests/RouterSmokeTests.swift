@@ -47,9 +47,10 @@ final class RouterSmokeTests: XCTestCase {
         attach("06-system", app)
         visit("概览", app)
         tapVisible(app.buttons["系统日志"], app)
+        tapVisible(app.buttons["router-system-log"], app)
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "CI fixture log")).firstMatch.waitForExistence(timeout: 5))
         attach("20-records", app)
-        back(app)
+        back(app); back(app)
         visit("设置", app)
         XCTAssertTrue(app.buttons["settings-router-picker"].exists)
         attach("27-settings", app)
@@ -237,11 +238,15 @@ final class RouterSmokeTests: XCTestCase {
         back(app)
         tapVisible(app.buttons["挂载记录"], app); expectText("preserved", app); back(app)
         visit("概览", app)
-        for title in ["系统日志", "进程"] {
-            tapVisible(app.buttons[title], app)
-            expectText(title == "系统日志" ? "CI fixture log" : "preserved", app)
-            attach("38-record-\(title)", app); back(app)
-        }
+        tapVisible(app.buttons["系统日志"], app)
+        tapVisible(app.buttons["router-system-log"], app)
+        expectText("CI fixture log", app); attach("38-system-log", app); back(app)
+        tapVisible(app.buttons["router-kernel-log"], app)
+        expectText("CI fixture kernel warning", app); attach("38-kernel-log", app); back(app); back(app)
+        tapVisible(app.buttons["进程"], app)
+        expectText("preserved", app)
+        tapVisible(app.buttons["router-process-432"], app)
+        expectText("进程控制", app); attach("38-process-detail", app)
     }
 
     @MainActor
