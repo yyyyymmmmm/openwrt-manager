@@ -76,7 +76,7 @@ struct OverviewScreen: View {
                         .frame(width: 40, height: 40)
                         .background(wan?.up == true ? AppPalette.greenSoft : AppPalette.canvas, in: RoundedRectangle(cornerRadius: 13))
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(wan.map { $0.up ? "WAN 接口已连接" : "WAN 接口未连接" } ?? "WAN 状态尚未读取").font(AppTypography.rowTitle).foregroundStyle(AppPalette.text)
+                        Text(wan?.up.map { $0 ? "WAN 接口已连接" : "WAN 接口未连接" } ?? "WAN 连接状态未报告").font(AppTypography.rowTitle).foregroundStyle(AppPalette.text)
                         Text(wan?.addresses.joined(separator: " · ") ?? "路由器未报告 WAN 接口").font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                     }.frame(maxWidth: .infinity, alignment: .leading)
                     Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(AppPalette.muted)

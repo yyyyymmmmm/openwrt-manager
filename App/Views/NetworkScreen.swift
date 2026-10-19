@@ -109,7 +109,8 @@ struct WirelessDetailView: View {
             ForEach(store.radios) { radio in
                 AppSection(title: radio.name) {
                     AppGroup {
-                        AppRow(title: radio.name, symbol: radio.up ? "wifi" : "wifi.slash", value: radio.up ? "已启用" : "未启用")
+                        AppRow(title: radio.name, symbol: radio.up == nil ? "questionmark.circle" : radio.up == true ? "wifi" : "wifi.slash",
+                               value: radio.up.map { $0 ? "已启用" : "未启用" } ?? "状态未报告")
                         AppDivider()
                         AppRow(title: "信道", value: radio.channel)
                         ForEach(radio.networks, id: \.self) { ssid in AppDivider(); AppRow(title: ssid, symbol: "dot.radiowaves.left.and.right") }
@@ -136,15 +137,16 @@ struct InterfaceRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Image(systemName: interface.up ? "checkmark.circle" : "minus.circle").foregroundStyle(interface.up ? AppPalette.green : AppPalette.muted)
+                Image(systemName: interface.up == nil ? "questionmark.circle" : interface.up == true ? "checkmark.circle" : "minus.circle")
+                    .foregroundStyle(interface.up == true ? AppPalette.green : AppPalette.muted)
                 Text(interface.name).font(AppTypography.rowTitle)
                 Spacer()
-                StatusBadge(title: interface.up ? "接口已连接" : "接口未连接", good: interface.up)
+                StatusBadge(title: interface.up.map { $0 ? "接口已连接" : "接口未连接" } ?? "状态未报告", good: interface.up == true)
             }
             LabeledContent("协议", value: interface.protocolName)
             if let device = interface.device { LabeledContent("设备", value: device) }
             ForEach(showAddresses ? interface.addresses : Array(interface.addresses.prefix(1)), id: \.self) { address in LabeledContent("IP 地址", value: address).textSelection(.enabled) }
-            if interface.addresses.isEmpty { Text("未分配 IP 地址").foregroundStyle(AppPalette.muted) }
+            if interface.addresses.isEmpty { Text("未报告 IP 地址").foregroundStyle(AppPalette.muted) }
         }.font(AppTypography.secondary).foregroundStyle(AppPalette.text)
     }
 }

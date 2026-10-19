@@ -12,13 +12,13 @@ struct ServicesScreen: View {
     var body: some View {
         List {
             Section { InventoryStatus(); ReadStatus(updatedAt: store.servicesUpdatedAt, error: store.servicesError) }
-            Section("服务与启动项 · \(names.count)") {
+            Section(store.inventory.initRead && store.servicesUpdatedAt != nil && store.servicesError == nil ? "服务与启动项 · \(names.count)" : "已读取的服务与启动项") {
                 ForEach(names, id: \.self) { name in
                     NavigationLink { ServiceDetailView(name: name) } label: {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(name).font(AppTypography.rowTitle)
                             if let service = store.services.first(where: { $0.name == name }) {
-                                Text("\(service.runningInstances) / \(service.totalInstances) 个实例运行").font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                                Text(service.instanceSummary).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                             } else { Text("未报告运行实例").font(AppTypography.secondary).foregroundStyle(AppPalette.muted) }
                         }
                     }
@@ -41,7 +41,7 @@ struct ServiceDetailView: View {
         Form {
             Section {
                 ReadStatus(updatedAt: store.servicesUpdatedAt, error: store.servicesError)
-                LabeledContent("运行实例", value: service.map { "\($0.runningInstances) / \($0.totalInstances)" } ?? "未报告")
+                LabeledContent("运行实例", value: service?.instanceSummary ?? "未报告")
                 LabeledContent("开机启动", value: (startup?.enabled).map { $0 ? "启用" : "关闭" } ?? "未知")
             } header: { Text("当前状态") } footer: { Text("未报告实例不等于服务已停止；实例运行也不代表业务健康。") }
             if let error { Section { Text(error).foregroundStyle(AppPalette.red) } }
@@ -74,5 +74,13 @@ struct ServiceDetailView: View {
         case .enable: return "power"
         case .disable: return "poweroff"
         }
+    }
+}
+
+private extension RouterService {
+    var instanceSummary: String {
+        guard let totalInstances else { return "运行实例未报告" }
+        guard let runningInstances else { return "共 \(totalInstances) 个实例 · 运行数量未报告" }
+        return "\(runningInstances) / \(totalInstances) 个实例运行"
     }
 }

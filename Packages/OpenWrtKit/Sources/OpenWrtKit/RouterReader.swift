@@ -28,7 +28,9 @@ public struct RouterReader: Sendable {
         }
         snapshot.system = SnapshotParser.system(board: board, info: info)
         switch interfacesResult {
-        case .success(let value): snapshot.interfaces = SnapshotParser.interfaces(value)
+        case .success(let value):
+            if value["interface"].arrayValue != nil { snapshot.interfaces = SnapshotParser.interfaces(value) }
+            else { snapshot.warnings.append("网络接口：\(OpenWrtKitError.malformedResponse.localizedDescription)") }
         case .failure(let error): snapshot.warnings.append("网络接口：\(error.localizedDescription)")
         }
         snapshot.refreshedAt = Date()
@@ -176,7 +178,7 @@ public enum SnapshotParser {
                 }
             }
             return NetworkInterfaceSnapshot(name: name, protocolName: item["proto"].stringValue ?? "—", addresses: addresses,
-                                            up: item["up"].boolValue ?? false, device: item["l3_device"].stringValue)
+                                            up: item["up"].boolValue, device: item["l3_device"].stringValue)
         }.sorted { $0.name < $1.name }
     }
 
@@ -196,16 +198,19 @@ public enum SnapshotParser {
 
     public static func wireless(_ value: JSONValue) -> [WirelessRadio] {
         (value.objectValue ?? [:]).map { name, radio in
-            WirelessRadio(name: name, up: radio["up"].boolValue ?? false, channel: radio["config"]["channel"].textValue ?? "自动",
+            WirelessRadio(name: name, up: radio["up"].boolValue, channel: radio["config"]["channel"].textValue ?? "未报告",
                           networks: (radio["interfaces"].arrayValue ?? []).compactMap { $0["config"]["ssid"].stringValue })
         }.sorted { $0.name < $1.name }
     }
 
     public static func services(_ value: JSONValue) -> [RouterService] {
         (value.objectValue ?? [:]).map { name, service in
-            let instances = Array((service["instances"].objectValue ?? [:]).values)
-            return RouterService(name: name, runningInstances: instances.filter { $0["running"].boolValue == true }.count,
-                                 totalInstances: instances.count)
+            let instances = service["instances"].objectValue.map { Array($0.values) }
+            let running = instances.flatMap { values -> Int? in
+                guard values.allSatisfy({ $0["running"].boolValue != nil }) else { return nil }
+                return values.filter { $0["running"].boolValue == true }.count
+            }
+            return RouterService(name: name, runningInstances: running, totalInstances: instances?.count)
         }.sorted { $0.name < $1.name }
     }
 }

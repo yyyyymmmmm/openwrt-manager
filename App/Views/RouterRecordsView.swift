@@ -12,8 +12,10 @@ struct RouterRecordsView: View {
     private var filtered: [String] { records.map(Self.formatted).filter { query.isEmpty || $0.localizedCaseInsensitiveContains(query) } }
     var body: some View {
         List {
-            Section { ReadStatus(updatedAt: updatedAt, error: error); if loading { ProgressView("正在读取…") } }
-            Section("\(filtered.count) 条记录") {
+            Section {
+                ReadStatus(updatedAt: updatedAt, error: error, retry: { Task { await load() } }, loading: loading)
+            }
+            Section(updatedAt == nil ? "路由器记录" : "\(filtered.count) 条记录") {
                 ForEach(Array(filtered.enumerated()), id: \.offset) { _, text in Text(text).font(AppTypography.secondary).textSelection(.enabled) }
             }
         }.appDetailStyle(kind.title).searchable(text: $query, prompt: "筛选记录")

@@ -113,7 +113,10 @@ final class RouterStore {
         let results = await (overview, devices, wireless, serviceList, directory)
         guard generation == connectionID, !Task.isCancelled else { return }
         switch results.0 {
-        case .success(let value): snapshot = value; overviewError = nil; overviewUpdatedAt = Date()
+        case .success(let value):
+            snapshot = value
+            overviewError = value.warnings.isEmpty ? nil : value.warnings.joined(separator: "\n")
+            overviewUpdatedAt = Date()
         case .failure(let error): overviewError = FriendlyError.message(error)
         }
         switch results.1 {

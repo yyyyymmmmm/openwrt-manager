@@ -251,21 +251,26 @@ struct ReadStatus: View {
     @Environment(RouterStore.self) private var store
     let updatedAt: Date?
     let error: String?
+    var retry: (() -> Void)? = nil
+    var loading: Bool? = nil
 
     var body: some View {
         if let error {
             VStack(alignment: .leading, spacing: 8) {
                 Label(error, systemImage: "exclamationmark.triangle")
                 if let updatedAt {
-                    Text("显示上次读取的数据 · \(updatedAt.formatted(date: .omitted, time: .shortened))")
+                    Text("已有数据读取时间 · \(updatedAt.formatted(date: .omitted, time: .shortened))")
                 }
-                Button("重新读取") { Task { await store.refresh() } }.disabled(store.isRefreshing)
+                Button("重新读取") {
+                    if let retry { retry() }
+                    else { Task { await store.refresh() } }
+                }.disabled(loading ?? store.isRefreshing)
             }
             .font(AppTypography.secondary).foregroundStyle(AppPalette.orange)
             .padding(12).frame(maxWidth: .infinity, alignment: .leading)
             .background(AppPalette.orangeSoft, in: RoundedRectangle(cornerRadius: 13))
             .padding(.bottom, 12)
-        } else if store.isRefreshing && updatedAt == nil {
+        } else if (loading ?? store.isRefreshing) && updatedAt == nil {
             HStack(spacing: 8) { ProgressView(); Text("正在读取路由器信息…") }
                 .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                 .padding(.bottom, 12)

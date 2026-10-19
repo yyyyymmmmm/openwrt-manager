@@ -55,7 +55,7 @@ struct DevicesContent: View {
                     FilterButton(title: item, selected: filter == item) { filter = item }
                 }
             }.padding(.top, 12)
-            AppSection(title: "DHCP 租约 · \(filteredLeases.count)", note: "租约不代表设备当前在线；固定 IP 设备可能不会出现在此列表。") {
+            AppSection(title: store.devicesUpdatedAt == nil ? "DHCP 租约" : "DHCP 租约 · \(filteredLeases.count)", note: "租约不代表设备当前在线；固定 IP 设备可能不会出现在此列表。") {
                 AppGroup {
                 if store.isRefreshing && !store.hasLoaded {
                     DataUnavailableView(title: "", message: "", error: nil, isLoading: true)
@@ -67,6 +67,8 @@ struct DevicesContent: View {
                         isLoading: store.isRefreshing && !store.hasLoaded,
                         retry: { Task { await store.refresh() } }
                     )
+                } else if store.devicesUpdatedAt == nil {
+                    ContentUnavailableView("尚未读取 DHCP 租约", systemImage: "network")
                 } else if store.leases.isEmpty {
                     ContentUnavailableView(
                         "暂无 DHCP 租约",

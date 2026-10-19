@@ -29,4 +29,31 @@ final class SnapshotParserTests: XCTestCase {
         XCTAssertNil(system.uptime)
         XCTAssertTrue(system.loadAverage.isEmpty)
     }
+
+    func testMissingInterfaceStateDoesNotBecomeDisconnected() throws {
+        let value = try JSONDecoder().decode(JSONValue.self, from: Data(#"{"interface":[{"interface":"lan"},{"interface":"wan","up":false}]}"#.utf8))
+        let interfaces = SnapshotParser.interfaces(value)
+        XCTAssertNil(interfaces.first(where: { $0.name == "lan" })?.up)
+        XCTAssertEqual(interfaces.first(where: { $0.name == "wan" })?.up, false)
+    }
+
+    func testMissingWirelessFieldsDoNotInventAutomaticChannel() throws {
+        let value = try JSONDecoder().decode(JSONValue.self, from: Data(#"{"radio0":{},"radio1":{"up":false,"config":{"channel":"auto"}}}"#.utf8))
+        let radios = SnapshotParser.wireless(value)
+        XCTAssertNil(radios.first(where: { $0.name == "radio0" })?.up)
+        XCTAssertEqual(radios.first(where: { $0.name == "radio0" })?.channel, "未报告")
+        XCTAssertEqual(radios.first(where: { $0.name == "radio1" })?.up, false)
+        XCTAssertEqual(radios.first(where: { $0.name == "radio1" })?.channel, "auto")
+    }
+
+    func testMissingServiceInstancesAreNotReportedAsZeroRunning() throws {
+        let value = try JSONDecoder().decode(JSONValue.self, from: Data(#"{"missing":{},"empty":{"instances":{}},"partial":{"instances":{"one":{"running":true},"two":{}}},"reported":{"instances":{"one":{"running":false}}}}"#.utf8))
+        let services = SnapshotParser.services(value)
+        XCTAssertNil(services.first(where: { $0.name == "missing" })?.totalInstances)
+        XCTAssertNil(services.first(where: { $0.name == "missing" })?.runningInstances)
+        XCTAssertEqual(services.first(where: { $0.name == "empty" })?.runningInstances, 0)
+        XCTAssertEqual(services.first(where: { $0.name == "partial" })?.totalInstances, 2)
+        XCTAssertNil(services.first(where: { $0.name == "partial" })?.runningInstances)
+        XCTAssertEqual(services.first(where: { $0.name == "reported" })?.runningInstances, 0)
+    }
 }

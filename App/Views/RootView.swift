@@ -8,6 +8,7 @@ struct RootView: View {
         Group {
             if store.hasConnection {
                 RouterTabs(showingRouterPicker: $showingRouterPicker)
+                    .id(store.connectionID)
             } else {
                 ConnectFlowView(isModal: false)
             }

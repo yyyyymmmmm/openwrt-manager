@@ -57,10 +57,10 @@ public struct NetworkInterfaceSnapshot: Identifiable, Equatable, Sendable {
     public let name: String
     public let protocolName: String
     public let addresses: [String]
-    public let up: Bool
+    public let up: Bool?
     public let device: String?
     public var id: String { name }
-    public init(name: String, protocolName: String, addresses: [String], up: Bool, device: String? = nil) {
+    public init(name: String, protocolName: String, addresses: [String], up: Bool?, device: String? = nil) {
         self.name = name; self.protocolName = protocolName
         self.addresses = addresses; self.up = up; self.device = device
     }
@@ -88,21 +88,21 @@ public struct DHCPLease: Identifiable, Equatable, Sendable {
 
 public struct WirelessRadio: Identifiable, Equatable, Sendable {
     public let name: String
-    public let up: Bool
+    public let up: Bool?
     public let channel: String
     public let networks: [String]
     public var id: String { name }
-    public init(name: String, up: Bool, channel: String, networks: [String]) {
+    public init(name: String, up: Bool?, channel: String, networks: [String]) {
         self.name = name; self.up = up; self.channel = channel; self.networks = networks
     }
 }
 
 public struct RouterService: Identifiable, Equatable, Sendable {
     public let name: String
-    public let runningInstances: Int
-    public let totalInstances: Int
+    public let runningInstances: Int?
+    public let totalInstances: Int?
     public var id: String { name }
-    public init(name: String, runningInstances: Int, totalInstances: Int) {
+    public init(name: String, runningInstances: Int?, totalInstances: Int?) {
         self.name = name; self.runningInstances = runningInstances; self.totalInstances = totalInstances
     }
 }

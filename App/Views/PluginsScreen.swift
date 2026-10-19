@@ -62,7 +62,7 @@ struct InventoryStatus: View {
             Label(warning, systemImage: "exclamationmark.triangle")
                 .font(AppTypography.secondary).foregroundStyle(AppPalette.orange).padding(.bottom, 8)
         }
-        if !store.inventory.packagesRead && !store.isRefreshing {
+        if (!store.inventory.packagesRead || !store.inventory.warnings.isEmpty) && !store.isRefreshing {
             Button("重新读取功能目录", systemImage: "arrow.clockwise") { Task { await store.refresh() } }
                 .font(AppTypography.row).padding(.bottom, 12)
         }
@@ -110,7 +110,9 @@ struct PluginDetailView: View {
                         NavigationLink { PackageDetailView(package: current.package) } label: { AppRow(title: "依赖与安装文件", symbol: "doc.text.magnifyingglass", chevron: true) }.buttonStyle(.plain)
                     }
                 }
-            } else { ContentUnavailableView("插件已不在当前清单中", systemImage: "puzzlepiece.extension") }
+            } else {
+                ContentUnavailableView(store.inventory.packagesRead ? "插件已不在当前清单中" : "软件包清单读取失败", systemImage: "puzzlepiece.extension")
+            }
         }.appDetailStyle(plugin.title)
     }
 }
