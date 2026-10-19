@@ -8,7 +8,7 @@
 
 - 字体：页面内容标题 title2（默认 22pt），列表 subheadline（15pt），阅读/输入 callout（16pt），说明 footnote（13pt），元信息 caption（12pt）。导航保持原生系统字号。使用语义字体与 Dynamic Type，不以固定数值锁死大字模式。
 - 用户选择紧凑信息密度，五个工具页采用 inline 导航标题；用排版层级与分组组织内容，避免大标题占据扫描空间。设置提供跟随系统/紧凑/标准/加大；系统辅助功能大字优先。
-- 颜色：primary/secondary、systemGroupedBackground、secondarySystemGroupedBackground；交互 tint 为系统 teal，状态使用系统语义色并配文字。
+- 颜色：primary/secondary、systemGroupedBackground、secondarySystemGroupedBackground；交互 tint 使用 AccentColor，浅色 #087278、深色 #62D7D2，增强小字按钮与背景的对比度。状态保留语义图标，文字使用 primary/secondary。
 - 间距：8、12、16、24、32 pt；控件触摸区域至少 44×44 pt。
 - 圆角：内容分组使用系统 insetGrouped，独立内容容器 16 pt；不嵌套装饰卡片。
 - 材质：系统导航、Tab Bar 与 Sheet 自动采用运行系统材质；不自绘玻璃导航。

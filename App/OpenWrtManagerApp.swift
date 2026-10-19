@@ -9,7 +9,7 @@ struct OpenWrtManagerApp: App {
         WindowGroup {
             RootView()
                 .environment(store)
-                .tint(.teal)
+                .tint(.accentColor)
                 .modifier(AppPreferences())
                 .modifier(LaunchAppearance(arguments: launchArguments))
                 .task {

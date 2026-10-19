@@ -49,7 +49,7 @@ private struct RouterTabs: View {
                 .tabItem { Label("系统", systemImage: "info.circle") }
                 .accessibilityIdentifier("systemTab")
         }
-        .tint(.teal)
+        .tint(.accentColor)
     }
 }
 

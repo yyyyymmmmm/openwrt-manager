@@ -67,7 +67,7 @@ struct NetworkScreen: View {
                                     Spacer()
                                     Text(radio.up ? "已启用" : "未启用")
                                         .font(.caption)
-                                        .foregroundStyle(radio.up ? .green : .secondary)
+                                        .foregroundStyle(radio.up ? .primary : .secondary)
                                 }
                                 LabeledContent("信道", value: radio.channel)
                                 if radio.networks.isEmpty {
@@ -115,7 +115,7 @@ struct InterfaceRow: View {
                 Spacer()
                 Text(interface.up ? "在线" : "离线")
                     .font(.caption)
-                    .foregroundStyle(interface.up ? .green : .secondary)
+                    .foregroundStyle(interface.up ? .primary : .secondary)
             }
             LabeledContent("协议", value: interface.protocolName)
             if let device = interface.device {

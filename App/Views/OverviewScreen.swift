@@ -17,7 +17,7 @@ struct OverviewScreen: View {
                                 .font(.title)
                                 .foregroundStyle(.tint)
                                 .frame(width: 42, height: 42)
-                                .background(.teal.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+                                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(store.snapshot?.system.hostname ?? profile.name)
                                     .font(AppTypography.rowTitle)
@@ -38,7 +38,7 @@ struct OverviewScreen: View {
                                 .font(.title)
                                 .foregroundStyle(.tint)
                                 .frame(width: 42, height: 42)
-                                .background(.teal.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+                                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(store.snapshot?.system.hostname ?? "OpenWrt")
                                     .font(AppTypography.rowTitle)
@@ -49,7 +49,7 @@ struct OverviewScreen: View {
                             Spacer()
                             Text("演示")
                                 .font(.caption.weight(.medium))
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(.secondary)
                         }
                         .padding(.vertical, 4)
                     } else {

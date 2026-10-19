@@ -119,7 +119,7 @@ struct SystemScreen: View {
             VStack(alignment: .leading, spacing: 7) {
                 LabeledContent(title, value: "\(Self.bytes(used)) / \(Self.bytes(total))")
                 ProgressView(value: min(1, Double(used) / Double(total)))
-                    .tint(Double(used) / Double(total) > 0.9 ? .orange : .teal)
+                    .tint(Double(used) / Double(total) > 0.9 ? .orange : .accentColor)
                     .accessibilityLabel("\(title)占用率")
             }
         } else {

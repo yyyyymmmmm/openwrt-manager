@@ -78,7 +78,8 @@ final class RouterSmokeTests: XCTestCase {
         app.launch()
         app.buttons["App 设置"].tap()
         XCTAssertTrue(app.buttons["textSizePicker"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["textSizePicker"].label.contains("紧凑"))
+        XCTAssertEqual(app.buttons["textSizePicker"].value as? String, "紧凑")
+        attachScreenshot(named: "16-text-size-restored", from: app)
         app.buttons["textSizePicker"].tap()
         app.buttons["跟随系统"].tap()
     }
@@ -93,7 +94,10 @@ final class RouterSmokeTests: XCTestCase {
         XCTAssertTrue(device.waitForExistence(timeout: 5))
         device.tap()
         XCTAssertTrue(app.staticTexts["DHCP 租约"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["尚未确认"].exists)
+        let onlineStatus = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "尚未确认", "尚未确认")
+        ).firstMatch
+        XCTAssertTrue(onlineStatus.waitForExistence(timeout: 5))
         attachScreenshot(named: "11-device-detail", from: app)
         app.navigationBars.buttons.firstMatch.tap()
         let search = app.searchFields.firstMatch

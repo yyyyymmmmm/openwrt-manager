@@ -168,7 +168,7 @@ struct ConnectFlowView: View {
                 if store.hasConnection && isModal { dismiss() }
             }
         }
-        .tint(.teal)
+        .tint(.accentColor)
     }
 
     private func openLogin() {

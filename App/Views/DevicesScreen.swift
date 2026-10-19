@@ -149,7 +149,7 @@ struct DeviceRow: View {
                     .textSelection(.enabled)
                 Text(lease.mac)
                     .font(.caption.monospaced())
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
                     .textSelection(.enabled)
                 Text("读取时剩余 \(lease.remainingLeaseDescription)")
                     .font(AppTypography.metadata)

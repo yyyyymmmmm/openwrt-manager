@@ -41,7 +41,7 @@ struct ServicesScreen: View {
                                 Spacer()
                                 Text(service.totalInstances == 0 ? "状态未知" : service.runningInstances > 0 ? "有运行实例" : "无运行实例")
                                     .font(.caption.weight(.medium))
-                                    .foregroundStyle(service.runningInstances > 0 ? .green : .secondary)
+                                    .foregroundStyle(service.runningInstances > 0 ? .primary : .secondary)
                             }
                         }
                     }
