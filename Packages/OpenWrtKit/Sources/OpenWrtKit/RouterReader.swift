@@ -304,11 +304,76 @@ public struct RouterReader: Sendable {
             ])
             guard let records = value["log"].arrayValue else { throw OpenWrtKitError.malformedResponse }
             return records
+        case .kernelLogs:
+            let value = try await client.call(session: session, object: "file", method: "exec", parameters: [
+                "command": .string("/bin/dmesg"), "params": .array([.string("-r")])
+            ])
+            let result = try RouterCommandResult(value: value)
+            guard result.exitCode == 0 else {
+                throw OpenWrtKitError.unsupported("内核日志读取失败（\(result.exitCode)）：\(result.stderr)")
+            }
+            return result.stdout.split(separator: "\n").map { .string(String($0)) }
         case .processes, .mounts:
             let method = kind == .processes ? "getProcessList" : "getMountPoints"
             let value = try await client.call(session: session, object: "luci", method: method)
             guard let records = value["result"].arrayValue else { throw OpenWrtKitError.malformedResponse }
             return records
+        }
+    }
+
+    public func processes() async throws -> [RouterProcess] {
+        try RouterProcess.parse(await records(.processes))
+    }
+
+    public func processIdentity(_ observed: RouterProcess) async throws -> RouterProcessIdentity {
+        let before = try await processStartTime(observed.pid)
+        guard let current = try await processes().first(where: { $0.pid == observed.pid }), current.matches(observed),
+              try await processStartTime(observed.pid) == before else {
+            throw OpenWrtKitError.unsupported("进程已变化或退出。请返回列表重新读取。")
+        }
+        return RouterProcessIdentity(process: current, startTime: before)
+    }
+
+    private func processStartTime(_ pid: Int) async throws -> String {
+        guard pid > 0 else { throw OpenWrtKitError.malformedResponse }
+        let value = try await client.call(session: session, object: "file", method: "read", parameters: [
+            "path": .string("/proc/\(pid)/stat")
+        ])
+        guard let text = value["data"].stringValue else { throw OpenWrtKitError.malformedResponse }
+        return try RouterProcessIdentity.startTime(text, pid: pid)
+    }
+
+    public func signalProcess(_ identity: RouterProcessIdentity, signal: RouterProcessSignal) async throws -> String {
+        guard identity.process.pid > 1 else {
+            throw OpenWrtKitError.unsupported("不能向 PID 1 发送进程信号。路由器维护请使用明确的系统重启流程。")
+        }
+        try await pluginAccess("file", "exec")
+        let current = try await processIdentity(identity.process)
+        guard current.startTime == identity.startTime else {
+            throw OpenWrtKitError.unsupported("原进程已退出且 PID 已被重新使用，未发送信号。请重新读取。")
+        }
+        let value = try await client.call(session: session, object: "file", method: "exec", parameters: [
+            "command": .string("/bin/kill"),
+            "params": .array([.string("-\(signal.rawValue)"), .string(String(identity.process.pid))])
+        ])
+        let result = try RouterCommandResult(value: value)
+        guard result.exitCode == 0 else {
+            throw OpenWrtKitError.unsupported("信号程序失败（\(result.exitCode)）：\(result.stderr)\n\(result.stdout)")
+        }
+        // Sending a signal does not prove application-level completion. A process
+        // may ignore TERM, reload after HUP, or be immediately restarted by procd.
+        do {
+            let refreshed = try await processes()
+            guard let remaining = refreshed.first(where: { $0.pid == identity.process.pid }) else {
+                return "信号程序返回 0；重新读取进程列表时已无此 PID。服务仍可能重新启动，请返回列表刷新。"
+            }
+            let start = try await processStartTime(remaining.pid)
+            if start == identity.startTime {
+                return "信号程序返回 0；原进程仍存在。不能据此确认配置重新加载或进程退出。"
+            }
+            return "信号程序返回 0；同一 PID 已对应另一进程。请返回列表重新读取。"
+        } catch {
+            return "信号程序返回 0，但操作后读取失败：\(error.localizedDescription)。业务结果尚未确认，请重新读取。"
         }
     }
 
@@ -345,11 +410,12 @@ public struct RouterReader: Sendable {
 }
 
 public enum RouterRecordKind: String, CaseIterable, Identifiable, Sendable {
-    case logs, processes, mounts
+    case logs, kernelLogs, processes, mounts
     public var id: String { rawValue }
     public var title: String {
         switch self {
         case .logs: return "系统日志"
+        case .kernelLogs: return "内核日志"
         case .processes: return "运行进程"
         case .mounts: return "存储挂载"
         }

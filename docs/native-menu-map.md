@@ -10,7 +10,7 @@
 ├─ 路由：IPv4 / IPv6 → 邻居、活动路由、活动规则
 ├─ 防火墙：nftables 表 → 链 → 规则、计数器
 ├─ 系统日志：系统日志 / 内核日志
-├─ 进程：进程 → 暂停 / 终止 / 强制结束
+├─ 进程：进程 → 挂断 HUP / 终止 TERM / 强制结束 KILL〔HUP不是暂停〕
 ├─ 实时信息：负载 / 带宽 / 连接
 ├─ WireGuard：接口 → 对端与握手状态
 └─ 释放内存
@@ -88,7 +88,10 @@
 ├─ DHCP租约 → 搜索 → 租约详情
 ├─ 常用管理：接口 / 防火墙 / 扩展包信息 / 高级配置
 ├─ 负载 / 内存 / 根文件系统
-├─ 状态：内核路由与邻居 → IPv4/IPv6 → 记录详情；日志；进程〔只读〕
+├─ 状态
+│  ├─ 内核路由与邻居 → IPv4/IPv6 → 记录详情
+│  ├─ 系统日志 → 系统 / 内核 → 严重程度、类别〔系统〕、文字反选、倒序 → 记录
+│  └─ 进程 → PID/用户/命令筛选 → 详情 → HUP/TERM/KILL确认 → 权限/身份复核 → 退出码与重读
 ├─ 固件扩展〔尚未适配项保留名称与子菜单〕
 └─ 本次会话活动
 系统〔对应系统〕
@@ -160,4 +163,6 @@
 
 仍待完成且不能勾选：所有核心模块的完整字段与条件依赖校验、交换机与不同无线驱动能力、无线关联站/访客跨配置事务、密码/公钥、时区联动、ZRam、NTP服务生命周期、进程信号、内核日志、nftables与策略规则状态、实时图表、计划任务/挂载/磁盘/文件、软件包写操作、备份/恢复/重置/固件升级；全部插件业务状态和专有任务的完整覆盖。DDNS缺注册IP/服务定义/单实例任务/日志；SQM缺运行队列核对/脚本与规则能力/危险参数；UPnP缺更多后端/IPv6-PCP能力核对及实际删除验收。HomeProxy服务端/证书/导入/高级协议、MosDNS规则文件/统计与查询记录、ZeroTier服务生命周期与实际加入退出仍待完成。本轮插件协议与具体限制见 [native-plugin-protocols.md](native-plugin-protocols.md)，专用字段实现仍不能视为完整插件验收。
 
-本轮未在用户路由器执行诊断、配置写入、服务控制或重启。遵照用户要求未运行本轮测试；Release 编译和包审计记录在 TASKS.md，不能替代逐层交互或真实写入验收。
+状态增量协议依据：[LuCI 进程](https://github.com/openwrt/luci/blob/master/modules/luci-mod-status/htdocs/luci-static/resources/view/status/processes.js)、[内核日志](https://github.com/openwrt/luci/blob/master/modules/luci-mod-status/htdocs/luci-static/resources/view/status/dmesg.js)、[系统日志](https://github.com/openwrt/luci/blob/master/modules/luci-base/htdocs/luci-static/resources/tools/views.js)。进程调用固定 `/bin/kill -1|-15|-9 PID`；身份核对额外读取 `/proc/PID/stat`，无权限时禁用信号。固件没有原子身份检查/发信号接口，检查与执行之间仍有进程变化风险。发信号后立即重读不等于持续健康检查；服务可能重新生成不同 PID。
+
+本轮未在用户路由器执行诊断、配置写入、进程信号、服务控制或重启。遵照用户要求未运行本轮测试；Release 编译和包审计记录在 TASKS.md，不能替代逐层交互或真实写入验收。

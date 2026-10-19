@@ -259,6 +259,25 @@ final class RouterStore {
         return try await reader.records(kind)
     }
 
+    func processes() async throws -> [RouterProcess] {
+        guard let reader else { throw OpenWrtKitError.authenticationFailed }
+        return try await reader.processes()
+    }
+
+    func processIdentity(_ process: RouterProcess) async throws -> RouterProcessIdentity {
+        guard let reader else { throw OpenWrtKitError.authenticationFailed }
+        return try await reader.processIdentity(process)
+    }
+
+    func signalProcess(_ identity: RouterProcessIdentity, signal: RouterProcessSignal) async throws -> String {
+        guard !isMutating, pendingConfiguration == nil, let reader else { throw ConfigurationError.busy }
+        isMutating = true
+        defer { isMutating = false }
+        let result = try await reader.signalProcess(identity, signal: signal)
+        recordActivity("进程信号请求已返回", detail: "PID \(identity.process.pid)：\(signal.title)。实际结果见进程详情。", isWarning: true)
+        return result
+    }
+
     func networkProtocols() async throws -> [String] {
         guard let reader else { throw OpenWrtKitError.authenticationFailed }
         return try await reader.networkProtocols()

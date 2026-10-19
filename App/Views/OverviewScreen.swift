@@ -52,9 +52,9 @@ struct OverviewScreen: View {
                     AppGroup {
                         NavigationLink { RoutingTablesView() } label: { AppRow(title: "路由与邻居", detail: "IPv4 / IPv6 生效路由与 ARP/NDP", symbol: "arrow.triangle.branch", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("network-routing")
                         AppDivider()
-                        NavigationLink { RouterRecordsView(kind: .logs) } label: { AppRow(title: "系统日志", symbol: "doc.text", chevron: true) }.buttonStyle(.plain)
+                        NavigationLink { RouterLogDirectoryView() } label: { AppRow(title: "系统日志", detail: "系统 / 内核日志与筛选", symbol: "doc.text", chevron: true) }.buttonStyle(.plain)
                         AppDivider()
-                        NavigationLink { RouterRecordsView(kind: .processes) } label: { AppRow(title: "进程", detail: "当前仅提供读取", symbol: "cpu", chevron: true) }.buttonStyle(.plain)
+                        NavigationLink { RouterProcessesView() } label: { AppRow(title: "进程", detail: "详情与进程信号", symbol: "cpu", chevron: true) }.buttonStyle(.plain)
                     }
                 }
                 FirmwareMenuSection(group: "status", excluding: ["overview", "routesj", "routes", "logs", "processes"])
