@@ -59,7 +59,7 @@ struct NetworkTaskGroups: View {
         }
         AppSection(title: "扩展配置") {
             AppGroup {
-                NavigationLink { PluginDirectoryView() } label: { AppRow(title: "已安装网络插件", symbol: "puzzlepiece.extension", chevron: true) }.buttonStyle(.plain)
+                NavigationLink { PluginDirectoryView() } label: { AppRow(title: "已安装插件", symbol: "puzzlepiece.extension", chevron: true) }.buttonStyle(.plain)
                 AppDivider()
                 NavigationLink { ConfigurationDirectoryView() } label: { AppRow(title: "全部路由器配置", symbol: "slider.horizontal.3", chevron: true) }.buttonStyle(.plain)
             }

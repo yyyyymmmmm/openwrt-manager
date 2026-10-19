@@ -13,7 +13,7 @@ struct ConfigurationDirectoryView: View {
         AppPage(title: "", subtitle: nil) {
             InventoryStatus()
             AppSearchField(prompt: "搜索配置名称", text: $query)
-            AppSection(title: "配置 · \(filtered.count)") {
+            AppSection(title: store.inventory.configsRead || names != nil ? "配置 · \(filtered.count)" : "配置目录") {
                 AppGroup {
                     ForEach(filtered, id: \.self) { name in
                         NavigationLink { ConfigurationEditorView(name: name) } label: {
@@ -23,7 +23,7 @@ struct ConfigurationDirectoryView: View {
                     }
                 }
             }
-            if filtered.isEmpty { ContentUnavailableView.search(text: query) }
+            if filtered.isEmpty && (store.inventory.configsRead || names != nil) { ContentUnavailableView.search(text: query) }
         }.appDetailStyle(title)
     }
 }

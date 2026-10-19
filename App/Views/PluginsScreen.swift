@@ -23,7 +23,7 @@ private struct PluginCollection: View {
     var body: some View {
         InventoryStatus()
         AppSearchField(prompt: "搜索已安装插件", text: $query, identifier: "pluginSearchField")
-        AppSection(title: "已安装 · \(store.inventory.plugins.count)", note: "版本、配置与服务关联来自已安装软件包。运行实例仅反映进程状态。") {
+        AppSection(title: store.inventory.packagesRead ? "已安装 · \(store.inventory.plugins.count)" : "已安装插件", note: "版本、配置与服务关联来自已安装软件包。运行实例仅反映进程状态。") {
             AppGroup {
                 ForEach(plugins) { plugin in
                     NavigationLink { PluginDetailView(plugin: plugin) } label: {
@@ -39,7 +39,7 @@ private struct PluginCollection: View {
         AppSection(title: "路由器软件") {
             AppGroup {
                 NavigationLink { PackagesView() } label: {
-                    AppRow(title: "全部已安装软件包", symbol: "shippingbox", value: "\(store.inventory.packages.count)", chevron: true)
+                    AppRow(title: "全部已安装软件包", symbol: "shippingbox", value: store.inventory.packagesRead ? "\(store.inventory.packages.count)" : "尚未读取", chevron: true)
                 }.buttonStyle(.plain)
                 AppDivider()
                 NavigationLink { ServicesScreen(showingRouterPicker: .constant(false)) } label: {
@@ -80,7 +80,7 @@ struct PluginDetailView: View {
                 AppSection(title: "软件包") {
                     AppGroup { AppRow(title: current.package.name, detail: current.package.description, symbol: "shippingbox", value: current.package.version) }
                 }
-                AppSection(title: "配置 · \(current.configs.count)") {
+                AppSection(title: store.inventory.configsRead ? "配置 · \(current.configs.count)" : "关联配置") {
                     AppGroup {
                         ForEach(current.configs, id: \.self) { name in
                             NavigationLink { ConfigurationEditorView(name: name) } label: {
@@ -88,7 +88,10 @@ struct PluginDetailView: View {
                             }.buttonStyle(.plain).accessibilityIdentifier("plugin-config-\(name)")
                             if name != current.configs.last { AppDivider() }
                         }
-                        if current.configs.isEmpty { AppRow(title: "未发现关联的 UCI 配置", detail: "该扩展可能使用文件或专有接口。") }
+                        if current.configs.isEmpty {
+                            AppRow(title: store.inventory.configsRead ? "未发现关联的 UCI 配置" : "配置目录尚未读取",
+                                   detail: store.inventory.configsRead ? "该扩展可能使用文件或专有接口。" : "请查看读取错误并重新读取。")
+                        }
                     }
                 }
                 if !current.serviceNames.isEmpty {
@@ -121,7 +124,7 @@ struct PackagesView: View {
     var body: some View {
         List {
             Section { InventoryStatus() }
-            Section("已安装 · \(packages.count)") {
+            Section(store.inventory.packagesRead ? "已安装 · \(packages.count)" : "已安装软件包") {
                 ForEach(packages) { package in
                     NavigationLink { PackageDetailView(package: package) } label: {
                         VStack(alignment: .leading, spacing: 5) {
@@ -145,8 +148,15 @@ private struct PackageDetailView: View {
                 LabeledContent("版本", value: package.version)
                 if !package.description.isEmpty { Text(package.description) }
             }
-            Section("依赖 · \(package.dependencies.count)") { ForEach(package.dependencies, id: \.self) { Text($0) } }
-            Section("安装文件 · \(package.files.count)") { ForEach(package.files, id: \.self) { Text($0).font(AppTypography.secondary) } }
+            if !package.dependencies.isEmpty {
+                Section("返回的依赖 · \(package.dependencies.count)") { ForEach(package.dependencies, id: \.self) { Text($0) } }
+            }
+            if !package.files.isEmpty {
+                Section("返回的安装文件 · \(package.files.count)") { ForEach(package.files, id: \.self) { Text($0).font(AppTypography.secondary) } }
+            }
+            if package.dependencies.isEmpty && package.files.isEmpty {
+                Section { Text("当前软件包清单没有提供依赖与安装文件条目。").foregroundStyle(.secondary) }
+            }
         }.font(AppTypography.row).textSelection(.enabled).appDetailStyle(package.name)
     }
 }
