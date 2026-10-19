@@ -33,7 +33,7 @@ struct RouterRecordsView: View {
             records = value; error = nil; updatedAt = Date()
         } catch {
             guard generation == store.connectionID, !Task.isCancelled else { return }
-            error = FriendlyError.message(error)
+            self.error = FriendlyError.message(error)
         }
     }
     private static func formatted(_ record: JSONValue) -> String {

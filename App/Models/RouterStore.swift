@@ -198,8 +198,13 @@ final class RouterStore {
         guard !isMutating, pendingConfiguration == nil, let configurationClient else { throw ConfigurationError.busy }
         isMutating = true
         defer { isMutating = false }
-        pendingConfiguration = try await configurationClient.apply(plan)
-        recordActivity("配置等待确认", detail: "\(plan.original.name) 已提交应用，等待连接验证。")
+        let pending = try await configurationClient.apply(plan)
+        pendingConfiguration = pending
+        if pending.acknowledged {
+            recordActivity("配置等待确认", detail: "\(plan.original.name) 的应用请求已获路由器确认，等待连接验证。")
+        } else {
+            recordActivity("配置应用结果待确认", detail: "\(plan.original.name) 的应用请求未收到响应，请验证连接并核对配置。", isWarning: true)
+        }
     }
 
     func confirmConfiguration() async throws {
