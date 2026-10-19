@@ -57,7 +57,7 @@ struct RouterLoginView: View {
                     .focused($focusedField, equals: .name)
             }
 
-            Section("登录信息") {
+            Section {
                 TextField("用户名", text: $username)
                     .textContentType(.username)
                     .textInputAutocapitalization(.never)
@@ -71,6 +71,8 @@ struct RouterLoginView: View {
                     .accessibilityIdentifier("routerPasswordField")
 
                 Toggle("在此设备记住密码", isOn: $rememberPassword)
+            } header: {
+                Text("登录信息")
             } footer: {
                 Text("密码仅在你选择记住时保存到 iOS 钥匙串。登录直接连接路由器，不使用云端账户。")
             }

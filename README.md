@@ -16,8 +16,8 @@
 需要安装 Xcode 26 或更新版本，以及 XcodeGen：
 
     brew install xcodegen
-    git clone <你的 GitHub 仓库地址>
-    cd openwrt
+    git clone https://github.com/yyyyymmmmm/openwrt-manager.git
+    cd openwrt-manager
     xcodegen generate
     open OpenWrtManager.xcodeproj
 
@@ -29,12 +29,13 @@
 
 1. 运行 OpenWrtKit Swift Package 测试。
 2. 使用 XcodeGen 生成 Xcode 工程。
-3. 在 macOS iPhone Simulator 上编译并运行 UI 冒烟测试。
-4. 上传 .xcresult、测试截图和未签名的 iOS app 包。
+3. 构建 Release 真机版本，打包并上传未签名 IPA（附件保留 30 天）。
+4. 在 macOS iPhone Simulator 上编译并运行 UI 冒烟测试。
+5. 上传 .xcresult 和测试截图。
 
 这个工作流用于在 GitHub 上编译和运行模拟器测试，并上传未签名的 iOS IPA。未签名 IPA 不能直接安装到实体 iPhone，需先自行签名；TestFlight/App Store 分发还需要 Apple Developer Program。工作流不收集、存储或导出 Apple 私钥。
 
-当前交付尚未关联 GitHub 远端，因此没有 Actions 成功记录或可安装成品。Windows 上已完成 Swift 语法解析、plist/YAML 解析检查；这些检查不能替代 Xcode 类型检查、模拟器运行和真实路由器联调。
+源码仓库为 https://github.com/yyyyymmmmm/openwrt-manager 。每次构建的状态和下载附件见仓库 Actions 页面；请以具体运行结果为准。尚未完成真实路由器联调。
 
 ## OpenWrt 兼容性
 
