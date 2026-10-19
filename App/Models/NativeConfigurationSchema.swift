@@ -7,14 +7,16 @@ struct NativeField: Identifiable {
         case text, secret, list, flag
         case integer(Int, Int)
         case choice([String])
-        case address, prefix, mac
+        case address, prefix, mac, netmask4
     }
+    enum ListItem { case address, prefix, mac }
     let id: String
     let title: String
     var kind: Kind = .text
     var help = ""
     var required = false
     var when: (String, [String])? = nil
+    var items: ListItem? = nil
     func visible(in section: ConfigurationSection) -> Bool {
         guard let (key, values) = when else { return true }
         return values.contains(section.values[key]?.stringValue ?? "")
@@ -52,8 +54,8 @@ struct NativeConfigurationSchema: Identifiable {
 
     private static func f(_ key: String, _ title: String, _ kind: NativeField.Kind = .text,
                           _ help: String = "", required: Bool = false,
-                          when: (String, [String])? = nil) -> NativeField {
-        NativeField(id: key, title: title, kind: kind, help: help, required: required, when: when)
+                          when: (String, [String])? = nil, items: NativeField.ListItem? = nil) -> NativeField {
+        NativeField(id: key, title: title, kind: kind, help: help, required: required, when: when, items: items)
     }
     private static func g(_ title: String, _ fields: [NativeField]) -> NativeFieldGroup {
         NativeFieldGroup(title: title, fields: fields)
@@ -91,22 +93,22 @@ struct NativeConfigurationSchema: Identifiable {
         s("interface", "逻辑接口", [
             g("常规设置", [f("proto", "协议", .text, "协议处理程序必须由固件提供；保留当前协议，不推定其他协议已经安装。", required: true),
                 f("device", "网络设备"), f("auto", "开机自动连接", .flag),
-                f("ipaddr", "IPv4 地址", .list, "每行一个地址，可带 CIDR 前缀。", when: ("proto", ["static"])),
-                f("netmask", "IPv4 子网掩码", .address, when: ("proto", ["static"])),
+                f("ipaddr", "IPv4 地址", .list, "每行一个地址，可带 CIDR 前缀。", when: ("proto", ["static"]), items: .prefix),
+                f("netmask", "IPv4 子网掩码", .netmask4, when: ("proto", ["static"])),
                 f("gateway", "IPv4 网关", .address, when: ("proto", ["static"])),
                 f("username", "拨号用户名", when: ("proto", ["ppp", "pppoe", "pptp", "l2tp"])),
                 f("password", "拨号密码", .secret, when: ("proto", ["ppp", "pppoe", "pptp", "l2tp"])),
                 f("ac", "PPPoE 接入集中器", when: ("proto", ["pppoe"])),
                 f("service", "PPPoE 服务名称", when: ("proto", ["pppoe"]))]),
             g("高级设置", [f("defaultroute", "使用默认网关", .flag), f("metric", "路由跃点", .integer(0, 2_147_483_647)),
-                f("peerdns", "使用对端 DNS", .flag), f("dns", "DNS 服务器", .list),
+                f("peerdns", "使用对端 DNS", .flag), f("dns", "DNS 服务器", .list, items: .address),
                 f("dns_search", "DNS 搜索域", .list), f("mtu", "MTU", .integer(68, 65535)),
                 f("delegate", "委派 IPv6 前缀", .flag), f("ip4table", "IPv4 路由表"), f("ip6table", "IPv6 路由表")]),
-            g("WireGuard", [f("private_key", "私钥", .secret, when: ("proto", ["wireguard"])),
+            g("WireGuard", [f("private_key", "私钥", .secret, required: true, when: ("proto", ["wireguard"])),
                 f("listen_port", "监听端口", .integer(1, 65535), when: ("proto", ["wireguard"])),
-                f("addresses", "隧道地址", .list, when: ("proto", ["wireguard"])),
+                f("addresses", "隧道地址", .list, when: ("proto", ["wireguard"]), items: .prefix),
                 f("nohostroute", "不创建端点主机路由", .flag, when: ("proto", ["wireguard"]))]),
-            g("IPv6", [f("ip6addr", "IPv6 地址", .list, when: ("proto", ["static"])),
+            g("IPv6", [f("ip6addr", "IPv6 地址", .list, when: ("proto", ["static"]), items: .prefix),
                 f("ip6gw", "IPv6 网关", .address, when: ("proto", ["static"])),
                 f("ip6assign", "IPv6 分配长度", .integer(0, 128)), f("ip6hint", "IPv6 子网提示"),
                 f("ip6class", "IPv6 前缀类", .list), f("reqaddress", "请求 IPv6 地址", .choice(["try", "force", "none"]), when: ("proto", ["dhcpv6"])),
@@ -116,7 +118,7 @@ struct NativeConfigurationSchema: Identifiable {
 
     static let devices = Self(id: "devices", title: "设备与网桥 VLAN", config: "network", sections: [
         s("device", "网络设备", [
-            g("常规设置", [f("name", "设备名称", required: true), f("type", "设备类型", .choice(["bridge", "8021q", "8021ad", "macvlan", "veth"])),
+            g("常规设置", [f("name", "设备名称", required: true), f("type", "设备类型", .choice(["bridge", "8021q", "8021ad"])),
                 f("macaddr", "MAC 地址", .mac), f("mtu", "MTU", .integer(68, 65535)), f("ipv6", "启用 IPv6", .flag)]),
             g("网桥", [f("ports", "网桥端口", .list, when: ("type", ["bridge"])),
                 f("stp", "生成树协议", .flag, when: ("type", ["bridge"])),
@@ -134,7 +136,7 @@ struct NativeConfigurationSchema: Identifiable {
 
     private static let routeGroups = [g("常规设置", [f("interface", "逻辑接口"),
         f("type", "路由类型", .choice(["unicast", "local", "broadcast", "multicast", "unreachable", "prohibit", "blackhole", "throw"])),
-        f("target", "目标地址/网段", .prefix, required: true), f("gateway", "网关", .address), f("netmask", "IPv4 子网掩码", .address)]),
+        f("target", "目标地址/网段", .prefix, required: true), f("gateway", "网关", .address), f("netmask", "IPv4 子网掩码", .netmask4)]),
         g("高级设置", [f("metric", "跃点", .integer(0, 2_147_483_647)), f("mtu", "MTU", .integer(68, 65535)),
         f("table", "路由表"), f("source", "首选源地址", .prefix), f("onlink", "强制网关在链路上", .flag), f("disabled", "禁用此路由", .flag)])]
     private static let ruleGroups = [g("匹配条件", [f("priority", "优先级", .integer(0, 2_147_483_647)),
@@ -162,10 +164,20 @@ struct NativeConfigurationSchema: Identifiable {
             g("无线安全", [f("encryption", "加密方式", .text, "沿用驱动/wpad 支持的名称，例如 psk2、sae 或 sae-mixed。"),
             f("key", "无线密码/密钥", .secret), f("ieee80211w", "管理帧保护", .choice(["0", "1", "2"])),
             f("isolate", "隔离客户端", .flag), f("macfilter", "MAC 过滤策略", .choice(["disable", "allow", "deny"])),
-            f("maclist", "MAC 地址列表", .list)]),
+            f("maclist", "MAC 地址列表", .list, items: .mac)]),
             g("高级设置", [f("wds", "WDS", .flag), f("wmm", "WMM", .flag), f("maxassoc", "最大关联数", .integer(1, 2007)),
             f("dtim_period", "DTIM 周期", .integer(1, 255)), f("ieee80211r", "快速漫游 802.11r", .flag), f("mobility_domain", "移动域")])])
     ], note: "无线配置始终保留在客户端中。读取失败会显示真实错误；本机没有返回无线电不能推定其他路由器不支持。硬件、驱动和 wpad 能力仍需分别核对。")
+
+    static func wireguardPeers(interface: String) -> NativeSectionSchema {
+        s("wireguard_" + interface, "WireGuard 对端 · " + interface, [
+            g("密钥与地址", [f("description", "说明"), f("public_key", "对端公钥", required: true),
+                f("preshared_key", "预共享密钥", .secret), f("allowed_ips", "允许的 IP/网段", .list, items: .prefix),
+                f("route_allowed_ips", "为允许网段创建路由", .flag)]),
+            g("端点", [f("endpoint_host", "端点 IP/域名"), f("endpoint_port", "端点端口", .integer(1, 65535)),
+                f("persistent_keepalive", "持久保活（秒）", .integer(0, 65535)), f("disabled", "禁用此对端", .flag)])
+        ])
+    }
 
     private static let dnsmasqDHCP = [g("常规设置", [f("authoritative", "权威 DHCP", .flag), f("domain", "本地域名"),
         f("sequential_ip", "顺序分配 IP", .flag), f("dhcpleasemax", "最大租约数", .integer(1, 2_147_483_647))]),
@@ -179,14 +191,14 @@ struct NativeConfigurationSchema: Identifiable {
             f("ignore", "忽略此接口", .flag), f("start", "地址池起始偏移", .integer(0, 2_147_483_647)),
             f("limit", "地址池大小", .integer(1, 2_147_483_647)), f("leasetime", "租期", .text, "使用固件支持的时间，如 12h、30m 或 infinite。")]),
             g("IPv4 设置", [f("force", "强制提供 DHCP", .flag), f("dynamicdhcp", "动态地址分配", .flag),
-            f("dhcp_option", "DHCP 选项", .list), f("dhcp_option_force", "强制发送选项", .list), f("netmask", "子网掩码", .address)]),
+            f("dhcp_option", "DHCP 选项", .list), f("dhcp_option_force", "强制发送选项", .list), f("netmask", "子网掩码", .netmask4)]),
             g("IPv6 DHCPv6", [f("dhcpv6", "DHCPv6 模式", .choice(["disabled", "server", "relay", "hybrid"])),
             f("ndp", "NDP 模式", .choice(["disabled", "relay", "hybrid"])), f("master", "主接口", .flag),
-            f("dns", "IPv6 DNS 服务器", .list), f("domain", "IPv6 搜索域", .list)]),
+            f("dns", "IPv6 DNS 服务器", .list, items: .address), f("domain", "IPv6 搜索域", .list)]),
             g("IPv6 RA", [f("ra", "路由通告模式", .choice(["disabled", "server", "relay", "hybrid"])),
             f("ra_slaac", "启用 SLAAC", .flag), f("ra_flags", "RA 标志", .list),
             f("ra_default", "默认路由通告", .choice(["0", "1", "2"])), f("ra_lifetime", "RA 有效期（秒）", .integer(0, 65535))])], named: true),
-        s("host", "静态租约", [g("绑定", [f("name", "主机名"), f("mac", "MAC 地址", .list),
+        s("host", "静态租约", [g("绑定", [f("name", "主机名"), f("mac", "MAC 地址", .list, items: .mac),
             f("ip", "IPv4 地址", .text, "使用有效 IPv4 地址；ignore 表示不分配 IPv4。"), f("leasetime", "租期"),
             f("dns", "创建 DNS 记录", .flag), f("duid", "IPv6 DUID"), f("hostid", "IPv6 主机标识"), f("tag", "DHCP 标签")])]),
         s("odhcpd", "odhcpd", [g("服务设置", [f("maindhcp", "作为主要 DHCP 服务", .flag),

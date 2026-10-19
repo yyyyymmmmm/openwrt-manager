@@ -94,6 +94,7 @@ struct ServiceDetailView: View {
         case .start: return "play"
         case .stop: return "stop"
         case .restart: return "arrow.clockwise"
+        case .reload: return "arrow.triangle.2.circlepath"
         case .enable: return "power"
         case .disable: return "poweroff"
         }

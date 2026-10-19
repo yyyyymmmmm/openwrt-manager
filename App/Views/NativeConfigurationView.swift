@@ -19,8 +19,15 @@ struct NativeConfigurationView: View {
     @State private var discard = false
     @State private var preview: ConfigurationPlan?
     @State private var showPreview = false
+    @State private var submitted = false
     private var changed: Bool { draft != nil && draft != original }
     private var editable: Bool { writable && !store.isMutating && store.pendingConfiguration == nil }
+    private var sectionSchemas: [NativeSectionSchema] {
+        guard schema.id == "interfaces", let draft else { return schema.sections }
+        let interfaces = draft.sections.filter { $0.type == "interface" && $0.values["proto"]?.stringValue == "wireguard" }.map(\.id)
+        let peers = draft.sections.filter { $0.type.hasPrefix("wireguard_") }.map { String($0.type.dropFirst(10)) }
+        return schema.sections + Set(interfaces + peers).sorted().map { NativeConfigurationSchema.wireguardPeers(interface: $0) }
+    }
 
     var body: some View {
         Form {
@@ -34,7 +41,7 @@ struct NativeConfigurationView: View {
                     if let permissionError { Text(permissionError).foregroundStyle(AppPalette.orange) }
                     if let protocolError { Text(protocolError).foregroundStyle(AppPalette.orange) }
                 } footer: { Text(schema.note) }
-                ForEach(schema.sections) { sectionSchema in
+                ForEach(sectionSchemas) { sectionSchema in
                     let sections = draft.sections.filter { $0.type == sectionSchema.type }
                     Section(sectionSchema.title) {
                         ForEach(sections) { section in
@@ -67,6 +74,10 @@ struct NativeConfigurationView: View {
         .navigationBarBackButtonHidden(changed)
         .toolbar {
             if changed { ToolbarItem(placement: .topBarLeading) { Button("返回", systemImage: "chevron.left") { discard = true } } }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("重新读取", systemImage: "arrow.clockwise") { Task { await load() } }
+                    .disabled(changed || loading || store.pendingConfiguration != nil)
+            }
         }
         .confirmationDialog("放弃未应用的修改？", isPresented: $discard, titleVisibility: .visible) {
             Button("放弃修改", role: .destructive) { dismiss() }
@@ -78,11 +89,13 @@ struct NativeConfigurationView: View {
             }
         }
         .navigationDestination(isPresented: $showPreview) {
-            if let preview { ConfigurationPreviewView(plan: preview, allowed: writable) }
+            if let preview { ConfigurationPreviewView(plan: preview, allowed: writable, onApplied: { submitted = true }) }
         }
         .task(id: store.connectionID) { await load() }
         .onChange(of: store.pendingConfiguration) { previous, current in
-            if previous != nil && current == nil { Task { await load() } }
+            if previous != nil && current == nil && (submitted || !changed) {
+                submitted = false; Task { await load() }
+            }
         }
     }
 
@@ -95,7 +108,8 @@ struct NativeConfigurationView: View {
     private func makePreview() {
         do {
             guard let original, let draft else { return }
-            try NativeValidation.validate(original: original, draft: draft, schema: schema)
+            let effectiveSchema = NativeConfigurationSchema(id: schema.id, title: schema.title, config: schema.config, sections: sectionSchemas, note: schema.note)
+            try NativeValidation.validate(original: original, draft: draft, schema: effectiveSchema)
             preview = try ConfigurationPlan(original: original, edited: draft)
             error = nil; showPreview = true
         } catch { self.error = error.localizedDescription }
@@ -145,7 +159,7 @@ private struct NativeSectionView: View {
         Form {
             if let section {
                 Section {
-                    ForEach(schema.groups) { group in
+                    ForEach(schema.groups.filter { $0.fields.contains { $0.visible(in: section) } }) { group in
                         NavigationLink(group.title) {
                             NativeFieldGroupView(group: group, section: $section, editable: editable, protocols: protocols)
                         }.accessibilityIdentifier("native-group-\(schema.type)-\(group.id)")
@@ -187,7 +201,7 @@ private struct NativeFieldGroupView: View {
                                 Text(summary(field, value: section.values[field.id]))
                                     .font(AppTypography.secondary).foregroundStyle(AppPalette.muted).lineLimit(3)
                             }.frame(maxWidth: .infinity, alignment: .leading)
-                        }.disabled(!editable || (field.id == "proto" && protocols.isEmpty))
+                        }.disabled(!editable || (section.type == "interface" && field.id == "proto" && protocols.isEmpty))
                             .accessibilityIdentifier("native-field-\(field.id)")
                     }
                 } footer: { Text(editable ? "选择一项修改。未设置表示交由路由器固件处理。" : "当前账户没有已确认的写权限。") }
@@ -229,6 +243,8 @@ private struct NativeFieldEditor: View {
     }
     private var edited: JSONValue? {
         guard isSet else { return nil }
+        let originalText = value?.arrayValue?.compactMap(\.stringValue).joined(separator: "\n") ?? value?.stringValue ?? ""
+        if let value, text == originalText { return value }
         if case .list = field.kind { return .array(text.split(separator: "\n", omittingEmptySubsequences: true).map { .string(String($0).trimmingCharacters(in: .whitespaces)) }) }
         return .string(text)
     }
@@ -305,7 +321,7 @@ private struct NativeAddSectionView: View {
                 if schema.named {
                     Section("配置标识") { TextField("唯一名称", text: $name).textInputAutocapitalization(.never).autocorrectionDisabled() }
                 }
-                ForEach(schema.groups) { group in
+                ForEach(schema.groups.filter { group in section.map { current in group.fields.contains { $0.visible(in: current) } } ?? false }) { group in
                     NavigationLink(group.title) { NativeFieldGroupView(group: group, section: $section, editable: true, protocols: protocols) }
                 }
                 if let error { Section { Text(error).foregroundStyle(AppPalette.red) } }
@@ -364,22 +380,53 @@ private enum NativeValidation {
         guard texts.allSatisfy({ !$0.contains("\0") && $0.utf8.count <= 65536 }) else { throw ConfigurationError.invalidValue }
         if field.required && (texts.isEmpty || texts.allSatisfy(\.isEmpty)) { throw Invalid(message: "请填写\(field.title)。") }
         for text in texts {
+            if ["private_key", "public_key", "preshared_key"].contains(field.id), !text.isEmpty,
+               Data(base64Encoded: text)?.count != 32 {
+                throw Invalid(message: "\(field.title)必须是 Base64 编码的 32 字节 WireGuard 密钥。")
+            }
             let valid: Bool
             switch field.kind {
             case .integer(let low, let high): valid = Int(text).map { (low...high).contains($0) } ?? false
             case .address: valid = address(text)
             case .prefix:
-                let parts = text.split(separator: "/", omittingEmptySubsequences: false)
-                valid = (1...2).contains(parts.count) && address(String(parts[0])) && (parts.count == 1 || Int(parts[1]).map { (0...(parts[0].contains(":") ? 128 : 32)).contains($0) } == true)
+                valid = prefix(text)
             case .mac:
-                let parts = text.split(separator: ":", omittingEmptySubsequences: false)
-                valid = parts.count == 6 && parts.allSatisfy { $0.count == 2 && UInt8($0, radix: 16) != nil }
+                valid = mac(text)
+            case .netmask4:
+                var v4 = in_addr()
+                let parsed = text.withCString { inet_pton(AF_INET, $0, &v4) == 1 }
+                let inverse = ~UInt32(bigEndian: v4.s_addr)
+                valid = parsed && inverse & (inverse &+ 1) == 0
             case .flag: valid = ["1", "0", "true", "false", "on", "off", "yes", "no"].contains(text)
             case .choice: valid = !text.isEmpty
             default: valid = true
             }
             if !valid { throw Invalid(message: "\(field.title)的格式或范围不正确。") }
+            if let rule = field.items {
+                let validItem: Bool
+                switch rule {
+                case .address: validItem = address(text)
+                case .prefix: validItem = prefix(text)
+                case .mac: validItem = mac(text)
+                }
+                if !validItem { throw Invalid(message: "\(field.title)包含无效条目。请每行填写一项。") }
+            }
+            if field.id == "ipaddr", text.contains(":") {
+                throw Invalid(message: "IPv4 地址中不能填写 IPv6。请使用 IPv6 地址字段。")
+            }
+            if ["ip6addr", "ip6gw"].contains(field.id), !text.contains(":") {
+                throw Invalid(message: "请在\(field.title)中填写 IPv6 地址。")
+            }
         }
+    }
+    private static func prefix(_ text: String) -> Bool {
+        let parts = text.split(separator: "/", omittingEmptySubsequences: false)
+        guard (1...2).contains(parts.count), address(String(parts[0])) else { return false }
+        return parts.count == 1 || Int(parts[1]).map { (0...(parts[0].contains(":") ? 128 : 32)).contains($0) } == true
+    }
+    private static func mac(_ text: String) -> Bool {
+        let parts = text.split(separator: ":", omittingEmptySubsequences: false)
+        return parts.count == 6 && parts.allSatisfy { $0.count == 2 && UInt8($0, radix: 16) != nil }
     }
     private static func address(_ text: String) -> Bool {
         var v4 = in_addr(); var v6 = in6_addr()

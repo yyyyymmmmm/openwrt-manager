@@ -40,11 +40,12 @@ final class RouterSmokeTests: XCTestCase {
         back(app)
         visit("网络", app)
         attach("04-network", app)
-        visit("服务", app)
+        openExtensions(app)
         XCTAssertTrue(app.buttons["plugin-luci-app-ci-extension"].waitForExistence(timeout: 15))
         attach("05-plugins", app)
         visit("系统", app)
         attach("06-system", app)
+        visit("概览", app)
         tapVisible(app.buttons["系统日志"], app)
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "CI fixture log")).firstMatch.waitForExistence(timeout: 5))
         attach("20-records", app)
@@ -58,7 +59,7 @@ final class RouterSmokeTests: XCTestCase {
     func testCConfigurationApplyConfirmAndServiceControl() {
         let app = launch()
         connect(app)
-        visit("服务", app)
+        openExtensions(app)
         let plugin = app.buttons["plugin-luci-app-ci-extension"]
         XCTAssertTrue(plugin.waitForExistence(timeout: 15)); plugin.tap()
         attach("21-plugin-detail", app)
@@ -92,7 +93,7 @@ final class RouterSmokeTests: XCTestCase {
     func testDReadOnlyAccountCannotEdit() {
         let app = launch()
         connect(app, username: "readonly")
-        visit("服务", app)
+        openExtensions(app)
         let plugin = app.buttons["plugin-luci-app-ci-extension"]
         XCTAssertTrue(plugin.waitForExistence(timeout: 15)); plugin.tap()
         app.buttons["plugin-config-ci_extension"].tap()
@@ -129,7 +130,7 @@ final class RouterSmokeTests: XCTestCase {
         attach("08-dark-overview", app)
         openLeases(app); attach("14-dark-devices", app)
         back(app)
-        visit("服务", app)
+        openExtensions(app)
         XCTAssertTrue(app.buttons["plugin-luci-app-ci-extension"].waitForExistence(timeout: 15))
         attach("15-dark-plugins", app)
     }
@@ -147,7 +148,7 @@ final class RouterSmokeTests: XCTestCase {
     @MainActor
     func testGRoutingFamiliesNeighborsRoutesAndSearch() {
         let app = launch(); connect(app)
-        visit("网络", app)
+        visit("概览", app)
         tapVisible(app.buttons["network-routing"], app)
         let v4Neighbor = app.buttons["neighbor-IPv4-192.0.2.10|br-lan"]
         XCTAssertTrue(v4Neighbor.waitForExistence(timeout: 15))
@@ -184,75 +185,82 @@ final class RouterSmokeTests: XCTestCase {
     }
 
     @MainActor
-    func testJNetworkBranchesReachEveryReportedConfigurationField() {
+    func testJNativeNetworkFormsReachNestedFieldsAndDraftPreview() {
         let app = launch(); connect(app); visit("网络", app)
-        for entry in ["network-wan", "network-lan", "network-interfaces"] {
-            tapVisible(app.buttons[entry], app)
-            expectText(entry == "network-wan" ? "接口未连接" : "192.0.2.1/24", app)
-            tapVisible(app.buttons["interface-edit-config"], app)
-            inspectFields(section: "lan", fields: ["device", "ipaddr", "netmask", "proto"], app)
-            back(app); back(app)
+        tapVisible(app.buttons["network-interfaces"], app)
+        tapVisible(app.buttons["native-config-interfaces"], app)
+        inspectNative(section: "interfaces-lan", type: "interface", groups: [
+            ("常规设置", ["proto", "device", "ipaddr", "netmask", "gateway"]),
+            ("高级设置", ["metric", "dns", "mtu"]), ("IPv6", ["ip6addr", "ip6gw", "ip6assign"])
+        ], app)
+        back(app); back(app)
+        tapVisible(app.buttons["native-config-routes"], app)
+        for type in ["route", "route6", "rule", "rule6"] {
+            tapVisible(app.buttons["native-add-routes-\(type)"], app)
+            XCTAssertTrue(app.buttons["存入草稿"].exists)
+            app.buttons["取消"].tap()
         }
+        back(app)
+        tapVisible(app.buttons["network-dhcp-leases"], app)
+        tapVisible(app.buttons["native-config-dhcp"], app)
+        inspectNative(section: "dhcp-lan", type: "dhcp", groups: [
+            ("常规设置", ["interface", "ignore", "start", "limit", "leasetime"]),
+            ("IPv4 设置", ["force", "dhcp_option"]), ("IPv6 DHCPv6", ["dhcpv6", "dns"]),
+            ("IPv6 RA", ["ra", "ra_slaac", "ra_flags"])
+        ], app)
+        back(app); back(app)
         tapVisible(app.buttons["network-wireless"], app)
         expectText("权限不足", app)
         tapVisible(app.buttons["编辑无线配置"], app)
-        inspectFields(section: "radio0", fields: ["channel", "disabled"], app)
+        inspectNative(section: "wireless-radio0", type: "wifi-device", groups: [("基本设置", ["disabled", "band", "channel", "htmode", "country"])], app)
         back(app); back(app)
-        for (config, section, fields) in [
-            ("network", "lan", ["device", "ipaddr", "netmask", "proto"]),
-            ("dhcp", "lan", ["interface", "limit", "start"]),
-            ("firewall", "defaults", ["forward", "input"]),
-            ("wireless", "radio0", ["channel", "disabled"])
-        ] {
-            tapVisible(app.buttons["network-config-\(config)"], app)
-            inspectFields(section: section, fields: fields, app)
-            attach("36-config-\(config)", app); back(app)
-        }
-        tapVisible(app.buttons["network-configurations"], app)
-        tapVisible(app.buttons["configuration-ci_extension"], app)
-        inspectFields(section: "main", fields: ["enabled", "servers"], app)
+        tapVisible(app.buttons["native-config-firewall"], app)
+        inspectNative(section: "firewall-defaults", type: "defaults", groups: [("默认策略", ["input", "output", "forward", "synflood_protect"])], app)
+        tapVisible(app.buttons["native-section-firewall-defaults"], app)
+        tapVisible(app.buttons["native-group-defaults-默认策略"], app)
+        tapVisible(app.buttons["native-field-input"], app)
+        app.buttons["native-value-input"].tap(); app.buttons["ACCEPT"].tap()
+        app.buttons["native-save-field"].tap()
         back(app); back(app)
-        tapVisible(app.buttons["network-plugins"], app)
-        tapVisible(app.buttons["plugin-luci-app-ci-extension"], app)
-        XCTAssertTrue(app.buttons["plugin-config-ci_extension"].waitForExistence(timeout: 5))
+        tapVisible(app.buttons["native-preview-firewall"], app)
+        XCTAssertTrue(app.buttons["applyConfigurationButton"].exists)
+        attach("36-native-firewall-preview", app)
     }
 
     @MainActor
-    func testKSystemRecordsAndConfiguration() {
+    func testKSystemRecordsAndNativeConfiguration() {
         let app = launch(); connect(app); visit("系统", app)
-        tapVisible(app.buttons["系统状态"], app)
-        expectText("ci-router", app); expectText("OpenWrt CI", app)
-        attach("37-system-information", app); back(app)
-        for title in ["系统日志", "运行进程", "存储挂载"] {
+        tapVisible(app.buttons["native-config-system"], app)
+        inspectNative(section: "system-main", type: "system", groups: [
+            ("常规设置", ["hostname", "description", "timezone"]), ("日志", ["log_size", "log_ip", "log_port"])
+        ], app)
+        back(app)
+        tapVisible(app.buttons["挂载记录"], app); expectText("preserved", app); back(app)
+        visit("概览", app)
+        for title in ["系统日志", "进程"] {
             tapVisible(app.buttons[title], app)
             expectText(title == "系统日志" ? "CI fixture log" : "preserved", app)
-            let search = app.searchFields.firstMatch
-            replace(search, with: "no-match")
-            XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "CI fixture")).firstMatch.exists)
-            replace(search, with: "CI fixture")
-            expectText("CI fixture", app)
             attach("38-record-\(title)", app); back(app)
         }
-        tapVisible(app.buttons["system-config-system"], app)
-        inspectFields(section: "main", fields: ["hostname"], app)
     }
 
     @MainActor
     func testLServiceDirectoryAllActionsAndPackageDetails() {
-        let app = launch(); connect(app); visit("服务", app)
+        let app = launch(); connect(app); visit("系统", app)
         tapVisible(app.buttons["services-directory"], app)
         tapVisible(app.buttons["service-ci_extension"], app)
-        for (action, state) in [("停止", "0 / 1 个实例运行"), ("启动", "1 / 1 个实例运行"), ("重启", "1 / 1 个实例运行"), ("关闭开机启动", "关闭"), ("启用开机启动", "启用")] {
+        for (action, state) in [("停止", "0 / 1 个实例运行"), ("启动", "1 / 1 个实例运行"), ("重启", "1 / 1 个实例运行"), ("重载", "1 / 1 个实例运行"), ("关闭开机启动", "关闭"), ("启用开机启动", "启用")] {
             tapVisible(app.buttons[action], app)
             app.buttons["确认\(action)"].tap()
             expectText("路由器已确认执行\(action)", app)
             expectText(state, app)
         }
         attach("39-service-actions", app); back(app); back(app)
-        tapVisible(app.buttons["packages-directory"], app)
+        tapVisible(app.buttons["软件包"], app)
         tapVisible(app.buttons["package-ci-extension"], app)
         expectText("etc/config/ci_extension", app); expectText("etc/init.d/ci_extension", app)
         attach("40-package-files", app); back(app); back(app)
+        openExtensions(app)
         tapVisible(app.buttons["plugin-luci-app-ci-extension"], app)
         tapVisible(app.buttons["plugin-package-details"], app)
         expectText("ci-extension", app)
@@ -261,7 +269,7 @@ final class RouterSmokeTests: XCTestCase {
 
     @MainActor
     func testMListDraftValidationSectionDeletionAndRollback() {
-        let app = launch(); connect(app); visit("服务", app)
+        let app = launch(); connect(app); openExtensions(app)
         tapVisible(app.buttons["plugin-luci-app-ci-extension"], app)
         tapVisible(app.buttons["plugin-config-ci_extension"], app)
         tapVisible(app.buttons["config-section-main"], app)
@@ -280,7 +288,7 @@ final class RouterSmokeTests: XCTestCase {
         app.buttons["完成"].tap()
         tapVisible(app.buttons["config-field-note"], app)
         tapVisible(app.buttons["删除字段"], app)
-        app.buttons["删除字段"].lastMatch.tap()
+        lastButton("删除字段", app).tap()
         XCTAssertFalse(app.buttons["config-field-note"].exists)
         back(app)
         tapVisible(app.buttons["新增配置节"], app)
@@ -288,7 +296,7 @@ final class RouterSmokeTests: XCTestCase {
         replace(app.textFields["节名称"], with: "extra")
         app.buttons["添加"].tap()
         tapVisible(app.buttons["config-section-extra"], app)
-        app.buttons["删除配置节"].tap(); app.buttons["删除配置节"].lastMatch.tap()
+        app.buttons["删除配置节"].tap(); lastButton("删除配置节", app).tap()
         XCTAssertFalse(app.buttons["config-section-extra"].exists)
         app.buttons["previewConfigChanges"].tap()
         attach("42-list-preview", app)
@@ -333,7 +341,7 @@ final class RouterSmokeTests: XCTestCase {
         app.buttons["取消"].tap()
         XCTAssertTrue(app.tabBars.buttons["设置"].exists)
         tapVisible(app.buttons["settings-disconnect"], app)
-        app.buttons["断开连接"].lastMatch.tap()
+        lastButton("断开连接", app).tap()
         XCTAssertTrue(app.buttons["appSettingsLink"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.tabBars.buttons["概览"].exists)
         attach("43-disconnected", app)
@@ -351,7 +359,7 @@ final class RouterSmokeTests: XCTestCase {
         tapVisible(app.buttons["device-02:00:00:00:00:01|192.0.2.10"], app)
         expectText("设备名称", app); back(app); back(app)
         tapVisible(app.buttons["overview-firewall"], app)
-        inspectFields(section: "defaults", fields: ["forward", "input"], app); back(app)
+        inspectNative(section: "firewall-defaults", type: "defaults", groups: [("默认策略", ["forward", "input"])], app); back(app)
         tapVisible(app.buttons["overview-plugins"], app)
         tapVisible(app.buttons["plugin-luci-app-ci-extension"], app)
         XCTAssertTrue(app.buttons["plugin-config-ci_extension"].exists); back(app); back(app)
@@ -362,14 +370,14 @@ final class RouterSmokeTests: XCTestCase {
         expectText("部分信息读取失败", app); back(app)
         app.buttons["搜索管理功能"].tap()
         replace(app.textFields["searchField"], with: "防火墙")
-        tapVisible(app.buttons["network-config-firewall"], app)
-        inspectFields(section: "defaults", fields: ["forward", "input"], app)
+        tapVisible(app.buttons["native-config-firewall"], app)
+        inspectNative(section: "firewall-defaults", type: "defaults", groups: [("默认策略", ["forward", "input"])], app)
         attach("44-search-to-field", app)
     }
 
     @MainActor
     private func checkRoutingFailure(username: String, message: String, screenshot: String) {
-        let app = launch(); connect(app, username: username); visit("网络", app)
+        let app = launch(); connect(app, username: username); visit("概览", app)
         tapVisible(app.buttons["network-routing"], app)
         expectText("无法读取邻居表", app); expectText(message, app)
         XCTAssertFalse(app.staticTexts["暂无邻居记录"].exists)
@@ -386,6 +394,34 @@ final class RouterSmokeTests: XCTestCase {
             XCTAssertTrue(valueInput(app).waitForExistence(timeout: 5))
             XCTAssertFalse(app.textFields["configFieldName"].isEnabled)
             app.buttons["取消"].tap()
+        }
+        back(app)
+    }
+
+    @MainActor
+    private func openExtensions(_ app: XCUIApplication) {
+        visit("服务", app)
+        tapVisible(app.buttons["已安装扩展包"], app)
+    }
+
+    @MainActor
+    private func lastButton(_ id: String, _ app: XCUIApplication) -> XCUIElement {
+        let query = app.buttons.matching(identifier: id)
+        XCTAssertGreaterThan(query.count, 0)
+        return query.element(boundBy: max(0, query.count - 1))
+    }
+
+    @MainActor
+    private func inspectNative(section: String, type: String, groups: [(String, [String])], _ app: XCUIApplication) {
+        tapVisible(app.buttons["native-section-\(section)"], app)
+        for (group, fields) in groups {
+            tapVisible(app.buttons["native-group-\(type)-\(group)"], app)
+            for field in fields {
+                tapVisible(app.buttons["native-field-\(field)"], app)
+                XCTAssertTrue(app.switches["明确设置此项"].exists)
+                app.buttons["取消"].tap()
+            }
+            back(app)
         }
         back(app)
     }
@@ -465,6 +501,7 @@ final class RouterSmokeTests: XCTestCase {
     private func openLeases(_ app: XCUIApplication) {
         visit("网络", app)
         tapVisible(app.buttons["network-dhcp-leases"], app)
+        tapVisible(app.buttons["DHCP 租约"], app)
         XCTAssertTrue(app.buttons["device-02:00:00:00:00:01|192.0.2.10"].waitForExistence(timeout: 20))
     }
 

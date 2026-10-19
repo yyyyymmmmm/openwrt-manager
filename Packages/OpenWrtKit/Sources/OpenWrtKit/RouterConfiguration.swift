@@ -222,13 +222,14 @@ public actor RouterConfigurationClient {
 }
 
 public enum ServiceAction: String, CaseIterable, Identifiable, Sendable {
-    case start, stop, restart, enable, disable
+    case start, stop, restart, reload, enable, disable
     public var id: String { rawValue }
     public var title: String {
         switch self {
         case .start: return "启动"
         case .stop: return "停止"
         case .restart: return "重启"
+        case .reload: return "重载"
         case .enable: return "启用开机启动"
         case .disable: return "关闭开机启动"
         }

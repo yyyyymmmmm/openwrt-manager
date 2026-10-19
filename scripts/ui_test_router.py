@@ -99,7 +99,7 @@ class Handler(BaseHTTPRequestHandler):
         if (obj, method) == ("system", "info"):
             return 0, {"uptime": 3600, "memory": {"total": 1073741824, "available": 536870912}, "load": [6553, 3276, 1638], "root": {"total": 1000000, "used": 250000}}
         if (obj, method) == ("network.interface", "dump"):
-            return 0, {"interface": [{"interface": "lan", "up": True, "proto": "static", "l3_device": "br-lan", "ipv4-address": [{"address": "192.0.2.1", "mask": 24}]}, {"interface": "wan", "up": False, "proto": "dhcp", "l3_device": "eth1"}]}
+            return 0, {"interface": [{"interface": "lan", "up": True, "proto": "static", "l3_device": "br-lan", "route": [{"target": "0.0.0.0", "mask": 0, "nexthop": "192.0.2.254", "metric": 10}], "dns-server": ["192.0.2.254"], "ipv4-address": [{"address": "192.0.2.1", "mask": 24}]}, {"interface": "wan", "up": False, "proto": "dhcp", "l3_device": "eth1"}]}
         if (obj, method) == ("file", "exec"):
             outputs = {
                 ("-4", "route", "show"): "default via 192.0.2.254 dev br-lan proto static metric 10\n192.0.2.0/24 dev br-lan proto kernel scope link src 192.0.2.1",
@@ -117,6 +117,8 @@ class Handler(BaseHTTPRequestHandler):
             return 0, {"code": 0, "stdout": outputs[query], "stderr": ""}
         if (obj, method) == ("luci-rpc", "getDHCPLeases"):
             return 0, {"dhcp_leases": [{"hostname": "CI Phone", "ipaddr": "192.0.2.10", "macaddr": "02:00:00:00:00:01", "expires": 1800}], "dhcp6_leases": []}
+        if (obj, method) == ("network", "get_proto_handlers"):
+            return 0, {"static": {}, "dhcp": {}, "dhcpv6": {}, "none": {}}
         if (obj, method) == ("network.wireless", "status"):
             return 6, {}
         if (obj, method) == ("service", "list"):
@@ -133,6 +135,8 @@ class Handler(BaseHTTPRequestHandler):
             action = args.get("action")
             if action in ("start", "restart", "stop"):
                 state["running"] = action != "stop"
+            elif action == "reload":
+                pass
             elif action in ("enable", "disable"):
                 state["enabled"] = action == "enable"
             else:

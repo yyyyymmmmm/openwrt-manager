@@ -42,6 +42,7 @@ struct ConfigurationEditorView: View {
     @State private var showDiscard = false
     @State private var showPreview = false
     @State private var preview: ConfigurationPlan?
+    @State private var submitted = false
     private var changed: Bool { draft != nil && draft != original }
 
     var body: some View {
@@ -95,11 +96,13 @@ struct ConfigurationEditorView: View {
             AddConfigurationSectionView(existing: Set(draft?.sections.map(\.id) ?? [])) { section in draft?.sections.append(section) }
         }
         .navigationDestination(isPresented: $showPreview) {
-            if let preview { ConfigurationPreviewView(plan: preview, allowed: allowed) }
+            if let preview { ConfigurationPreviewView(plan: preview, allowed: allowed, onApplied: { submitted = true }) }
         }
         .task(id: store.connectionID) { await load() }
         .onChange(of: store.pendingConfiguration) { previous, current in
-            if previous != nil && current == nil { Task { await load() } }
+            if previous != nil && current == nil && (submitted || !changed) {
+                submitted = false; Task { await load() }
+            }
         }
     }
 
@@ -264,6 +267,7 @@ struct ConfigurationPreviewView: View {
     @Environment(\.dismiss) private var dismiss
     let plan: ConfigurationPlan
     let allowed: Bool
+    var onApplied: (() -> Void)? = nil
     @State private var error: String?
     @State private var applying = false
     @State private var confirm = false
@@ -299,7 +303,7 @@ struct ConfigurationPreviewView: View {
                     Task {
                         applying = true
                         defer { applying = false }
-                        do { try await store.applyConfiguration(plan); dismiss() }
+                        do { try await store.applyConfiguration(plan); onApplied?(); dismiss() }
                         catch { self.error = FriendlyError.message(error) }
                     }
                 }
