@@ -18,6 +18,8 @@ struct ScheduledTasksView: View {
     @State private var discard = false
     @State private var reloadPrompt = false
     @State private var requestID = UUID()
+    @State private var loadedConnectionID: UUID?
+    @State private var initialReadFinished = false
     @FocusState private var editorFocused: Bool
     private var changed: Bool { observed != nil && draft != (observed?.contents ?? "") }
     private var busy: Bool { loading || running || store.isMutating || store.pendingConfiguration != nil }
@@ -115,8 +117,15 @@ struct ScheduledTasksView: View {
                 }
             }
             .task(id: store.connectionID) {
-                observed = nil; draft = ""; result = nil; updatedAt = nil; needsRead = false
-                await load(keepDraft: false)
+                if loadedConnectionID != store.connectionID {
+                    loadedConnectionID = store.connectionID
+                    observed = nil; draft = ""; result = nil; updatedAt = nil; needsRead = false
+                    initialReadFinished = false
+                }
+                // Navigation to help or logs must not replace an unsaved draft.
+                // A cancelled initial read may resume without losing edits.
+                guard !initialReadFinished else { return }
+                await load(keepDraft: observed != nil)
             }
     }
 
@@ -129,7 +138,12 @@ struct ScheduledTasksView: View {
     private func load(keepDraft: Bool) async {
         let generation = store.connectionID, request = UUID()
         requestID = request; loading = true; writable = false; error = nil; permissionError = nil
-        defer { if requestID == request { loading = false } }
+        defer {
+            if requestID == request {
+                loading = false
+                if generation == store.connectionID, !Task.isCancelled { initialReadFinished = true }
+            }
+        }
         do {
             let value = try await store.scheduledTasks()
             guard generation == store.connectionID, requestID == request, !Task.isCancelled else { return }
