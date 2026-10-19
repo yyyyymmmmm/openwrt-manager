@@ -3,10 +3,9 @@ import SwiftUI
 struct SystemScreen: View {
     @Environment(RouterStore.self) private var store
     @Binding var showingRouterPicker: Bool
-    @State private var showDisconnectConfirmation = false
     var body: some View {
         NavigationStack {
-            AppRootPage(showingRouterPicker: $showingRouterPicker, title: "系统", subtitle: "设备、服务与系统记录") {
+            AppRootPage(showingRouterPicker: $showingRouterPicker, title: "系统", subtitle: "固件信息、运行状态与系统记录") {
                 ReadStatus(updatedAt: store.overviewUpdatedAt, error: store.overviewError)
                 NavigationLink { SystemInformationView() } label: {
                     HStack(spacing: 12) {
@@ -23,8 +22,6 @@ struct SystemScreen: View {
                     AppGroup {
                         NavigationLink { SystemInformationView() } label: { AppRow(title: "系统状态", detail: "负载、内存、存储与运行时间", symbol: "chart.bar", chevron: true) }.buttonStyle(.plain)
                         AppDivider()
-                        NavigationLink { ServicesScreen(showingRouterPicker: $showingRouterPicker) } label: { AppRow(title: "系统服务", detail: "查看服务与实例状态", symbol: "gearshape.2", chevron: true) }.buttonStyle(.plain)
-                        AppDivider()
                         NavigationLink { RouterRecordsView(kind: .logs) } label: { AppRow(title: "系统日志", symbol: "doc.text", chevron: true) }.buttonStyle(.plain)
                         AppDivider()
                         NavigationLink { RouterRecordsView(kind: .processes) } label: { AppRow(title: "运行进程", symbol: "cpu", chevron: true) }.buttonStyle(.plain)
@@ -32,31 +29,19 @@ struct SystemScreen: View {
                         NavigationLink { RouterRecordsView(kind: .mounts) } label: { AppRow(title: "存储挂载", symbol: "externaldrive", chevron: true) }.buttonStyle(.plain)
                     }
                 }
-                AppSection(title: "路由器配置") {
+                AppSection(title: "系统配置") {
                     AppGroup {
-                        ForEach(store.inventory.configNames.filter { ["system", "dropbear", "uhttpd", "rpcd", "fstab"].contains($0) }, id: \.self) { name in
-                            NavigationLink { ConfigurationEditorView(name: name) } label: { AppRow(title: name, symbol: "slider.horizontal.3", chevron: true) }.buttonStyle(.plain)
-                            AppDivider()
+                        ForEach(store.inventory.configNames.filter { ["system", "dropbear", "uhttpd", "rpcd", "fstab", "luci"].contains($0) }, id: \.self) { name in
+                            NavigationLink { ConfigurationEditorView(name: name) } label: { AppRow(title: name, symbol: "slider.horizontal.3", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("system-config-\(name)")
+                            if name != store.inventory.configNames.filter({ ["system", "dropbear", "uhttpd", "rpcd", "fstab", "luci"].contains($0) }).last { AppDivider() }
                         }
-                        NavigationLink { ConfigurationDirectoryView() } label: { AppRow(title: "全部路由器配置", symbol: "slider.horizontal.3", chevron: true) }.buttonStyle(.plain)
-                    }
-                }
-                AppSection(title: "本机 App 设置") {
-                    AppGroup {
-                        NavigationLink { AppSettingsView() } label: { AppRow(title: "App 设置", detail: "外观、文字大小与隐私", symbol: "slider.horizontal.3", chevron: true) }
-                            .buttonStyle(.plain).accessibilityIdentifier("appSettingsLink")
-                        AppDivider()
-                        Button { showingRouterPicker = true } label: { AppRow(title: "切换或添加路由器", symbol: "arrow.left.arrow.right", chevron: true) }.buttonStyle(.plain).disabled(store.isMutating || store.pendingConfiguration != nil)
-                        AppDivider()
-                        Button { showDisconnectConfirmation = true } label: { AppRow(title: "断开连接", symbol: "wifi.slash", destructive: true) }
-                            .buttonStyle(.plain).accessibilityIdentifier("disconnectRouterButton").disabled(store.isMutating || store.pendingConfiguration != nil)
+                        if store.inventory.configNames.filter({ ["system", "dropbear", "uhttpd", "rpcd", "fstab", "luci"].contains($0) }).isEmpty {
+                            Text(store.inventory.configsRead ? "路由器未报告系统配置文件" : "配置目录尚未读取")
+                                .font(AppTypography.secondary).foregroundStyle(AppPalette.muted).padding(12)
+                        }
                     }
                 }
             }
-            .confirmationDialog("断开与 \(store.activeProfile?.name ?? "路由器") 的连接？", isPresented: $showDisconnectConfirmation, titleVisibility: .visible) {
-                Button("断开连接", role: .destructive) { store.disconnect() }
-                Button("取消", role: .cancel) {}
-            } message: { Text("这不会删除保存的地址或修改路由器设置。") }
         }
     }
 }

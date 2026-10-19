@@ -1,20 +1,11 @@
 import SwiftUI
 import OpenWrtKit
 
-struct PluginsScreen: View {
-    @Binding var showingRouterPicker: Bool
-    var body: some View {
-        NavigationStack {
-            AppRootPage(showingRouterPicker: $showingRouterPicker, title: "插件", subtitle: "已安装扩展与软件包") { PluginCollection() }
-        }
-    }
-}
-
 struct PluginDirectoryView: View {
     var body: some View { AppPage(title: "插件", subtitle: nil) { PluginCollection() }.appDetailStyle("插件中心") }
 }
 
-private struct PluginCollection: View {
+struct PluginCollection: View {
     @Environment(RouterStore.self) private var store
     @State private var query = ""
     private var plugins: [InstalledPlugin] {
@@ -40,15 +31,7 @@ private struct PluginCollection: View {
             AppGroup {
                 NavigationLink { PackagesView() } label: {
                     AppRow(title: "全部已安装软件包", symbol: "shippingbox", value: store.inventory.packagesRead ? "\(store.inventory.packages.count)" : "尚未读取", chevron: true)
-                }.buttonStyle(.plain)
-                AppDivider()
-                NavigationLink { ServicesScreen(showingRouterPicker: .constant(false)) } label: {
-                    AppRow(title: "全部系统服务", symbol: "gearshape.2", chevron: true)
-                }.buttonStyle(.plain)
-                AppDivider()
-                NavigationLink { ConfigurationDirectoryView() } label: {
-                    AppRow(title: "全部配置", symbol: "slider.horizontal.3", chevron: true)
-                }.buttonStyle(.plain)
+                }.buttonStyle(.plain).accessibilityIdentifier("packages-directory")
             }
         }
     }
@@ -107,7 +90,7 @@ struct PluginDetailView: View {
                 }
                 AppSection(title: "适配范围", note: "当前提供原生 UCI 字段管理与系统服务控制。节点订阅、规则下载、统计等插件专有操作仍需逐项适配。") {
                     AppGroup {
-                        NavigationLink { PackageDetailView(package: current.package) } label: { AppRow(title: "依赖与安装文件", symbol: "doc.text.magnifyingglass", chevron: true) }.buttonStyle(.plain)
+                        NavigationLink { PackageDetailView(package: current.package) } label: { AppRow(title: "依赖与安装文件", symbol: "doc.text.magnifyingglass", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("plugin-package-details")
                     }
                 }
             } else {
@@ -133,7 +116,7 @@ struct PackagesView: View {
                             Text(package.name).font(AppTypography.rowTitle)
                             Text(package.version).font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
                         }
-                    }
+                    }.accessibilityIdentifier("package-\(package.name)")
                 }
             }
         }.searchable(text: $query, prompt: "搜索软件包").appDetailStyle("已安装软件包")

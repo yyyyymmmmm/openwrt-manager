@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 public struct RouterReader: Sendable {
     private let client: UbusClient
@@ -40,6 +41,20 @@ public struct RouterReader: Sendable {
     public func leases() async throws -> [DHCPLease] {
         let value = try await client.call(session: session, object: "luci-rpc", method: "getDHCPLeases")
         return try SnapshotParser.leases(value)
+    }
+
+    public func routing(interfaces: [NetworkInterfaceSnapshot]) async throws -> RouterRoutingSnapshot {
+        async let ipv4Routes = ipOutput(["-4", "route", "show"])
+        async let ipv6Routes = ipOutput(["-6", "route", "show"])
+        async let ipv4Neighbors = ipOutput(["-4", "neigh", "show"])
+        async let ipv6Neighbors = ipOutput(["-6", "neigh", "show"])
+        let output = try await (ipv4Routes, ipv6Routes, ipv4Neighbors, ipv6Neighbors)
+        return RouterRoutingSnapshot(
+            ipv4Routes: try SnapshotParser.routes(output.0),
+            ipv6Routes: try SnapshotParser.routes(output.1),
+            ipv4Neighbors: try SnapshotParser.neighbors(output.2, interfaces: interfaces),
+            ipv6Neighbors: try SnapshotParser.neighbors(output.3, interfaces: interfaces)
+        )
     }
 
     public func wireless() async throws -> [WirelessRadio] {
@@ -125,6 +140,19 @@ public struct RouterReader: Sendable {
         }
         catch { return .failure(error) }
     }
+
+    private func ipOutput(_ arguments: [String]) async throws -> String {
+        let value = try await client.call(session: session, object: "file", method: "exec", parameters: [
+            "command": .string("/sbin/ip"), "params": .array(arguments.map(JSONValue.string))
+        ])
+        guard value["code"].intValue == 0, let output = value["stdout"].stringValue else {
+            if let error = value["stderr"].stringValue, !error.isEmpty {
+                throw OpenWrtKitError.unsupported("读取路由器路由/邻居表失败：\(error)")
+            }
+            throw OpenWrtKitError.malformedResponse
+        }
+        return output
+    }
 }
 
 public enum RouterRecordKind: String, CaseIterable, Identifiable, Sendable {
@@ -200,6 +228,66 @@ public enum SnapshotParser {
                                   expires: item["expires"].intValue, duid: item["duid"].stringValue)
             return seen.insert(lease.id).inserted ? lease : nil
         }.sorted { $0.hostname.localizedStandardCompare($1.hostname) == .orderedAscending }
+    }
+
+    public static func routes(_ text: String) throws -> [IPRouteRecord] {
+        try text.split(whereSeparator: \.isNewline).map { String($0).trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }.map { raw in
+            let fields = raw.split(whereSeparator: \.isWhitespace).map(String.init)
+            let types: Set<String> = ["unicast", "local", "broadcast", "multicast", "throw", "unreachable", "prohibit", "blackhole", "nat", "anycast"]
+            let destinationIndex = fields.first.map { types.contains($0) } == true ? 1 : 0
+            guard fields.indices.contains(destinationIndex) else { throw OpenWrtKitError.malformedResponse }
+            let destination = fields[destinationIndex]
+            guard destination == "default" || validIPPrefix(destination),
+                  ["via", "dev", "proto", "metric"].allSatisfy({ key in
+                      fields.firstIndex(of: key).map { fields.indices.contains($0 + 1) } ?? true
+                  }) else { throw OpenWrtKitError.malformedResponse }
+            func value(after key: String) -> String? {
+                guard let index = fields.firstIndex(of: key), fields.indices.contains(index + 1) else { return nil }
+                return fields[index + 1]
+            }
+            if let gateway = value(after: "via"), !validIPAddress(gateway) { throw OpenWrtKitError.malformedResponse }
+            if let metric = value(after: "metric"), UInt32(metric) == nil { throw OpenWrtKitError.malformedResponse }
+            return IPRouteRecord(destination: destination, gateway: value(after: "via"), device: value(after: "dev"),
+                                 protocolName: value(after: "proto"), metric: value(after: "metric"), rawValue: raw)
+        }
+    }
+
+    public static func neighbors(_ text: String, interfaces: [NetworkInterfaceSnapshot]) throws -> [IPNeighborRecord] {
+        let states: Set<String> = ["INCOMPLETE", "REACHABLE", "STALE", "DELAY", "PROBE", "FAILED", "NOARP", "PERMANENT"]
+        return try text.split(whereSeparator: \.isNewline).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.map { line in
+            let fields = line.split(whereSeparator: \.isWhitespace).map(String.init)
+            guard let address = fields.first, validIPAddress(address),
+                  let deviceIndex = fields.firstIndex(of: "dev"), fields.indices.contains(deviceIndex + 1),
+                  let state = fields.first(where: { states.contains($0.uppercased()) }) else {
+                throw OpenWrtKitError.malformedResponse
+            }
+            let device = fields[deviceIndex + 1]
+            let mac: String?
+            if let macIndex = fields.firstIndex(of: "lladdr") {
+                guard fields.indices.contains(macIndex + 1) else { throw OpenWrtKitError.malformedResponse }
+                let octets = fields[macIndex + 1].split(separator: ":", omittingEmptySubsequences: false)
+                guard octets.count == 6, octets.allSatisfy({ $0.count == 2 && UInt8($0, radix: 16) != nil }) else { throw OpenWrtKitError.malformedResponse }
+                mac = fields[macIndex + 1]
+            } else {
+                mac = nil
+            }
+            let interface = interfaces.first(where: { $0.device == device })?.name ?? device
+            return IPNeighborRecord(address: address, mac: mac, device: device, interface: interface, state: state.uppercased())
+        }
+    }
+
+    private static func validIPAddress(_ text: String) -> Bool {
+        var ipv4 = in_addr()
+        var ipv6 = in6_addr()
+        return text.withCString { inet_pton(AF_INET, $0, &ipv4) == 1 || inet_pton(AF_INET6, $0, &ipv6) == 1 }
+    }
+
+    private static func validIPPrefix(_ text: String) -> Bool {
+        let parts = text.split(separator: "/", omittingEmptySubsequences: false)
+        guard (1...2).contains(parts.count), validIPAddress(String(parts[0])) else { return false }
+        guard parts.count == 2 else { return true }
+        guard let bits = Int(parts[1]) else { return false }
+        return (0...(parts[0].contains(":") ? 128 : 32)).contains(bits)
     }
 
     public static func wireless(_ value: JSONValue) throws -> [WirelessRadio] {

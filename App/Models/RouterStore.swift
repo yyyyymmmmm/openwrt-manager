@@ -9,6 +9,7 @@ final class RouterStore {
     private(set) var connectionID = UUID()
     private(set) var snapshot: RouterSnapshot?
     private(set) var leases: [DHCPLease] = []
+    private(set) var routing: RouterRoutingSnapshot?
     private(set) var radios: [WirelessRadio] = []
     private(set) var services: [RouterService] = []
     private(set) var inventory = RouterInventory()
@@ -18,6 +19,7 @@ final class RouterStore {
     private(set) var activities: [RouterActivity] = []
     private(set) var overviewError: String?
     private(set) var devicesError: String?
+    private(set) var routingError: String?
     private(set) var wirelessError: String?
     private(set) var servicesError: String?
     private(set) var storageError: String?
@@ -25,6 +27,7 @@ final class RouterStore {
     private(set) var hasLoaded = false
     private(set) var overviewUpdatedAt: Date?
     private(set) var devicesUpdatedAt: Date?
+    private(set) var routingUpdatedAt: Date?
     private(set) var wirelessUpdatedAt: Date?
     private(set) var servicesUpdatedAt: Date?
 
@@ -101,7 +104,7 @@ final class RouterStore {
         guard !isRefreshing else { return }
         guard let reader else { return }
         let generation = connectionID
-        let previouslyFailed = overviewError != nil || devicesError != nil || wirelessError != nil || servicesError != nil
+        let previouslyFailed = overviewError != nil || devicesError != nil || routingError != nil || wirelessError != nil || servicesError != nil
         let wasLoaded = hasLoaded
         isRefreshing = true
         defer { if generation == connectionID { isRefreshing = false } }
@@ -110,36 +113,43 @@ final class RouterStore {
         async let wireless = capture { try await reader.wireless() }
         async let serviceList = capture { try await reader.services() }
         async let directory = reader.inventory()
-        let results = await (overview, devices, wireless, serviceList, directory)
+        let overviewResult = await overview
+        let interfaces = (try? overviewResult.get().interfaces) ?? []
+        async let routeList = capture { try await reader.routing(interfaces: interfaces) }
+        let results = await (devices, wireless, serviceList, directory, routeList)
         guard generation == connectionID, !Task.isCancelled else { return }
-        switch results.0 {
+        switch overviewResult {
         case .success(let value):
             snapshot = value
             overviewError = value.warnings.isEmpty ? nil : value.warnings.joined(separator: "\n")
             overviewUpdatedAt = Date()
         case .failure(let error): overviewError = FriendlyError.message(error)
         }
-        switch results.1 {
+        switch results.0 {
         case .success(let value): leases = value; devicesError = nil; devicesUpdatedAt = Date()
         case .failure(let error): devicesError = FriendlyError.message(error)
         }
-        switch results.2 {
+        switch results.1 {
         case .success(let value): radios = value; wirelessError = nil; wirelessUpdatedAt = Date()
         case .failure(let error): wirelessError = FriendlyError.message(error)
         }
-        switch results.3 {
+        switch results.2 {
         case .success(let value): services = value; servicesError = nil; servicesUpdatedAt = Date()
         case .failure(let error): servicesError = FriendlyError.message(error)
         }
-        inventory = results.4
+        switch results.4 {
+        case .success(let value): routing = value; routingError = nil; routingUpdatedAt = Date()
+        case .failure(let error): routingError = FriendlyError.message(error)
+        }
+        inventory = results.3
         inventoryUpdatedAt = Date()
-        let errors = [overviewError, devicesError, wirelessError, servicesError].compactMap { $0 }
+        let errors = [overviewError, devicesError, routingError, wirelessError, servicesError].compactMap { $0 }
         if !errors.isEmpty && (!wasLoaded || !previouslyFailed) {
             recordActivity("部分信息读取失败", detail: "\(errors.count) 项数据未能更新，请在对应页面查看原因。", isWarning: true)
         } else if errors.isEmpty && previouslyFailed {
-            recordActivity("状态读取已恢复", detail: "概览、租约、无线和服务状态已重新读取。")
+            recordActivity("状态读取已恢复", detail: "概览、路由邻居、租约、无线和服务状态已重新读取。")
         } else if !wasLoaded && errors.isEmpty {
-            recordActivity("首次读取完成", detail: "概览、租约、无线和服务状态已读取。")
+            recordActivity("首次读取完成", detail: "概览、路由邻居、租约、无线和服务状态已读取。")
         }
         hasLoaded = true
     }
@@ -171,11 +181,11 @@ final class RouterStore {
     }
 
     private func clearData() {
-        snapshot = nil; leases = []; radios = []; services = []
+        snapshot = nil; leases = []; routing = nil; radios = []; services = []
         activities = []
         inventory = RouterInventory(); inventoryUpdatedAt = nil; pendingConfiguration = nil
-        overviewError = nil; devicesError = nil; wirelessError = nil; servicesError = nil
-        overviewUpdatedAt = nil; devicesUpdatedAt = nil; wirelessUpdatedAt = nil; servicesUpdatedAt = nil
+        overviewError = nil; devicesError = nil; routingError = nil; wirelessError = nil; servicesError = nil
+        overviewUpdatedAt = nil; devicesUpdatedAt = nil; routingUpdatedAt = nil; wirelessUpdatedAt = nil; servicesUpdatedAt = nil
         hasLoaded = false; isRefreshing = false
     }
 

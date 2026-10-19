@@ -116,6 +116,41 @@ final class ConfigurationTests: XCTestCase {
         XCTAssertEqual(processes.count, 1); XCTAssertEqual(logs.count, 1)
     }
 
+    func testRoutingUsesOnlyFourFixedCommandsAndPreservesAddressFamilies() async throws {
+        let fixture = RouterFixture()
+        let (_, reader) = try fixture.clients()
+        let routing = try await reader.routing(interfaces: [.init(name: "lan", protocolName: "static", addresses: [], up: true, device: "br-lan")])
+        XCTAssertEqual(routing.ipv4Routes.first?.destination, "default")
+        XCTAssertEqual(routing.ipv6Routes.first?.destination, "fd00::/64")
+        XCTAssertEqual(routing.ipv4Neighbors.first?.interface, "lan")
+        XCTAssertEqual(routing.ipv6Neighbors.first?.state, "STALE")
+        XCTAssertEqual(fixture.calls.count, 4)
+        XCTAssertTrue(fixture.calls.allSatisfy { $0.object == "file" && $0.method == "exec" && $0.parameters["command"] == .string("/sbin/ip") })
+        let queries = Set(fixture.calls.map { $0.parameters["params"].arrayValue!.compactMap(\.stringValue).joined(separator: " ") })
+        XCTAssertEqual(queries, Set(["-4 route show", "-6 route show", "-4 neigh show", "-6 neigh show"]))
+    }
+
+    func testRoutingACLFailureDoesNotBecomeAnEmptyTable() async throws {
+        let fixture = RouterFixture(); fixture.denyRoutes = true
+        let (_, reader) = try fixture.clients()
+        do { _ = try await reader.routing(interfaces: []); XCTFail("Expected ACL rejection") }
+        catch { XCTAssertEqual(error as? OpenWrtKitError, .permissionDenied) }
+    }
+
+    func testRoutingCommandAndMalformedFailuresArePropagated() async throws {
+        let responses: [JSONValue] = [
+            .object(["code": .number(1), "stdout": .string(""), "stderr": .string("ip failed")]),
+            .object(["stdout": .string("")]),
+            .object(["code": .number(0), "stdout": .string("invalid record")])
+        ]
+        for response in responses {
+            let fixture = RouterFixture(); fixture.routeResponse = response
+            let (_, reader) = try fixture.clients()
+            do { _ = try await reader.routing(interfaces: []); XCTFail("Expected command/format failure") }
+            catch { XCTAssertNotNil(error as? OpenWrtKitError) }
+        }
+    }
+
     private func plan() throws -> ConfigurationPlan {
         var edited = original; edited.sections[0].values["hostname"] = .string("NewName")
         return try ConfigurationPlan(original: original, edited: edited)
@@ -133,6 +168,8 @@ private final class RouterFixture: @unchecked Sendable {
     var loseApplyResponse = false
     var failConfirm = false
     var hostname = "OpenWrt"
+    var denyRoutes = false
+    var routeResponse: JSONValue?
 
     func clients() throws -> (RouterConfigurationClient, RouterReader) {
         let host = UUID().uuidString.lowercased() + ".test"
@@ -177,6 +214,16 @@ private final class RouterFixture: @unchecked Sendable {
         case "setInitAction": result = .object(["result": .bool(true)])
         case "getProcessList", "getMountPoints": result = .object(["result": .array([.object(["PID": .number(1)])])])
         case "read": result = .object(["log": .array([.object(["msg": .string("event")])])])
+        case "exec":
+            code = denyRoutes ? 6 : 0
+            let query = call.parameters["params"].arrayValue?.compactMap(\.stringValue).joined(separator: " ") ?? ""
+            let outputs = [
+                "-4 route show": "default via 192.0.2.254 dev br-lan proto static metric 10",
+                "-6 route show": "fd00::/64 dev br-lan proto kernel metric 256",
+                "-4 neigh show": "192.0.2.10 dev br-lan lladdr 02:00:00:00:00:01 REACHABLE",
+                "-6 neigh show": "fd00::10 dev br-lan lladdr 02:00:00:00:00:01 STALE router"
+            ]
+            result = routeResponse ?? .object(["code": .number(0), "stdout": .string(outputs[query] ?? "unexpected command"), "stderr": .string("")])
         default: result = .object([:])
         }
         return try JSONEncoder().encode(JSONValue.object(["jsonrpc": .string("2.0"), "id": body["id"], "result": .array([.number(Double(code)), result])]))

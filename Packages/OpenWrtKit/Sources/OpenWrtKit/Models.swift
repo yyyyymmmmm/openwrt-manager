@@ -86,6 +86,56 @@ public struct DHCPLease: Identifiable, Equatable, Sendable {
     }
 }
 
+public struct IPRouteRecord: Identifiable, Equatable, Sendable {
+    public let destination: String
+    public let gateway: String?
+    public let device: String?
+    public let protocolName: String?
+    public let metric: String?
+    public let rawValue: String
+    public var id: String { rawValue }
+
+    public init(destination: String, gateway: String?, device: String?, protocolName: String?, metric: String?, rawValue: String) {
+        self.destination = destination
+        self.gateway = gateway
+        self.device = device
+        self.protocolName = protocolName
+        self.metric = metric
+        self.rawValue = rawValue
+    }
+}
+
+public struct IPNeighborRecord: Identifiable, Equatable, Sendable {
+    public let address: String
+    public let mac: String?
+    public let device: String
+    public let interface: String
+    public let state: String
+    public var id: String { address + "|" + device }
+
+    public init(address: String, mac: String?, device: String, interface: String, state: String) {
+        self.address = address
+        self.mac = mac
+        self.device = device
+        self.interface = interface
+        self.state = state
+    }
+}
+
+public struct RouterRoutingSnapshot: Equatable, Sendable {
+    public let ipv4Routes: [IPRouteRecord]
+    public let ipv6Routes: [IPRouteRecord]
+    public let ipv4Neighbors: [IPNeighborRecord]
+    public let ipv6Neighbors: [IPNeighborRecord]
+
+    public init(ipv4Routes: [IPRouteRecord], ipv6Routes: [IPRouteRecord], ipv4Neighbors: [IPNeighborRecord], ipv6Neighbors: [IPNeighborRecord]) {
+        self.ipv4Routes = ipv4Routes
+        self.ipv6Routes = ipv6Routes
+        self.ipv4Neighbors = ipv4Neighbors
+        self.ipv6Neighbors = ipv6Neighbors
+    }
+}
+
 public struct WirelessRadio: Identifiable, Equatable, Sendable {
     public let name: String
     public let up: Bool?

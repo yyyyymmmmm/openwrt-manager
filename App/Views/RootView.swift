@@ -38,20 +38,20 @@ private struct RouterTabs: View {
                 .tabItem { Label("概览", systemImage: "square.grid.2x2") }
                 .tag(0)
 
-            DevicesScreen(showingRouterPicker: $showingRouterPicker)
-                .tabItem { Label("设备", systemImage: "iphone.and.arrow.forward") }
+            SystemScreen(showingRouterPicker: $showingRouterPicker)
+                .tabItem { Label("系统", systemImage: "gearshape.2") }
                 .tag(1)
+
+            ServicesScreen(showingRouterPicker: $showingRouterPicker)
+                .tabItem { Label("服务", systemImage: "puzzlepiece.extension") }
+                .tag(2)
 
             NetworkScreen(showingRouterPicker: $showingRouterPicker)
                 .tabItem { Label("网络", systemImage: "network") }
-                .tag(2)
-
-            PluginsScreen(showingRouterPicker: $showingRouterPicker)
-                .tabItem { Label("插件", systemImage: "puzzlepiece.extension") }
                 .tag(3)
 
-            SystemScreen(showingRouterPicker: $showingRouterPicker)
-                .tabItem { Label("系统", systemImage: "info.circle") }
+            SettingsScreen(showingRouterPicker: $showingRouterPicker)
+                .tabItem { Label("设置", systemImage: "slider.horizontal.3") }
                 .tag(4)
         }
         .tint(AppPalette.accent)

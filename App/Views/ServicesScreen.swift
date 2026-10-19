@@ -4,6 +4,24 @@ import OpenWrtKit
 struct ServicesScreen: View {
     @Environment(RouterStore.self) private var store
     @Binding var showingRouterPicker: Bool
+    var body: some View {
+        NavigationStack {
+            AppRootPage(showingRouterPicker: $showingRouterPicker, title: "服务", subtitle: "已安装插件、系统服务与路由器软件") {
+                PluginCollection()
+                AppSection(title: "系统服务") {
+                    AppGroup {
+                        NavigationLink { ServiceDirectoryView() } label: {
+                            AppRow(title: "服务与启动项", detail: "运行实例、启停与开机启动", symbol: "gearshape.2", chevron: true)
+                        }.buttonStyle(.plain).accessibilityIdentifier("services-directory")
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct ServiceDirectoryView: View {
+    @Environment(RouterStore.self) private var store
     @State private var query = ""
     private var names: [String] {
         Set(store.inventory.initServices.map(\.name) + store.services.map(\.name)).sorted()
@@ -13,6 +31,11 @@ struct ServicesScreen: View {
         List {
             Section { InventoryStatus(); ReadStatus(updatedAt: store.servicesUpdatedAt, error: store.servicesError) }
             Section(store.inventory.initRead && store.servicesUpdatedAt != nil && store.servicesError == nil ? "服务与启动项 · \(names.count)" : "已读取的服务与启动项") {
+                if !store.inventory.initRead && !store.inventory.packagesRead && store.inventory.warnings.isEmpty {
+                    ContentUnavailableView("正在读取服务目录", systemImage: "gearshape.2")
+                } else if names.isEmpty && store.inventory.initRead && store.servicesUpdatedAt != nil && store.servicesError == nil {
+                    ContentUnavailableView("没有服务记录", systemImage: "gearshape.2", description: Text("路由器当前未返回启动项或运行实例。"))
+                }
                 ForEach(names, id: \.self) { name in
                     NavigationLink { ServiceDetailView(name: name) } label: {
                         VStack(alignment: .leading, spacing: 4) {
@@ -21,10 +44,10 @@ struct ServicesScreen: View {
                                 Text(service.instanceSummary).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                             } else { Text("未报告运行实例").font(AppTypography.secondary).foregroundStyle(AppPalette.muted) }
                         }
-                    }
+                    }.accessibilityIdentifier("service-\(name)")
                 }
             }
-        }.searchable(text: $query, prompt: "搜索服务").appDetailStyle("全部系统服务")
+        }.searchable(text: $query, prompt: "搜索服务").appDetailStyle("服务与启动项")
             .refreshable { await store.refresh() }.tint(AppPalette.accent)
     }
 }

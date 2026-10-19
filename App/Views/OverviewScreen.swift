@@ -21,24 +21,24 @@ struct OverviewScreen: View {
                     if !store.radios.isEmpty || store.inventory.menu("admin/network/wireless") != nil {
                         NavigationLink { WirelessDetailView() } label: {
                             overviewTile("Wi-Fi 状态", store.wirelessUpdatedAt == nil ? "尚未读取" : "\(store.radios.count) 个无线电", "wifi")
-                        }
+                        }.accessibilityIdentifier("overview-wireless")
                     }
                     NavigationLink { DevicesContent() } label: {
                         overviewTile("设备状态", store.devicesUpdatedAt == nil ? "尚未读取" : "\(store.leases.count) 条 DHCP 租约", "desktopcomputer")
-                    }
+                    }.accessibilityIdentifier("overview-leases")
                 }.buttonStyle(.plain).padding(.top, 9)
                 AppSection(title: "常用管理") {
                     VStack(spacing: 0) {
                         HStack(spacing: 0) {
-                            NavigationLink { InterfaceDetailView() } label: { quickItem("网络接口", "地址与连接状态", "network") }
+                            NavigationLink { InterfaceDetailView() } label: { quickItem("网络接口", "地址与连接状态", "network") }.accessibilityIdentifier("overview-interfaces")
                             if store.inventory.configNames.contains("firewall") {
-                                NavigationLink { ConfigurationEditorView(name: "firewall") } label: { quickItem("防火墙", "区域与端口规则", "checkmark.shield") }
+                                NavigationLink { ConfigurationEditorView(name: "firewall") } label: { quickItem("防火墙", "区域与端口规则", "checkmark.shield") }.accessibilityIdentifier("overview-firewall")
                             }
                         }
                         AppDivider(inset: 12)
                         HStack(spacing: 0) {
-                            NavigationLink { PluginDirectoryView() } label: { quickItem("插件中心", "配置、服务与软件包", "puzzlepiece.extension") }
-                            NavigationLink { ConfigurationDirectoryView() } label: { quickItem("全部配置", "读取与编辑", "slider.horizontal.3") }
+                            NavigationLink { PluginDirectoryView() } label: { quickItem("插件中心", "配置、服务与软件包", "puzzlepiece.extension") }.accessibilityIdentifier("overview-plugins")
+                            NavigationLink { ConfigurationDirectoryView() } label: { quickItem("全部配置", "读取与编辑", "slider.horizontal.3") }.accessibilityIdentifier("overview-configurations")
                         }
                     }.buttonStyle(.plain).background(AppPalette.surface, in: RoundedRectangle(cornerRadius: 15))
                 }
@@ -82,7 +82,7 @@ struct OverviewScreen: View {
                     Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(AppPalette.muted)
                 }
             }.padding(15).background(AppPalette.surface, in: RoundedRectangle(cornerRadius: 16))
-        }.buttonStyle(.plain)
+        }.buttonStyle(.plain).accessibilityIdentifier("overview-wan")
     }
     private func overviewTile(_ title: String, _ detail: String, _ symbol: String) -> some View {
         HStack(spacing: 7) {

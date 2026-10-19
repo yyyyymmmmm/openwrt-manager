@@ -25,7 +25,7 @@ final class RouterSmokeTests: XCTestCase {
         let app = launch()
         connect(app, captureLogin: true)
         attach("02-overview", app)
-        visit("设备", app)
+        openLeases(app)
         let device = app.buttons["device-02:00:00:00:00:01|192.0.2.10"]
         XCTAssertTrue(device.waitForExistence(timeout: 15))
         attach("03-devices", app)
@@ -37,9 +37,10 @@ final class RouterSmokeTests: XCTestCase {
         search.tap(); search.typeText("no-match")
         XCTAssertFalse(device.exists)
         attach("12-device-search", app)
+        back(app)
         visit("网络", app)
         attach("04-network", app)
-        visit("插件", app)
+        visit("服务", app)
         XCTAssertTrue(app.buttons["plugin-luci-app-ci-extension"].waitForExistence(timeout: 15))
         attach("05-plugins", app)
         visit("系统", app)
@@ -47,13 +48,17 @@ final class RouterSmokeTests: XCTestCase {
         tapVisible(app.buttons["系统日志"], app)
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "CI fixture log")).firstMatch.waitForExistence(timeout: 5))
         attach("20-records", app)
+        back(app)
+        visit("设置", app)
+        XCTAssertTrue(app.buttons["settings-router-picker"].exists)
+        attach("27-settings", app)
     }
 
     @MainActor
     func testCConfigurationApplyConfirmAndServiceControl() {
         let app = launch()
         connect(app)
-        visit("插件", app)
+        visit("服务", app)
         let plugin = app.buttons["plugin-luci-app-ci-extension"]
         XCTAssertTrue(plugin.waitForExistence(timeout: 15)); plugin.tap()
         attach("21-plugin-detail", app)
@@ -87,7 +92,7 @@ final class RouterSmokeTests: XCTestCase {
     func testDReadOnlyAccountCannotEdit() {
         let app = launch()
         connect(app, username: "readonly")
-        visit("插件", app)
+        visit("服务", app)
         let plugin = app.buttons["plugin-luci-app-ci-extension"]
         XCTAssertTrue(plugin.waitForExistence(timeout: 15)); plugin.tap()
         app.buttons["plugin-config-ci_extension"].tap()
@@ -98,6 +103,12 @@ final class RouterSmokeTests: XCTestCase {
         section.tap()
         XCTAssertFalse(app.buttons["config-field-enabled"].isEnabled)
         attach("25-readonly-config", app)
+        back(app); back(app)
+        tapVisible(app.buttons["plugin-service-ci_extension"], app)
+        app.buttons["停止"].tap(); app.buttons["确认停止"].tap()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "权限不足")).firstMatch.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "路由器已确认执行")).firstMatch.exists)
+        attach("28-readonly-service", app)
     }
 
     @MainActor
@@ -116,8 +127,9 @@ final class RouterSmokeTests: XCTestCase {
         back(app)
         connect(app)
         attach("08-dark-overview", app)
-        visit("设备", app); attach("14-dark-devices", app)
-        visit("插件", app)
+        openLeases(app); attach("14-dark-devices", app)
+        back(app)
+        visit("服务", app)
         XCTAssertTrue(app.buttons["plugin-luci-app-ci-extension"].waitForExistence(timeout: 15))
         attach("15-dark-plugins", app)
     }
@@ -130,6 +142,263 @@ final class RouterSmokeTests: XCTestCase {
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "登录失败")).firstMatch.waitForExistence(timeout: 10))
         XCTAssertFalse(app.tabBars.buttons["概览"].exists)
         attach("26-login-error", app)
+    }
+
+    @MainActor
+    func testGRoutingFamiliesNeighborsRoutesAndSearch() {
+        let app = launch(); connect(app)
+        visit("网络", app)
+        tapVisible(app.buttons["network-routing"], app)
+        let v4Neighbor = app.buttons["neighbor-IPv4-192.0.2.10|br-lan"]
+        XCTAssertTrue(v4Neighbor.waitForExistence(timeout: 15))
+        v4Neighbor.tap()
+        expectText("REACHABLE", app); expectText("lan", app)
+        attach("30-neighbor-ipv4", app); back(app)
+        tapVisible(app.buttons["route-IPv4-default via 192.0.2.254 dev br-lan proto static metric 10"], app)
+        expectText("目标网络", app); expectText("192.0.2.254", app)
+        attach("31-route-ipv4", app); back(app)
+        app.segmentedControls["routingFamilyPicker"].buttons["IPv6"].tap()
+        tapVisible(app.buttons["neighbor-IPv6-fd00::10|br-lan"], app)
+        expectText("STALE", app); expectText("fd00::10", app)
+        attach("32-neighbor-ipv6", app); back(app)
+        tapVisible(app.buttons["route-IPv6-fd00::/64 dev br-lan proto kernel metric 256"], app)
+        expectText("fd00::/64", app); expectText("kernel", app)
+        attach("33-route-ipv6", app); back(app)
+        let search = app.searchFields.firstMatch
+        if !search.isHittable { app.swipeDown() }
+        replace(search, with: "no-match")
+        expectText("没有匹配邻居", app)
+        XCTAssertFalse(app.buttons["neighbor-IPv6-fd00::10|br-lan"].exists)
+        replace(search, with: "02:00:00:00:00:01")
+        XCTAssertTrue(app.buttons["neighbor-IPv6-fd00::10|br-lan"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testHRouteACLFailureIsNotAnEmptySuccessfulTable() {
+        checkRoutingFailure(username: "route-denied", message: "权限不足", screenshot: "34-route-acl")
+    }
+
+    @MainActor
+    func testIRouteCommandFailureIsNotAnEmptySuccessfulTable() {
+        checkRoutingFailure(username: "route-failure", message: "ip: CI command unavailable", screenshot: "35-route-command-error")
+    }
+
+    @MainActor
+    func testJNetworkBranchesReachEveryReportedConfigurationField() {
+        let app = launch(); connect(app); visit("网络", app)
+        for entry in ["network-wan", "network-lan", "network-interfaces"] {
+            tapVisible(app.buttons[entry], app)
+            expectText(entry == "network-wan" ? "接口未连接" : "192.0.2.1/24", app)
+            tapVisible(app.buttons["interface-edit-config"], app)
+            inspectFields(section: "lan", fields: ["device", "ipaddr", "netmask", "proto"], app)
+            back(app); back(app)
+        }
+        tapVisible(app.buttons["network-wireless"], app)
+        expectText("权限不足", app)
+        tapVisible(app.buttons["编辑无线配置"], app)
+        inspectFields(section: "radio0", fields: ["channel", "disabled"], app)
+        back(app); back(app)
+        for (config, section, fields) in [
+            ("network", "lan", ["device", "ipaddr", "netmask", "proto"]),
+            ("dhcp", "lan", ["interface", "limit", "start"]),
+            ("firewall", "defaults", ["forward", "input"]),
+            ("wireless", "radio0", ["channel", "disabled"])
+        ] {
+            tapVisible(app.buttons["network-config-\(config)"], app)
+            inspectFields(section: section, fields: fields, app)
+            attach("36-config-\(config)", app); back(app)
+        }
+        tapVisible(app.buttons["network-configurations"], app)
+        tapVisible(app.buttons["configuration-ci_extension"], app)
+        inspectFields(section: "main", fields: ["enabled", "servers"], app)
+        back(app); back(app)
+        tapVisible(app.buttons["network-plugins"], app)
+        tapVisible(app.buttons["plugin-luci-app-ci-extension"], app)
+        XCTAssertTrue(app.buttons["plugin-config-ci_extension"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testKSystemRecordsAndConfiguration() {
+        let app = launch(); connect(app); visit("系统", app)
+        tapVisible(app.buttons["系统状态"], app)
+        expectText("ci-router", app); expectText("OpenWrt CI", app)
+        attach("37-system-information", app); back(app)
+        for title in ["系统日志", "运行进程", "存储挂载"] {
+            tapVisible(app.buttons[title], app)
+            expectText(title == "系统日志" ? "CI fixture log" : "preserved", app)
+            let search = app.searchFields.firstMatch
+            replace(search, with: "no-match")
+            XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "CI fixture")).firstMatch.exists)
+            replace(search, with: "CI fixture")
+            expectText("CI fixture", app)
+            attach("38-record-\(title)", app); back(app)
+        }
+        tapVisible(app.buttons["system-config-system"], app)
+        inspectFields(section: "main", fields: ["hostname"], app)
+    }
+
+    @MainActor
+    func testLServiceDirectoryAllActionsAndPackageDetails() {
+        let app = launch(); connect(app); visit("服务", app)
+        tapVisible(app.buttons["services-directory"], app)
+        tapVisible(app.buttons["service-ci_extension"], app)
+        for (action, state) in [("停止", "0 / 1 个实例运行"), ("启动", "1 / 1 个实例运行"), ("重启", "1 / 1 个实例运行"), ("关闭开机启动", "关闭"), ("启用开机启动", "启用")] {
+            tapVisible(app.buttons[action], app)
+            app.buttons["确认\(action)"].tap()
+            expectText("路由器已确认执行\(action)", app)
+            expectText(state, app)
+        }
+        attach("39-service-actions", app); back(app); back(app)
+        tapVisible(app.buttons["packages-directory"], app)
+        tapVisible(app.buttons["package-ci-extension"], app)
+        expectText("etc/config/ci_extension", app); expectText("etc/init.d/ci_extension", app)
+        attach("40-package-files", app); back(app); back(app)
+        tapVisible(app.buttons["plugin-luci-app-ci-extension"], app)
+        tapVisible(app.buttons["plugin-package-details"], app)
+        expectText("ci-extension", app)
+        attach("41-plugin-dependencies", app)
+    }
+
+    @MainActor
+    func testMListDraftValidationSectionDeletionAndRollback() {
+        let app = launch(); connect(app); visit("服务", app)
+        tapVisible(app.buttons["plugin-luci-app-ci-extension"], app)
+        tapVisible(app.buttons["plugin-config-ci_extension"], app)
+        tapVisible(app.buttons["config-section-main"], app)
+        app.buttons["config-field-servers"].tap()
+        XCTAssertTrue(app.segmentedControls.buttons["文本列表"].isSelected)
+        replace(valueInput(app), with: "three\nfour")
+        app.buttons["完成"].tap()
+        expectText("three · four", app)
+        app.buttons["新增字段"].tap()
+        replace(app.textFields["configFieldName"], with: "bad/name")
+        XCTAssertFalse(app.buttons["完成"].isEnabled)
+        replace(app.textFields["configFieldName"], with: "enabled")
+        XCTAssertFalse(app.buttons["完成"].isEnabled)
+        replace(app.textFields["configFieldName"], with: "note")
+        replace(valueInput(app), with: "temporary")
+        app.buttons["完成"].tap()
+        tapVisible(app.buttons["config-field-note"], app)
+        tapVisible(app.buttons["删除字段"], app)
+        app.buttons["删除字段"].lastMatch.tap()
+        XCTAssertFalse(app.buttons["config-field-note"].exists)
+        back(app)
+        tapVisible(app.buttons["新增配置节"], app)
+        replace(app.textFields["节类型"], with: "service")
+        replace(app.textFields["节名称"], with: "extra")
+        app.buttons["添加"].tap()
+        tapVisible(app.buttons["config-section-extra"], app)
+        app.buttons["删除配置节"].tap(); app.buttons["删除配置节"].lastMatch.tap()
+        XCTAssertFalse(app.buttons["config-section-extra"].exists)
+        app.buttons["previewConfigChanges"].tap()
+        attach("42-list-preview", app)
+        app.buttons["applyConfigurationButton"].tap(); app.buttons["应用修改"].tap()
+        let rollback = app.buttons["回滚修改"]
+        XCTAssertTrue(rollback.waitForExistence(timeout: 10)); rollback.tap()
+        tapVisible(app.buttons["config-section-main"], app)
+        expectText("one · two", app)
+        app.buttons["config-field-enabled"].tap(); replace(valueInput(app), with: "0"); app.buttons["完成"].tap()
+        back(app); back(app)
+        app.buttons["继续编辑"].tap()
+        XCTAssertTrue(app.buttons["previewConfigChanges"].isEnabled)
+        back(app); app.buttons["放弃修改"].tap()
+        tapVisible(app.buttons["plugin-config-ci_extension"], app)
+        inspectFields(section: "main", fields: ["enabled", "servers"], app)
+        XCTAssertFalse(app.buttons["previewConfigChanges"].isEnabled)
+    }
+
+    @MainActor
+    func testNSettingsEveryChoiceNestedInformationAndDisconnect() {
+        let app = launch(); connect(app); visit("设置", app)
+        for choice in ["跟随系统", "标准", "加大", "紧凑"] {
+            tapVisible(app.buttons["textSizePicker"], app); app.buttons[choice].tap()
+            XCTAssertEqual(app.buttons["textSizePicker"].value as? String, choice)
+        }
+        for choice in ["深色", "浅色", "跟随系统"] {
+            tapVisible(app.buttons["appearancePicker"], app); app.buttons[choice].tap()
+            XCTAssertEqual(app.buttons["appearancePicker"].value as? String, choice)
+        }
+        for (link, text) in [("helpLink", "连接路由器"), ("privacyLink", "连接与本地存储"), ("aboutLink", "Zirox-openwrt")] {
+            tapVisible(app.buttons[link], app); expectText(text, app)
+            if link == "aboutLink" {
+                tapVisible(app.buttons["隐私说明"], app); expectText("连接与本地存储", app); back(app)
+                tapVisible(app.buttons["帮助与连接"], app); expectText("连接路由器", app); back(app)
+            }
+            back(app)
+        }
+        tapVisible(app.buttons["settings-router-picker"], app)
+        XCTAssertTrue(app.textFields["routerAddressField"].waitForExistence(timeout: 5))
+        app.buttons["取消"].tap()
+        tapVisible(app.buttons["settings-disconnect"], app)
+        app.buttons["取消"].tap()
+        XCTAssertTrue(app.tabBars.buttons["设置"].exists)
+        tapVisible(app.buttons["settings-disconnect"], app)
+        app.buttons["断开连接"].lastMatch.tap()
+        XCTAssertTrue(app.buttons["appSettingsLink"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.tabBars.buttons["概览"].exists)
+        attach("43-disconnected", app)
+    }
+
+    @MainActor
+    func testOOverviewShortcutsAndHeaderSearch() {
+        let app = launch(); connect(app)
+        for entry in ["overview-wan", "overview-interfaces"] {
+            tapVisible(app.buttons[entry], app)
+            XCTAssertTrue(app.buttons["interface-edit-config"].waitForExistence(timeout: 5)); back(app)
+        }
+        tapVisible(app.buttons["overview-wireless"], app); expectText("权限不足", app); back(app)
+        tapVisible(app.buttons["overview-leases"], app)
+        tapVisible(app.buttons["device-02:00:00:00:00:01|192.0.2.10"], app)
+        expectText("设备名称", app); back(app); back(app)
+        tapVisible(app.buttons["overview-firewall"], app)
+        inspectFields(section: "defaults", fields: ["forward", "input"], app); back(app)
+        tapVisible(app.buttons["overview-plugins"], app)
+        tapVisible(app.buttons["plugin-luci-app-ci-extension"], app)
+        XCTAssertTrue(app.buttons["plugin-config-ci_extension"].exists); back(app); back(app)
+        tapVisible(app.buttons["overview-configurations"], app)
+        tapVisible(app.buttons["configuration-system"], app)
+        inspectFields(section: "main", fields: ["hostname"], app); back(app); back(app)
+        tapVisible(app.buttons["查看全部活动"], app)
+        expectText("部分信息读取失败", app); back(app)
+        app.buttons["搜索管理功能"].tap()
+        replace(app.textFields["searchField"], with: "防火墙")
+        tapVisible(app.buttons["network-config-firewall"], app)
+        inspectFields(section: "defaults", fields: ["forward", "input"], app)
+        attach("44-search-to-field", app)
+    }
+
+    @MainActor
+    private func checkRoutingFailure(username: String, message: String, screenshot: String) {
+        let app = launch(); connect(app, username: username); visit("网络", app)
+        tapVisible(app.buttons["network-routing"], app)
+        expectText("无法读取邻居表", app); expectText(message, app)
+        XCTAssertFalse(app.staticTexts["暂无邻居记录"].exists)
+        XCTAssertFalse(app.staticTexts["暂无路由记录"].exists)
+        tapVisible(app.buttons["重试"], app)
+        expectText(message, app); attach(screenshot, app)
+    }
+
+    @MainActor
+    private func inspectFields(section: String, fields: [String], _ app: XCUIApplication) {
+        tapVisible(app.buttons["config-section-\(section)"], app)
+        for key in fields {
+            tapVisible(app.buttons["config-field-\(key)"], app)
+            XCTAssertTrue(valueInput(app).waitForExistence(timeout: 5))
+            XCTAssertFalse(app.textFields["configFieldName"].isEnabled)
+            app.buttons["取消"].tap()
+        }
+        back(app)
+    }
+
+    @MainActor
+    private func valueInput(_ app: XCUIApplication) -> XCUIElement {
+        if app.secureTextFields["configValueInput"].exists { return app.secureTextFields["configValueInput"] }
+        return app.textFields["configValueInput"].exists ? app.textFields["configValueInput"] : app.textViews["configValueInput"]
+    }
+
+    @MainActor
+    private func expectText(_ text: String, _ app: XCUIApplication) {
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", text)).firstMatch.waitForExistence(timeout: 15), "Missing router response: \(text)")
     }
 
     @MainActor
@@ -173,9 +442,8 @@ final class RouterSmokeTests: XCTestCase {
         enterCredentials(app, username: username, capture: captureLogin)
         submit(app)
         XCTAssertTrue(app.tabBars.buttons["概览"].waitForExistence(timeout: 15))
-        visit("设备", app)
-        XCTAssertTrue(app.buttons["device-02:00:00:00:00:01|192.0.2.10"].waitForExistence(timeout: 15))
-        visit("概览", app)
+        XCTAssertEqual(app.tabBars.buttons.count, 5)
+        for title in ["概览", "系统", "服务", "网络", "设置"] { XCTAssertTrue(app.tabBars.buttons[title].exists) }
     }
 
     @MainActor
@@ -194,12 +462,21 @@ final class RouterSmokeTests: XCTestCase {
     }
 
     @MainActor
+    private func openLeases(_ app: XCUIApplication) {
+        visit("网络", app)
+        tapVisible(app.buttons["network-dhcp-leases"], app)
+        XCTAssertTrue(app.buttons["device-02:00:00:00:00:01|192.0.2.10"].waitForExistence(timeout: 20))
+    }
+
+    @MainActor
     private func back(_ app: XCUIApplication) { app.navigationBars.buttons.firstMatch.tap() }
 
     @MainActor
     private func tapVisible(_ element: XCUIElement, _ app: XCUIApplication) {
-        for _ in 0..<4 where !element.isHittable { app.swipeUp() }
-        XCTAssertTrue(element.waitForExistence(timeout: 5)); XCTAssertTrue(element.isHittable); element.tap()
+        XCTAssertTrue(element.waitForExistence(timeout: 15))
+        for _ in 0..<6 where !element.isHittable { app.swipeUp() }
+        for _ in 0..<6 where !element.isHittable { app.swipeDown() }
+        XCTAssertTrue(element.isHittable); element.tap()
     }
 
     @MainActor

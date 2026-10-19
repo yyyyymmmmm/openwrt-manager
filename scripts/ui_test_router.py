@@ -18,16 +18,20 @@ PACKAGES = [
 ]
 MENU = {"children": {"admin": {"children": {"services": {
     "title": "Services", "children": {"ci_extension": {
-        "title": "CI Extension", "depends": {"acl": ["luci-app-ci-extension"], "uci": {"ci_extension": True}}
+    "title": "CI Extension", "depends": {"acl": ["luci-app-ci-extension"], "uci": {"ci_extension": True}}
     }}
-}}}}}
+}, "network": {"title": "Network", "children": {"wireless": {"title": "Wireless"}}}}}}}
 
 
 def new_state(readonly):
     return {"readonly": readonly, "configs": {
         "system": {"main": {".type": "system", ".index": 0, ".anonymous": False, "hostname": "ci-router"}},
+        "network": {"lan": {".type": "interface", ".index": 0, ".anonymous": False, "proto": "static", "ipaddr": "192.0.2.1", "netmask": "255.255.255.0", "device": "br-lan"}},
+        "dhcp": {"lan": {".type": "dhcp", ".index": 0, ".anonymous": False, "interface": "lan", "start": "100", "limit": "150"}},
+        "firewall": {"defaults": {".type": "defaults", ".index": 0, ".anonymous": False, "input": "REJECT", "forward": "REJECT"}},
+        "wireless": {"radio0": {".type": "wifi-device", ".index": 0, ".anonymous": False, "disabled": "0", "channel": "auto"}},
         "ci_extension": {"main": {".type": "service", ".index": 0, ".anonymous": False, "enabled": "1", "servers": ["one", "two"]}},
-    }, "staged": {}, "before": None, "deadline": None, "running": True, "enabled": True}
+    }, "staged": {}, "before": None, "deadline": None, "running": True, "enabled": True, "route_mode": "normal"}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -72,10 +76,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def rpc(self, token, obj, method, args):
         if (obj, method) == ("session", "login"):
-            if args.get("username") not in ("root", "readonly") or args.get("password") != "ci-only-password":
+            if args.get("username") not in ("root", "readonly", "route-denied", "route-failure") or args.get("password") != "ci-only-password":
                 return 6, {}
             token = secrets.token_hex(16)
             SESSIONS[token] = new_state(args["username"] == "readonly")
+            SESSIONS[token]["route_mode"] = args["username"]
             return 0, {"ubus_rpc_session": token, "expires": 3600}
         if token not in SESSIONS:
             return 6, {}
@@ -94,7 +99,22 @@ class Handler(BaseHTTPRequestHandler):
         if (obj, method) == ("system", "info"):
             return 0, {"uptime": 3600, "memory": {"total": 1073741824, "available": 536870912}, "load": [6553, 3276, 1638], "root": {"total": 1000000, "used": 250000}}
         if (obj, method) == ("network.interface", "dump"):
-            return 0, {"interface": [{"interface": "lan", "up": True, "proto": "static", "l3_device": "br-lan", "ipv4-address": [{"address": "192.0.2.1", "mask": 24}]}]}
+            return 0, {"interface": [{"interface": "lan", "up": True, "proto": "static", "l3_device": "br-lan", "ipv4-address": [{"address": "192.0.2.1", "mask": 24}]}, {"interface": "wan", "up": False, "proto": "dhcp", "l3_device": "eth1"}]}
+        if (obj, method) == ("file", "exec"):
+            outputs = {
+                ("-4", "route", "show"): "default via 192.0.2.254 dev br-lan proto static metric 10\n192.0.2.0/24 dev br-lan proto kernel scope link src 192.0.2.1",
+                ("-6", "route", "show"): "fd00::/64 dev br-lan proto kernel metric 256",
+                ("-4", "neigh", "show"): "192.0.2.10 dev br-lan lladdr 02:00:00:00:00:01 REACHABLE",
+                ("-6", "neigh", "show"): "fd00::10 dev br-lan lladdr 02:00:00:00:00:01 STALE router",
+            }
+            query = tuple(args.get("params", []))
+            if args.get("command") != "/sbin/ip" or query not in outputs:
+                return 6, {}
+            if state["route_mode"] == "route-denied":
+                return 6, {}
+            if state["route_mode"] == "route-failure":
+                return 0, {"code": 1, "stdout": "", "stderr": "ip: CI command unavailable"}
+            return 0, {"code": 0, "stdout": outputs[query], "stderr": ""}
         if (obj, method) == ("luci-rpc", "getDHCPLeases"):
             return 0, {"dhcp_leases": [{"hostname": "CI Phone", "ipaddr": "192.0.2.10", "macaddr": "02:00:00:00:00:01", "expires": 1800}], "dhcp6_leases": []}
         if (obj, method) == ("network.wireless", "status"):

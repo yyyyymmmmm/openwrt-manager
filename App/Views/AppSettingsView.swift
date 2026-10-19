@@ -1,11 +1,52 @@
 import SwiftUI
 
 struct AppSettingsView: View {
+    var body: some View {
+        AppPage(title: "", subtitle: nil) { AppSettingsContent() }.appDetailStyle("App 设置")
+    }
+}
+
+struct SettingsScreen: View {
+    @Environment(RouterStore.self) private var store
+    @Binding var showingRouterPicker: Bool
+    @State private var confirmDisconnect = false
+
+    var body: some View {
+        NavigationStack {
+            AppRootPage(showingRouterPicker: $showingRouterPicker, title: "设置", subtitle: "连接、显示与 App 信息") {
+                AppSection(title: "当前连接") {
+                    AppGroup {
+                        if let profile = store.activeProfile {
+                            AppRow(title: profile.name, detail: profile.address, symbol: "wifi.router", value: profile.username)
+                            AppDivider()
+                        }
+                        Button { showingRouterPicker = true } label: {
+                            AppRow(title: "切换或添加路由器", symbol: "arrow.left.arrow.right", chevron: true)
+                        }.buttonStyle(.plain).accessibilityIdentifier("settings-router-picker")
+                        .disabled(store.isMutating || store.pendingConfiguration != nil)
+                        AppDivider()
+                        Button { confirmDisconnect = true } label: {
+                            AppRow(title: "断开连接", symbol: "rectangle.portrait.and.arrow.right", destructive: true)
+                        }.buttonStyle(.plain).accessibilityIdentifier("settings-disconnect")
+                        .disabled(store.isMutating || store.pendingConfiguration != nil)
+                    }
+                }
+                AppSettingsContent()
+            }
+            .confirmationDialog("断开当前路由器连接？", isPresented: $confirmDisconnect, titleVisibility: .visible) {
+                Button("断开连接", role: .destructive) { store.disconnect() }
+                Button("取消", role: .cancel) {}
+            } message: { Text("清除本次会话数据，保留本机保存的地址与凭据。") }
+        }
+    }
+}
+
+private struct AppSettingsContent: View {
     @AppStorage("text-size.v1") private var textSize = AppTextSize.compact.rawValue
     @AppStorage("appearance.v1") private var appearance = "system"
     private var appearanceTitle: String { appearance == "dark" ? "深色" : appearance == "light" ? "浅色" : "跟随系统" }
     var body: some View {
-        AppPage(title: "", subtitle: nil) {
+        Group {
             AppSection(title: "显示") {
                 AppGroup {
                     NavigationLink { TextSizeSelection() } label: {
@@ -16,19 +57,20 @@ struct AppSettingsView: View {
                     NavigationLink { AppearanceSelection() } label: {
                         AppRow(title: "外观", symbol: "circle.lefthalf.filled", value: appearanceTitle, chevron: true)
                     }.buttonStyle(.plain).accessibilityIdentifier("appearancePicker")
+                        .accessibilityValue(appearanceTitle)
                 }
             }
             AppSection(title: "支持与隐私") {
                 AppGroup {
-                    NavigationLink { AppHelpView() } label: { AppRow(title: "帮助与连接", symbol: "questionmark.circle", chevron: true) }.buttonStyle(.plain)
+                    NavigationLink { AppHelpView() } label: { AppRow(title: "帮助与连接", symbol: "questionmark.circle", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("helpLink")
                     AppDivider()
                     NavigationLink { AppPrivacyView() } label: { AppRow(title: "隐私说明", symbol: "hand.raised", chevron: true) }
                         .buttonStyle(.plain).accessibilityIdentifier("privacyLink")
                     AppDivider()
-                    NavigationLink { AppAboutView() } label: { AppRow(title: "关于", symbol: "info.circle", chevron: true) }.buttonStyle(.plain)
+                    NavigationLink { AppAboutView() } label: { AppRow(title: "关于", symbol: "info.circle", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("aboutLink")
                 }
             }
-        }.appDetailStyle("App 设置")
+        }
     }
 }
 

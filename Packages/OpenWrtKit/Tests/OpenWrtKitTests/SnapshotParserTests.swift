@@ -73,6 +73,42 @@ final class SnapshotParserTests: XCTestCase {
         XCTAssertTrue(try SnapshotParser.leases(.object(["dhcp_leases": .array([])])).isEmpty)
     }
 
+    func testRoutingParsersReadKernelRoutesAndMapNeighborsToLogicalInterfaces() throws {
+        let interfaces = [NetworkInterfaceSnapshot(name: "lan", protocolName: "static", addresses: [], up: true, device: "br-lan")]
+        let routes = try SnapshotParser.routes("default via 192.168.1.1 dev br-lan proto static metric 10\n192.168.1.0/24 dev br-lan proto kernel scope link src 192.168.1.2")
+        XCTAssertEqual(routes.count, 2)
+        XCTAssertEqual(routes[0].destination, "default")
+        XCTAssertEqual(routes[0].gateway, "192.168.1.1")
+        XCTAssertEqual(routes[0].device, "br-lan")
+        XCTAssertEqual(routes[0].metric, "10")
+
+        let neighbors = try SnapshotParser.neighbors("192.168.1.25 dev br-lan lladdr aa:bb:cc:dd:ee:ff REACHABLE\n192.168.1.26 dev br-lan INCOMPLETE", interfaces: interfaces)
+        XCTAssertEqual(neighbors.count, 2)
+        XCTAssertEqual(neighbors[0].interface, "lan")
+        XCTAssertEqual(neighbors[0].mac, "aa:bb:cc:dd:ee:ff")
+        XCTAssertEqual(neighbors[0].state, "REACHABLE")
+        XCTAssertNil(neighbors[1].mac)
+        XCTAssertEqual(neighbors[1].state, "INCOMPLETE")
+    }
+
+    func testEmptyRoutingOutputIsAValidEmptyTableAndMalformedNeighborFails() throws {
+        XCTAssertTrue(try SnapshotParser.routes("\n").isEmpty)
+        XCTAssertTrue(try SnapshotParser.neighbors("", interfaces: []).isEmpty)
+        XCTAssertThrowsError(try SnapshotParser.neighbors("192.0.2.1 lladdr aa:bb FAILED", interfaces: []))
+        XCTAssertThrowsError(try SnapshotParser.routes("error: unsupported command"))
+        XCTAssertThrowsError(try SnapshotParser.routes("default via"))
+        XCTAssertThrowsError(try SnapshotParser.routes("123-error dev br-lan"))
+        XCTAssertThrowsError(try SnapshotParser.routes("192.0.2.0/33 dev br-lan"))
+        XCTAssertThrowsError(try SnapshotParser.routes("default via invalid dev br-lan"))
+        XCTAssertThrowsError(try SnapshotParser.routes("default dev br-lan metric unknown"))
+        XCTAssertThrowsError(try SnapshotParser.neighbors("192.0.2.1 dev br-lan lladdr FAILED", interfaces: []))
+        XCTAssertThrowsError(try SnapshotParser.neighbors("invalid dev br-lan FAILED", interfaces: []))
+        XCTAssertThrowsError(try SnapshotParser.neighbors("192.0.2.1 dev br-lan lladdr zz:zz:zz:zz:zz:zz STALE", interfaces: []))
+        XCTAssertTrue(try SnapshotParser.routes("  \n\t").isEmpty)
+        XCTAssertEqual(try SnapshotParser.routes("unreachable fd00::/64 metric 1024").first?.destination, "fd00::/64")
+        XCTAssertEqual(try SnapshotParser.neighbors("fe80::1 dev br-lan lladdr 02:00:00:00:00:01 STALE router", interfaces: []).first?.state, "STALE")
+    }
+
     func testMalformedWirelessAndServiceMapsFailRatherThanInventingEntries() {
         XCTAssertThrowsError(try SnapshotParser.wireless(.object(["radio0": .string("error")])))
         XCTAssertThrowsError(try SnapshotParser.wireless(.object(["radio0": .object(["interfaces": .object([:])])])))

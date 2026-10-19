@@ -18,7 +18,7 @@ struct ConfigurationDirectoryView: View {
                     ForEach(filtered, id: \.self) { name in
                         NavigationLink { ConfigurationEditorView(name: name) } label: {
                             AppRow(title: name, symbol: "slider.horizontal.3", chevron: true)
-                        }.buttonStyle(.plain)
+                        }.buttonStyle(.plain).accessibilityIdentifier("configuration-\(name)")
                         if name != filtered.last { AppDivider() }
                     }
                 }
@@ -200,7 +200,7 @@ private struct ConfigurationFieldEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("字段名称") { TextField("名称", text: $key).disabled(!field.isNew).textInputAutocapitalization(.never).autocorrectionDisabled() }
+                Section("字段名称") { TextField("名称", text: $key).disabled(!field.isNew).textInputAutocapitalization(.never).autocorrectionDisabled().accessibilityIdentifier("configFieldName") }
                 Section {
                     Picker("值类型", selection: $isList) { Text("文本").tag(false); Text("文本列表").tag(true) }.pickerStyle(.segmented)
                     if ConfigurationDisplay.sensitive(key) && !reveal {
