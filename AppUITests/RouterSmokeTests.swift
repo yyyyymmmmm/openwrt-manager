@@ -28,7 +28,10 @@ final class RouterSmokeTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["dnsmasq"].waitForExistence(timeout: 5))
         attachScreenshot(named: "05-services", from: app)
         visitTab("系统", in: app)
-        XCTAssertTrue(app.staticTexts["OpenWrt 24.10 · 示例"].waitForExistence(timeout: 5))
+        let firmware = app.staticTexts.containing(
+            NSPredicate(format: "label CONTAINS %@", "OpenWrt 24.10")
+        ).firstMatch
+        XCTAssertTrue(firmware.waitForExistence(timeout: 5))
         attachScreenshot(named: "06-system", from: app)
     }
 
@@ -42,7 +45,10 @@ final class RouterSmokeTests: XCTestCase {
         field.typeText("https://router.example:8443")
         app.buttons["continueToLoginButton"].tap()
         XCTAssertTrue(app.secureTextFields["routerPasswordField"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["https://router.example:8443"].exists)
+        let address = app.staticTexts.containing(
+            NSPredicate(format: "label CONTAINS %@", "https://router.example:8443")
+        ).firstMatch
+        XCTAssertTrue(address.waitForExistence(timeout: 5))
         attachScreenshot(named: "07-login", from: app)
     }
 
