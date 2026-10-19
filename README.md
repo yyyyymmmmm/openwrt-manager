@@ -1,62 +1,59 @@
 # OpenWrt Manager
 
-适用于 iPhone 的原生 OpenWrt 管理客户端。当前开发版本包含手动添加、局域网发现、ubus 登录，以及概览、DHCP 设备搜索/详情、网络/Wi-Fi、插件服务和系统信息的只读视图。它不是 OpenWrt 官方应用。
+适用于 iPhone 的第三方原生 OpenWrt 管理客户端。目标是在手机上管理路由器的网络、系统和插件；目前实现范围与尚未完成项目分别记录在 [TASKS.md](TASKS.md)，不将通用配置编辑视为全部插件适配完成。本项目与 OpenWrt、iStore 官方项目无隶属关系。
 
-## 技术方案
+## 当前实现
 
-- SwiftUI 原生界面，部署目标 iOS 17；在 iOS 26 上使用系统当前的导航栏和材质外观。
-- AppIcon 使用深蓝到青绿底色、无线信号和路由器图形，并提供 iPhone 与 App Store 所需尺寸。
-- Packages/OpenWrtKit 负责地址规范化、ubus JSON-RPC 与数据模型。
-- 用户名和密码用于路由器本地 session.login；密码仅在用户选择记住时写入 iOS 钥匙串。
-- 不包含云端账户、云中转、任意命令执行、固件刷写或路由器配置写入。
-- 运行数据只保留在当前进程；已保存的地址和用户名保存在本机，应用不发送分析数据。
-- 全局使用系统语义字号：列表 subheadline（默认 15pt）、说明 footnote（13pt）、元信息 caption（12pt）；设置可选跟随系统、紧凑、标准、加大，系统辅助功能大字始终优先。外观支持跟随系统、浅色和深色。
-- 本次连接保留最近 50 条本机会话活动；它不是路由器日志。帮助、隐私和关于页面在登录前与连接后均可访问。
+- 输入管理地址或扫描局域网，使用路由器账户通过 ubus 登录；保存多个路由器，按用户选择将密码写入本机钥匙串。
+- 原生五项 TabView：概览、设备、网络、插件、系统。绿色设计系统、紧凑语义字号、深浅外观、文字大小设置及系统辅助功能大字。
+- 读取系统状态、网络接口、DHCP 租约、无线和 procd 实例。租约不等于设备在线，接口连接不等于互联网可达，进程存在不等于插件业务健康。
+- 动态读取路由器菜单、已安装软件包、配置目录和启动项；列出所有返回的 `luci-app-*` 软件包。未知插件不会因客户端没有预置名称而被遗漏。菜单只用于发现能力，不提供管理网页入口。
+- 原生 UCI 配置节和字段管理：字符串与列表编辑、新增与删除、权限检查、变更预览、并发修改检查、apply/confirm 与回滚。应用后须在 90 秒内验证连接并确认；已有待提交修改时拒绝覆盖。
+- 原生服务启停、重启和开机启动设置；只有服务接口返回成功才显示执行结果，并重新读取状态。
+- 原生系统日志、运行进程与存储挂载记录查看、筛选和刷新。
+- 设置、帮助、隐私及关于页面与实际实现对应。正式 App 不含演示模式、样例业务数据、测试注入分支或模拟成功操作。
 
-## 在 Mac 上运行
+尚未完成：网络和插件的专用业务表单、软件包安装/升级/卸载、诊断任务、文件和磁盘操作、备份恢复、重置及固件升级。共用 UCI 编辑只能处理实际返回的配置字段，不能代替这些专有流程；相关入口不会伪装成可用功能。
 
-需要安装 Xcode 26 或更新版本，以及 XcodeGen：
+## 连接与兼容性
 
-    brew install xcodegen
-    git clone https://github.com/yyyyymmmmm/openwrt-manager.git
-    cd openwrt-manager
-    xcodegen generate
-    open OpenWrtManager.xcodeproj
+客户端使用 HTTP(S) `/ubus` JSON-RPC。需要 `rpcd`、`uhttpd-mod-ubus` 和账户 ACL；租约、启动项及部分系统记录还依赖相应 LuCI RPC 模块。无线、配置和插件内容以当前路由器的实际响应为准。接口缺失、拒绝访问和请求失败会显示错误，不以空数据冒充读取成功。
 
-在 Xcode 中选择 OpenWrtManager scheme 和 iPhone Simulator，按 Run。真机运行时选择自己的 Apple 开发者团队并签名。首次扫描时，要允许应用访问本地网络。
+软件包清单优先使用固定命令 `/usr/libexec/package-manager-call list-installed` 的受控 CGI 接口；旧版固件可尝试固定的 opkg 清单命令。没有任意命令执行入口，无法读取时明确报错。APK/opkg 的可用性取决于固件和 ACL，不能按 SSH 的 root 权限推定 HTTP 权限。
 
-## GitHub Actions
+HTTPS 默认验证系统信任链。自签名证书须核对 SHA-256 指纹后明确选择信任；证书变化会重新提示。HTTP 会在登录前提示明文传输。支持自定义端口与代理路径。
 
-.github/workflows/ios.yml 会在推送、Pull Request 或手动触发时：
+局域网发现查找 Bonjour Web 服务，并检查当前 Wi-Fi IPv4 网段的 80/443 端口；较大网段限制在所在 `/24`。结果仅为候选管理地址，不证明是 OpenWrt。自定义端口、IPv6-only、VPN 或网络隔离环境请手动输入地址。
 
-1. 运行 OpenWrtKit Swift Package 测试。
-2. 使用 XcodeGen 生成 Xcode 工程。
-3. 构建 Release 真机版本，打包并上传未签名 IPA（附件保留 30 天）。
-4. 在 macOS iPhone Simulator 上编译并运行 UI 冒烟测试。
-5. 上传 .xcresult 和测试截图。
+## 数据处理
 
-这个工作流用于在 GitHub 上编译和运行模拟器测试，并上传未签名的 iOS IPA。未签名 IPA 不能直接安装到实体 iPhone，需先自行签名；TestFlight/App Store 分发还需要 Apple Developer Program。工作流不收集、存储或导出 Apple 私钥。
+没有云端账户、中转服务、广告或分析 SDK。密码仅在选择记住时保存在钥匙串；会话、路由器读取数据和配置草稿保留在当前进程。路由器地址记录、用户名、上次连接时间与显示偏好保存在本机。最近活动只记录本次 App 会话，系统日志另行从路由器读取。
 
-源码仓库为 https://github.com/yyyyymmmmm/openwrt-manager 。每次构建的状态和下载附件见仓库 Actions 页面；请以具体运行结果为准。尚未完成真实路由器联调。
+应用不编造运营主体、公开支持渠道或法律协议。App Store 发布仍需真实开发者主体、公开隐私政策与支持页面、隐私申报、签名和审核材料；当前内置隐私说明不表示这些工作已经完成。
 
-## OpenWrt 兼容性
+## 构建与测试
 
-客户端通过 HTTP(S) 的 /ubus JSON-RPC 接口工作。需要固件启用了 rpcd 和 uhttpd-mod-ubus，并允许这个账户调用 session.login。DHCP、无线及服务信息还取决于 LuCI RPC 接口、具体固件版本和 rpcd ACL；某项接口缺失时，该页面会显示对应错误，不会拿演示数据填充。
+原生 SwiftUI，最低 iOS 17，使用 Xcode 26 SDK。在 iOS 26 上使用系统导航、TabView 与材质外观。协议、解析与配置事务位于独立 Swift Package `Packages/OpenWrtKit`。
 
-优先使用 HTTPS。自签名证书需要先核对 SHA-256 指纹，再明确选择信任；证书信任按该路由器主机保存。使用 HTTP 时应用会说明登录信息在当前网络中未加密，并要求再次确认。
+在安装 Xcode 26 和 XcodeGen 的 Mac 上运行：
 
-局域网发现会查找 Bonjour Web 服务，并检查手机当前 Wi-Fi IPv4 地址所在网段的 80/443 端口。较大的网段会限制在手机所在的 /24；扫描结果只说明 Web 端口开放，不证明它就是 OpenWrt。自定义端口、IPv6-only、VPN 或网络隔离环境请手动输入地址。设备必须允许 iPhone 访问其管理接口。
+```sh
+brew install xcodegen
+git clone https://github.com/yyyyymmmmm/openwrt-manager.git
+cd openwrt-manager
+swift test --package-path Packages/OpenWrtKit
+xcodegen generate
+open OpenWrtManager.xcodeproj
+```
 
-## 当前范围
+选择 OpenWrtManager scheme 和 iPhone Simulator。实体设备需要自己的 Apple 开发者团队与签名；首次局域网访问需要允许本地网络权限。
 
-当前所有路由器操作均为只读。用户已选定后续的功能方向，包括 Wi-Fi、DHCP、防火墙、VPN、服务和插件；这些写操作暂不开放，需先逐项确认路由器能力、ACL、配置回滚和断网恢复流程。
+`.github/workflows/ios.yml` 在 GitHub macOS runner 上扫描正式源码、执行协议测试、生成工程、构建并检查未签名 Release IPA，再运行模拟器 UI 测试。`scripts/audit_release.py` 拦截已知演示代码、CI 数据标识和测试资源进入正式包；它不能代替逐项功能验收。UI 测试使用仅在 CI 主机环回地址监听的 HTTP 测试服务器，通过正常登录和请求路径验证权限、配置事务及服务操作。服务器和测试数据均不加入正式 App；其截图只能证明自动化测试结果，不能作为真实路由器写入验收证据。
 
-插件页按精确 procd 服务名称识别 DDNS、SQM、PBR、mwan3、SmartDNS、Adblock、Docker 和 Transmission。识别到服务不证明插件版本、可配置权限或业务健康；未识别不等于未安装。LuCI、软件包及 iStore 网页入口保持管理地址的协议、端口与代理前缀，网页使用独立登录，不注入保存的密码或会话。iStore 入口依赖路由器已安装兼容版本；当前没有原生安装、卸载或插件配置功能。
+每个提交的实际构建结果以 [GitHub Actions](https://github.com/yyyyymmmmm/openwrt-manager/actions) 为准。未签名 IPA 需自行签名后安装；TestFlight/App Store 分发还需 Apple Developer Program。工作流不收集或导出 Apple 私钥。
 
-阶段待办见 TASKS.md。App Store 发布仍需正式开发者主体、公开政策与支持页面、签名、TestFlight 及真实设备兼容性验证。当前内置隐私说明描述开发版行为，不表示已经完成上架审核。
+## 联调证据与边界
 
-## 参考调研
+已对一台 OpenWrt 25.12.5 / x86_64 / APK 路由器完成只读接口核对：587 个软件包、27 个 `luci-app-*`、59 个启动项，以及菜单、配置、状态、日志、进程和挂载接口。当前路由器未安装 iStore；不能据此声称已经完成 iStore 适配。无线接口被 ACL 拒绝，不据此判定没有无线硬件。
 
-- OpenWrt 官方 LuCI 的 rpcd-mod-luci 实现了 getDHCPLeases，并分别返回 dhcp_leases、dhcp6_leases、hostname、macaddr、ipaddr/ip6addr 和 expires 字段；客户端按这些字段兼容解析。
-- GitHub Actions macOS-15 镜像提供 Xcode 26.x 与 iOS 26 Simulator SDK；工作流会选择已安装的 iOS 26 iPhone runtime，不把 Xcode 工程文件提交到仓库。
-- 协议层直接使用 OpenWrt 的 ubus JSON-RPC，不复用 LuCI 网页界面。现有第三方客户端可供交互设计参考，但本项目不依赖其实现。
+未在真实路由器上自动执行配置写入、服务启停、重启或安装。实体 iPhone 的网络权限、断网恢复和各项写入仍需逐项验收。完整任务状态见 [TASKS.md](TASKS.md)。

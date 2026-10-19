@@ -38,6 +38,9 @@ jobs:
           fi
           xcodegen --version
 
+      - name: Audit production sources
+        run: python3 scripts/audit_release.py
+
       - name: Test OpenWrtKit
         run: swift test --package-path Packages/OpenWrtKit
 
@@ -59,6 +62,9 @@ jobs:
           ditto "$RUNNER_TEMP/device-build/Build/Products/Release-iphoneos/OpenWrtManager.app" "$RUNNER_TEMP/ipa/Payload/OpenWrtManager.app"
           cd "$RUNNER_TEMP/ipa"
           zip -qr "$GITHUB_WORKSPACE/artifacts/OpenWrtManager-unsigned.ipa" Payload
+
+      - name: Audit unsigned release bundle
+        run: python3 scripts/audit_release.py --ipa artifacts/OpenWrtManager-unsigned.ipa
 
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4

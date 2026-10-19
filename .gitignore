@@ -11,3 +11,5 @@ artifacts/
 *.mobileprovision
 *.xcresult/
 .env
+__pycache__/
+*.pyc
