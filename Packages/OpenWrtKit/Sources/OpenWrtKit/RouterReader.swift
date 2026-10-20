@@ -706,7 +706,9 @@ public enum SnapshotParser {
             }
             return NetworkInterfaceSnapshot(name: name, protocolName: item["proto"].stringValue ?? "—", addresses: addresses,
                                             up: item["up"].boolValue, device: item["l3_device"].stringValue,
-                                            defaultRoutes: defaults, dnsServers: dns, errors: errors)
+                                            defaultRoutes: defaults, dnsServers: dns, errors: errors,
+                                            delegatedIPv6Prefixes: try ipv6Prefixes(item, key: "ipv6-prefix"),
+                                            assignedIPv6Prefixes: try ipv6Prefixes(item, key: "ipv6-prefix-assignment"))
         }.sorted { $0.name < $1.name }
     }
 

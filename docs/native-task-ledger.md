@@ -109,10 +109,20 @@ ACL / 只读行为：
 | NET-01C 当前接口编辑 | 详情直接进入当前接口的常规/高级/IPv6 字段；完整 network 配置作为事务基线，其他接口、设备、扩展字段保留；WireGuard 对端限定当前接口 | 已编码，待 iOS 验证 |
 | NET-01D 应用及回读 | 复用预览、ACL、并发检查、90 秒 confirm/rollback；事务结束或返回详情重新读取配置与运行状态。确认事务不等同业务健康 | 已接线，待运行验证 |
 | NET-01E 深层交互用例 | 新增 UI 用例 R–V：逐组逐字段、IPv4/IPv6 编辑、预览/confirm/rollback 回读、配置/运行单侧失败、只读、协议读取失败 | 定义已写，未执行 |
-| NET-01F 固件协议扩展 | 当前专用字段之外的协议、IPv6 前缀委派/分配详情、全部 LuCI 高级参数 | 待适配，不能认定完整接口模块已交付 |
+| NET-01F 固件协议扩展 | IPv6 委派/分配/本地地址已按 netifd 返回结构加入模型、解析和逐层原生详情；`ip6ifaceid`、`ip6weight`、静态协议的单值 `ip6prefix`、DHCPv6 前缀及 DUID 选项已加入字段校验 | 已编码，待模拟器逐层证据、真实固件协议差异和写入回读；其他 LuCI 高级参数仍待适配 |
 
 本次主要文件：`App/Views/NetworkInterfacesView.swift`（新增）、`NativeConfigurationView.swift`、`NetworkScreen.swift`、`FirmwareMenuViews.swift`、`RouterStore.swift`、`RouterReader.swift`、`AppUITests/RouterSmokeTests.swift`、CI 专用 HTTP fixture。
 
 协议依据：OpenWrt LuCI 上游 `modules/luci-base/htdocs/luci-static/resources/network.js` 的 `network.interface.dump`、`network.get_proto_handlers`；配置字段对应 `protocol/static.js` 与 `luci-mod-network/.../network/interfaces.js`。协议处理器读取失败时禁止替换协议，不推定已安装。
 
 验证边界：遵循此前“不用测试”的要求，未执行 Swift/模拟器测试，未操作真实路由器配置。本次曾误运行一次 Windows Python 测试（当时 10 项通过），已向用户说明；之后新增用例未执行，该结果不能证明本次 iOS 交互完成。编译和 IPA 证据另记，不据此勾选业务任务。
+
+### NET-01F 续接记录（仅记录本增量，避免重复全仓阅读）
+
+- 原生点击路径：网络→接口→接口名→上游委派前缀→下游接口分配→分配详情→查看对应接口；另一路为接口名→分配到本接口的前缀→本地地址。
+- 运行数据：`ipv6-prefix` / `ipv6-prefix-assignment`，包括前缀、类别、首选/有效剩余时间、下游分配。缺字段、空列表、空本地地址对象、格式错误分别处理；错误不替换成 0。刷新按 CIDR 和接口名定位，避免响应重排后打开另一条记录。
+- 编辑：子网提示、前缀类、后缀、权重、静态路由前缀、DHCPv6 地址/前缀请求、扩展前缀、不发送 Release、DUID 策略及自定义 DUID。自定义 DUID 仅自动策略可见，切换策略不删除旧值；字段通过既有配置事务预览、应用和回读。
+- 协议依据：netifd `ubus.c` 的两种前缀 dump；LuCI `protocol/static.js` 的单值 `ip6prefix`；`protocol/dhcpv6.js` 的前缀和 DUID 选项；`validation.js` 的 `hexstring` / `ip6hostid`。长度输入不再人为限制为 64，上游实际分配仍由服务端决定。带 IAID 的多前缀请求等扩展语法仍待单独适配。
+- 维护但未执行的定义：解析缺失/空值、地址族、0/128 掩码、时间上限、错误类型、空本地地址；UI R 的前缀逐层导航及编辑应用回读；UI W–Z 的缺失/空/错误/未启用本地地址。CI fixture 与生产应用分离。
+- 本轮不运行 Python/Swift/UI 测试，不在真实路由器写入。Release 构建与正式包审计独立记录，不能作为业务验收。
+- 下次直接从 NET-01 剩余协议高级字段和未验收的事务恢复衔接；不要重新读全仓或把“有字段”当作完整模块完成。

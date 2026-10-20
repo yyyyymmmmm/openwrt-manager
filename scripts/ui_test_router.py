@@ -83,7 +83,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def rpc(self, token, obj, method, args):
         if (obj, method) == ("session", "login"):
-            if args.get("username") not in ("root", "readonly", "route-denied", "route-failure", "interfaces-denied", "interfaces-malformed", "network-config-denied", "protocols-denied") or args.get("password") != "ci-only-password":
+            if args.get("username") not in ("root", "readonly", "route-denied", "route-failure", "interfaces-denied", "interfaces-malformed", "network-config-denied", "protocols-denied", "prefix-missing", "prefix-empty", "prefix-malformed", "prefix-no-local") or args.get("password") != "ci-only-password":
                 return 6, {}
             token = secrets.token_hex(16)
             SESSIONS[token] = new_state(args["username"] == "readonly")
@@ -120,7 +120,35 @@ class Handler(BaseHTTPRequestHandler):
                     prefix = ipaddress.ip_interface(value if "/" in value else f"{value}/{default_mask}")
                     result.append({"address": str(prefix.ip), "mask": prefix.network.prefixlen})
                 return result
-            return 0, {"interface": [{"interface": "lan", "up": True, "proto": lan["proto"], "l3_device": lan["device"], "route": [{"target": "0.0.0.0", "mask": 0, "nexthop": "192.0.2.254", "metric": 10}], "dns-server": ["192.0.2.254"], "ipv4-address": addresses("ipaddr", lan.get("netmask", 24)), "ipv6-address": addresses("ip6addr", 64)}, {"interface": "wan", "up": False, "proto": "dhcp", "l3_device": "eth1"}]}
+            runtime = {
+                "interface": "lan", "up": True, "proto": lan["proto"], "l3_device": lan["device"],
+                "route": [{"target": "0.0.0.0", "mask": 0, "nexthop": "192.0.2.254", "metric": 10}],
+                "dns-server": ["192.0.2.254"],
+                "ipv4-address": addresses("ipaddr", lan.get("netmask", 24)),
+                "ipv6-address": addresses("ip6addr", 64),
+                "ipv6-prefix": [{
+                    "address": "2001:db8:100::", "mask": 56, "preferred": 3600, "valid": 7200, "class": "wan",
+                    "assigned": {
+                        "lan": {"address": "2001:db8:100::", "mask": 64},
+                        "guest": {"address": "2001:db8:100:1::", "mask": 64},
+                    },
+                }],
+                "ipv6-prefix-assignment": [{
+                    "address": "2001:db8:100::", "mask": 64, "preferred": 3500, "valid": 7000,
+                    "local-address": {"address": "2001:db8:100::1", "mask": 64},
+                }],
+            }
+            if state["route_mode"] == "prefix-missing":
+                runtime.pop("ipv6-prefix")
+                runtime.pop("ipv6-prefix-assignment")
+            elif state["route_mode"] == "prefix-empty":
+                runtime["ipv6-prefix"] = []
+                runtime["ipv6-prefix-assignment"] = []
+            elif state["route_mode"] == "prefix-malformed":
+                runtime["ipv6-prefix"][0]["mask"] = 129
+            elif state["route_mode"] == "prefix-no-local":
+                runtime["ipv6-prefix-assignment"][0]["local-address"] = {}
+            return 0, {"interface": [runtime, {"interface": "wan", "up": False, "proto": "dhcp", "l3_device": "eth1"}]}
         if (obj, method) == ("file", "exec"):
             command, params = args.get("command"), args.get("params", [])
             if command == "/etc/init.d/cron" and params == ["reload"]:

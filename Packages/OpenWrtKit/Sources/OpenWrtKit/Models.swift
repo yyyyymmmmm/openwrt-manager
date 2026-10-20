@@ -71,12 +71,17 @@ public struct NetworkInterfaceSnapshot: Identifiable, Equatable, Sendable {
     public let defaultRoutes: [InterfaceDefaultRoute]
     public let dnsServers: [String]
     public let errors: [String]
+    /// nil means the firmware omitted the list; [] means it explicitly reported no prefixes.
+    public let delegatedIPv6Prefixes: [InterfaceIPv6Prefix]?
+    public let assignedIPv6Prefixes: [InterfaceIPv6Prefix]?
     public var id: String { name }
     public init(name: String, protocolName: String, addresses: [String], up: Bool?, device: String? = nil,
-                defaultRoutes: [InterfaceDefaultRoute] = [], dnsServers: [String] = [], errors: [String] = []) {
+                defaultRoutes: [InterfaceDefaultRoute] = [], dnsServers: [String] = [], errors: [String] = [],
+                delegatedIPv6Prefixes: [InterfaceIPv6Prefix]? = nil, assignedIPv6Prefixes: [InterfaceIPv6Prefix]? = nil) {
         self.name = name; self.protocolName = protocolName
         self.addresses = addresses; self.up = up; self.device = device
         self.defaultRoutes = defaultRoutes; self.dnsServers = dnsServers; self.errors = errors
+        self.delegatedIPv6Prefixes = delegatedIPv6Prefixes; self.assignedIPv6Prefixes = assignedIPv6Prefixes
     }
 }
 

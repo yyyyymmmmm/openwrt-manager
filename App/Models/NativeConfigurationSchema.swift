@@ -65,8 +65,10 @@ struct NativeConfigurationSchema: Identifiable {
 
     static func f(_ key: String, _ title: String, _ kind: NativeField.Kind = .text,
                           _ help: String = "", required: Bool = false,
-                          when: (String, [String])? = nil, items: NativeField.ListItem? = nil) -> NativeField {
-        NativeField(id: key, title: title, kind: kind, help: help, required: required, when: when, items: items)
+                          when: (String, [String])? = nil, items: NativeField.ListItem? = nil,
+                          conditions: [String: [String]] = [:], labels: [String: String] = [:]) -> NativeField {
+        NativeField(id: key, title: title, kind: kind, help: help, required: required, when: when, items: items,
+                    choiceLabels: labels, additionalConditions: conditions)
     }
     static func g(_ title: String, _ fields: [NativeField]) -> NativeFieldGroup {
         NativeFieldGroup(title: title, fields: fields)
@@ -176,9 +178,17 @@ struct NativeConfigurationSchema: Identifiable {
                 f("nohostroute", "不创建端点主机路由", .flag, when: ("proto", ["wireguard"]))]),
             g("IPv6", [f("ip6addr", "IPv6 地址", .list, when: ("proto", ["static"]), items: .prefix),
                 f("ip6gw", "IPv6 网关", .address, when: ("proto", ["static"])),
-                f("ip6assign", "IPv6 分配长度", .integer(0, 128)), f("ip6hint", "IPv6 子网提示"),
-                f("ip6class", "IPv6 前缀类", .list), f("reqaddress", "请求 IPv6 地址", .choice(["try", "force", "none"]), when: ("proto", ["dhcpv6"])),
-                f("reqprefix", "请求前缀长度", .text, when: ("proto", ["dhcpv6"]))])
+                f("ip6assign", "IPv6 分配长度", .integer(0, 128)), f("ip6hint", "IPv6 子网提示", .text, "十六进制子网提示，例如 0x10；空值交由固件选择。"),
+                f("ip6class", "IPv6 前缀类", .list),
+                f("ip6ifaceid", "IPv6 后缀", .text, "可填写 eui64、random 或固定主机后缀，例如 ::1。"),
+                f("ip6weight", "IPv6 分配权重", .integer(0, 4_294_967_295), "多个下游接口分配前缀时，较大值优先。"),
+                f("ip6prefix", "静态 IPv6 路由前缀", .prefix, "由上游路由到本设备、可向客户端分配的 IPv6 前缀。", when: ("proto", ["static"])),
+                f("reqaddress", "请求 IPv6 地址", .choice(["try", "force", "none"]), when: ("proto", ["dhcpv6"]), labels: ["try": "尝试获取", "force": "必须获取", "none": "不请求地址"]),
+                f("reqprefix", "请求前缀长度", .text, "可填 auto、no、长度或带前缀的 CIDR。", when: ("proto", ["dhcpv6"])),
+                f("extendprefix", "扩展上游前缀", .flag, "将 3GPP WAN 的 /64 通过前缀委派扩展到下游。", when: ("proto", ["dhcpv6"])),
+                f("norelease", "重启时不发送 Release", .flag, when: ("proto", ["dhcpv6"])),
+                f("sendclientid", "DHCPv6 客户端 ID", .choice(["auto", "global", "hardware"]), "自动模式优先使用下方自定义 DUID，否则使用设备默认值；硬件地址模式从接口硬件地址生成。", when: ("proto", ["dhcpv6"]), labels: ["auto": "自动", "global": "设备默认 DUID", "hardware": "接口硬件地址"]),
+                f("clientid", "DHCPv6 客户端 ID 值", .text, "十六进制 DUID，仅自动模式使用。切换策略时保留已存值。", when: ("proto", ["dhcpv6"]), conditions: ["sendclientid": ["", "auto"]])])
         ], named: true)
     ], note: "这里编辑 network 配置。接口的 DHCP 服务和防火墙区域分别在 DHCP、防火墙中管理，各次应用单独预览和确认。")
 

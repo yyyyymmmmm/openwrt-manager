@@ -37,6 +37,60 @@ final class SnapshotParserTests: XCTestCase {
         XCTAssertEqual(interfaces.first(where: { $0.name == "wan" })?.up, false)
     }
 
+    func testIPv6PrefixDelegationAndAssignmentRemainDistinctAndTyped() throws {
+        let value = try JSONDecoder().decode(JSONValue.self, from: Data(#"{"interface":[{"interface":"wan6","ipv6-prefix":[{"address":"2001:db8:100::","mask":56,"preferred":3600,"valid":7200,"class":"wan","assigned":{"lan":{"address":"2001:db8:100::","mask":64},"guest":{"address":"2001:db8:100:1::","mask":64}}}],"ipv6-prefix-assignment":[{"address":"2001:db8:100::","mask":64,"preferred":3500,"valid":7000,"local-address":{"address":"2001:db8:100::1","mask":64}}]}]}"#.utf8))
+        let interfaces = try SnapshotParser.interfaces(value)
+        let interface = try XCTUnwrap(interfaces.first)
+        XCTAssertEqual(interface.delegatedIPv6Prefixes?.count, 1)
+        XCTAssertEqual(interface.delegatedIPv6Prefixes?.first?.prefix.cidr, "2001:db8:100::/56")
+        XCTAssertEqual(interface.delegatedIPv6Prefixes?.first?.allocations?.map(\.interfaceName), ["guest", "lan"])
+        XCTAssertEqual(interface.assignedIPv6Prefixes?.first?.localAddress?.cidr, "2001:db8:100::1/64")
+        XCTAssertEqual(interface.assignedIPv6Prefixes?.first?.preferredLifetime, 3500)
+    }
+
+    func testIPv6PrefixMalformedOrInvertedLifetimesFailInsteadOfBecomingEmpty() throws {
+        let malformed = try JSONDecoder().decode(JSONValue.self, from: Data(#"{"interface":[{"interface":"lan","ipv6-prefix":[{"address":"not-an-ip","mask":64}]}]}"#.utf8))
+        XCTAssertThrowsError(try SnapshotParser.interfaces(malformed))
+        let inverted = try JSONDecoder().decode(JSONValue.self, from: Data(#"{"interface":[{"interface":"lan","ipv6-prefix":[{"address":"2001:db8::","mask":64,"preferred":90,"valid":30}]}]}"#.utf8))
+        XCTAssertThrowsError(try SnapshotParser.interfaces(inverted))
+    }
+
+    func testIPv6PrefixMissingEmptyAndDisabledLocalAddressRemainDistinct() throws {
+        let missing = try SnapshotParser.ipv6Prefixes(.object([:]), key: "ipv6-prefix")
+        XCTAssertNil(missing)
+        let empty = try SnapshotParser.ipv6Prefixes(.object(["ipv6-prefix": .array([])]), key: "ipv6-prefix")
+        XCTAssertEqual(empty, [])
+        let record: JSONValue = .object(["address": .string("::"), "mask": .number(0),
+                                         "local-address": .object([:]), "assigned": .object([:])])
+        let prefix = try XCTUnwrap(SnapshotParser.ipv6Prefixes(.object(["ipv6-prefix": .array([record])]), key: "ipv6-prefix")?.first)
+        XCTAssertTrue(prefix.localAddressReported)
+        XCTAssertNil(prefix.localAddress)
+        XCTAssertEqual(prefix.allocations, [])
+        XCTAssertNil(prefix.preferredLifetime)
+        XCTAssertNil(prefix.validLifetime)
+    }
+
+    func testIPv6PrefixBoundariesAndMalformedNestedFields() throws {
+        let base: [String: JSONValue] = ["address": .string("2001:db8::"), "mask": .number(128),
+                                       "preferred": .number(0), "valid": .number(4_294_967_295)]
+        func parse(_ fields: [String: JSONValue]) throws -> [InterfaceIPv6Prefix]? {
+            try SnapshotParser.ipv6Prefixes(.object(["ipv6-prefix": .array([.object(fields)])]), key: "ipv6-prefix")
+        }
+        XCTAssertEqual(try parse(base)?.first?.validLifetime, 4_294_967_295)
+        let invalid: [(String, JSONValue)] = [
+            ("mask", .number(-1)), ("mask", .number(129)), ("mask", .number(64.5)),
+            ("preferred", .number(-1)), ("valid", .number(4_294_967_296)), ("valid", .string("3600")),
+            ("assigned", .array([])), ("assigned", .object(["lan": .object([:])])),
+            ("local-address", .null), ("local-address", .object(["mask": .number(64)])),
+            ("class", .number(1)), ("address", .string("192.0.2.1")),
+        ]
+        for (key, value) in invalid {
+            var fields = base; fields[key] = value
+            XCTAssertThrowsError(try parse(fields), "Accepted malformed \(key): \(value)")
+        }
+        XCTAssertThrowsError(try SnapshotParser.ipv6Prefixes(.object(["ipv6-prefix": .null]), key: "ipv6-prefix"))
+    }
+
     func testMissingWirelessFieldsDoNotInventAutomaticChannel() throws {
         let value = try JSONDecoder().decode(JSONValue.self, from: Data(#"{"radio0":{},"radio1":{"up":false,"config":{"channel":"auto"}}}"#.utf8))
         let radios = try SnapshotParser.wireless(value)

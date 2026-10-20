@@ -447,10 +447,24 @@ final class RouterSmokeTests: XCTestCase {
         back(app); back(app)
         tapVisible(app.buttons["network-interface-lan"], app)
         expectText("192.0.2.1/24", app)
+        tapVisible(app.buttons["ipv6-prefix-delegated-0"], app)
+        expectText("2001:db8:100::/56", app)
+        expectText("下游接口分配", app)
+        tapVisible(app.buttons["ipv6-allocation-0"], app)
+        expectText("guest", app)
+        expectText("2001:db8:100:1::/64", app)
+        tapVisible(app.buttons["ipv6-allocation-interface"], app)
+        expectText("未取得此接口的运行状态", app)
+        back(app); back(app); back(app)
+        tapVisible(app.buttons["ipv6-prefix-assigned-0"], app)
+        expectText("本地地址", app)
+        expectText("2001:db8:100::1/64", app)
+        back(app)
         tapVisible(app.buttons["interface-edit-lan"], app)
         for (group, fields) in [
             ("常规设置", ["proto", "device", "ipaddr", "netmask", "gateway"]),
-            ("高级设置", ["metric", "dns", "mtu"]), ("IPv6", ["ip6addr", "ip6gw", "ip6assign"])
+            ("高级设置", ["metric", "dns", "mtu"]),
+            ("IPv6", ["ip6addr", "ip6gw", "ip6assign", "ip6hint", "ip6class", "ip6ifaceid", "ip6weight", "ip6prefix"])
         ] {
             tapVisible(app.buttons["native-group-interface-\(group)"], app)
             for field in fields {
@@ -462,8 +476,13 @@ final class RouterSmokeTests: XCTestCase {
         }
         setInterfaceField("ipaddr", group: "常规设置", value: "192.0.2.2", app)
         setInterfaceField("ip6addr", group: "IPv6", value: "fd00::2/64", app)
+        setInterfaceField("ip6hint", group: "IPv6", value: "0x10", app)
+        setInterfaceField("ip6ifaceid", group: "IPv6", value: "::2", app)
+        setInterfaceField("ip6weight", group: "IPv6", value: "10", app)
+        setInterfaceField("ip6prefix", group: "IPv6", value: "2001:db8:200::/56", app)
         tapVisible(app.buttons["native-preview-interfaces"], app)
         expectText("192.0.2.2", app); expectText("fd00::2/64", app)
+        expectText("2001:db8:200::/56", app)
         attach("46-interface-draft-preview", app)
         tapVisible(app.buttons["applyConfigurationButton"], app); app.buttons["应用修改"].tap()
         XCTAssertTrue(app.buttons["验证连接并保留修改"].waitForExistence(timeout: 10))
@@ -473,6 +492,9 @@ final class RouterSmokeTests: XCTestCase {
         expectText("192.0.2.2/24", app); expectText("fd00::2/64", app)
         attach("47-interface-confirmed-readback", app)
         tapVisible(app.buttons["interface-edit-lan"], app)
+        tapVisible(app.buttons["native-group-interface-IPv6"], app)
+        expectText("0x10", app); expectText("::2", app); expectText("2001:db8:200::/56", app)
+        back(app)
         setInterfaceField("ipaddr", group: "常规设置", value: "192.0.2.3", app)
         tapVisible(app.buttons["native-preview-interfaces"], app)
         tapVisible(app.buttons["applyConfigurationButton"], app); app.buttons["应用修改"].tap()
@@ -526,9 +548,55 @@ final class RouterSmokeTests: XCTestCase {
     }
 
     @MainActor
+    func testWIPv6PrefixOmittedIsNotAnEmptySuccessfulList() {
+        let app = launch(); connect(app, username: "prefix-missing"); visit("网络", app)
+        tapVisible(app.buttons["network-interfaces"], app)
+        tapVisible(app.buttons["network-interface-lan"], app)
+        expectText("固件没有返回此字段", app)
+        XCTAssertFalse(app.buttons["ipv6-prefix-delegated-0"].exists)
+        XCTAssertFalse(app.staticTexts["固件明确返回空列表"].exists)
+    }
+
+    @MainActor
+    func testXIPv6PrefixExplicitlyEmpty() {
+        let app = launch(); connect(app, username: "prefix-empty"); visit("网络", app)
+        tapVisible(app.buttons["network-interfaces"], app)
+        tapVisible(app.buttons["network-interface-lan"], app)
+        expectText("固件明确返回空列表", app)
+        XCTAssertFalse(app.buttons["ipv6-prefix-delegated-0"].exists)
+        XCTAssertFalse(app.buttons["ipv6-prefix-assigned-0"].exists)
+    }
+
+    @MainActor
+    func testYIPv6MalformedPrefixReportsErrorAndPreservesConfigAccess() {
+        let app = launch(); connect(app, username: "prefix-malformed"); visit("网络", app)
+        tapVisible(app.buttons["network-interfaces"], app)
+        expectText("IPv6 前缀响应格式错误", app)
+        tapVisible(app.buttons["network-interface-lan"], app)
+        XCTAssertFalse(app.buttons["ipv6-prefix-delegated-0"].exists)
+        tapVisible(app.buttons["interface-edit-lan"], app)
+        XCTAssertTrue(app.buttons["native-group-interface-IPv6"].exists)
+    }
+
+    @MainActor
+    func testZIPv6AssignedPrefixWithoutEnabledLocalAddress() {
+        let app = launch(); connect(app, username: "prefix-no-local"); visit("网络", app)
+        tapVisible(app.buttons["network-interfaces"], app)
+        tapVisible(app.buttons["network-interface-lan"], app)
+        tapVisible(app.buttons["ipv6-prefix-assigned-0"], app)
+        expectText("未启用本地地址", app)
+        XCTAssertFalse(app.staticTexts["IPv6 前缀响应格式错误"].exists)
+        back(app)
+        XCTAssertTrue(app.buttons["interface-edit-lan"].exists)
+    }
+
+    @MainActor
     private func setInterfaceField(_ field: String, group: String, value: String, _ app: XCUIApplication) {
         tapVisible(app.buttons["native-group-interface-\(group)"], app)
         tapVisible(app.buttons["native-field-\(field)"], app)
+        let explicit = app.switches["明确设置此项"]
+        XCTAssertTrue(explicit.waitForExistence(timeout: 5))
+        if explicit.value as? String == "0" { explicit.tap() }
         let input = app.textFields["native-value-\(field)"].exists
             ? app.textFields["native-value-\(field)"] : app.textViews["native-value-\(field)"]
         XCTAssertTrue(input.waitForExistence(timeout: 5)); replace(input, with: value)

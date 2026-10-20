@@ -569,8 +569,36 @@ private enum NativeValidation {
             if field.id == "ipaddr", text.contains(":") {
                 throw Invalid(message: "IPv4 地址中不能填写 IPv6。请使用 IPv6 地址字段。")
             }
-            if ["ip6addr", "ip6gw"].contains(field.id), !text.contains(":") {
+            if ["ip6addr", "ip6gw", "ip6prefix"].contains(field.id), !text.contains(":") {
                 throw Invalid(message: "请在\(field.title)中填写 IPv6 地址。")
+            }
+            if field.id == "ip6hint", !text.isEmpty {
+                let candidate = text.hasPrefix("0x") || text.hasPrefix("0X") ? String(text.dropFirst(2)) : text
+                guard !candidate.isEmpty, candidate.allSatisfy(\.isHexDigit),
+                      let number = UInt64(candidate, radix: 16), number < UInt64(UInt32.max) else {
+                    throw Invalid(message: "IPv6 子网提示必须是十六进制值。")
+                }
+            }
+            if field.id == "ip6ifaceid" {
+                var host = in6_addr()
+                let parsed = text.withCString { inet_pton(AF_INET6, $0, &host) == 1 }
+                let hostOnly = parsed && withUnsafeBytes(of: host) { $0.prefix(8).allSatisfy { $0 == 0 } }
+                guard ["eui64", "random"].contains(text) || hostOnly else {
+                    throw Invalid(message: "IPv6 后缀请填写 eui64、random 或高 64 位为零的主机后缀，例如 ::1。")
+                }
+            }
+            if field.id == "reqprefix" {
+                let length = !text.isEmpty && text.utf8.allSatisfy { (48...57).contains($0) }
+                    && Int(text).map { (0...128).contains($0) } == true
+                let cidr = text.contains(":") && text.contains("/") && prefix(text)
+                guard ["auto", "no"].contains(text) || length || cidr else {
+                    throw Invalid(message: "请求前缀请填写 auto、no、0–128 的长度或 IPv6 CIDR；实际分配由上游决定。")
+                }
+            }
+            if field.id == "clientid", field.when?.0 == "proto", field.when?.1 == ["dhcpv6"], !text.isEmpty {
+                guard text.utf8.count.isMultiple(of: 2), text.utf8.allSatisfy({ (48...57).contains($0) || (65...70).contains($0) || (97...102).contains($0) }) else {
+                    throw Invalid(message: "DHCPv6 客户端 ID 必须由完整字节的十六进制值组成。")
+                }
             }
         }
     }

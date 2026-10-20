@@ -159,6 +159,7 @@ private struct NamedInterfaceView: View {
             }
             addressSection(ipv6: false)
             addressSection(ipv6: true)
+            ipv6PrefixSection
             AppSection(title: "DNS") {
                 AppGroup {
                     let servers = runtime?.dnsServers ?? []
@@ -222,5 +223,195 @@ private struct NamedInterfaceView: View {
         guard let value = configured.values[key] else { return "未设置" }
         if let list = value.arrayValue { return list.compactMap(\.stringValue).joined(separator: " · ") }
         return value.stringValue ?? "字段格式未适配"
+    }
+
+    private var ipv6PrefixSection: some View {
+        AppSection(title: "IPv6 前缀", note: "显示路由器实际报告的委派与分配。未报告前缀不表示没有 IPv6；可进入详情查看下游接口及本地地址。") {
+            AppGroup {
+                prefixList(title: "上游委派前缀", prefixes: runtime?.delegatedIPv6Prefixes, kind: .delegated)
+                AppDivider()
+                prefixList(title: "分配到本接口的前缀", prefixes: runtime?.assignedIPv6Prefixes, kind: .assigned)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func prefixList(title: String, prefixes: [InterfaceIPv6Prefix]?, kind: InterfaceIPv6PrefixKind) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(title).font(AppTypography.rowTitle).padding(.horizontal, 12).padding(.top, 12)
+            if let prefixes {
+                if prefixes.isEmpty {
+                    AppRow(title: "固件明确返回空列表", detail: "当前读取没有此类 IPv6 前缀。")
+                } else {
+                    ForEach(Array(prefixes.enumerated()), id: \.offset) { index, prefix in
+                        if index > 0 { AppDivider() }
+                        NavigationLink {
+                            IPv6PrefixDetailView(name: name, prefixID: prefix.prefix.cidr, kind: kind, reads: reads)
+                        } label: {
+                            AppRow(title: prefix.prefix.cidr,
+                                   detail: prefixSummary(prefix, kind: kind),
+                                   symbol: "network", chevron: true)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("ipv6-prefix-\(kind == .delegated ? "delegated" : "assigned")-\(index)")
+                    }
+                }
+            } else {
+                AppRow(title: reads.runtimeError == nil ? "未报告" : "读取失败",
+                       detail: reads.runtimeError == nil ? "固件没有返回此字段，不能判断是否不存在。" : "运行状态读取失败，不能判断此接口的 IPv6 前缀。")
+            }
+        }
+    }
+
+    private func prefixSummary(_ prefix: InterfaceIPv6Prefix, kind: InterfaceIPv6PrefixKind) -> String {
+        var values = [prefix.prefixClass.map { "类 \($0)" }, lifetimeSummary(prefix)].compactMap { $0 }
+        if kind == .delegated, let allocations = prefix.allocations {
+            values.append("下游 \(allocations.count) 个")
+        }
+        return values.isEmpty ? "进入查看详细分配" : values.joined(separator: " · ")
+    }
+
+    private func lifetimeSummary(_ prefix: InterfaceIPv6Prefix) -> String? {
+        let preferred = prefix.preferredLifetime.map { "首选 \($0)s" }
+        let valid = prefix.validLifetime.map { "有效 \($0)s" }
+        let value = [preferred, valid].compactMap { $0 }.joined(separator: " · ")
+        return value.isEmpty ? nil : value
+    }
+}
+
+private enum InterfaceIPv6PrefixKind: String, Equatable {
+    case delegated, assigned
+    var title: String { self == .delegated ? "上游委派前缀" : "分配到本接口的前缀" }
+    func prefixes(in runtime: NetworkInterfaceSnapshot?) -> [InterfaceIPv6Prefix]? {
+        self == .delegated ? runtime?.delegatedIPv6Prefixes : runtime?.assignedIPv6Prefixes
+    }
+}
+
+private struct IPv6PrefixDetailView: View {
+    @Environment(RouterStore.self) private var store
+    let name: String
+    let prefixID: String
+    let kind: InterfaceIPv6PrefixKind
+    let reads: InterfaceReads
+    private var prefix: InterfaceIPv6Prefix? {
+        // Resolve by identity, so a reordered response cannot silently select another prefix.
+        kind.prefixes(in: reads.runtime?.first { $0.name == name })?.first { $0.prefix.cidr == prefixID }
+    }
+
+    var body: some View {
+        AppPage(title: "", subtitle: nil) {
+            InterfaceReadStatus(reads: reads)
+            if let prefix {
+                prefixSections(prefix)
+            } else {
+                AppSection(title: kind.title) {
+                    AppGroup { AppRow(title: "当前数据中未取得此前缀", detail: "前缀可能已变更；请核对读取状态后返回接口选择。") }
+                }
+            }
+        }.appDetailStyle(kind.title)
+            .task(id: store.connectionID) { await reads.load(store) }
+            .refreshable { await reads.load(store) }
+            .toolbar { ToolbarItem(placement: .topBarTrailing) {
+                Button("重新读取", systemImage: "arrow.clockwise") { Task { await reads.load(store) } }.disabled(reads.loading)
+            } }
+    }
+
+    @ViewBuilder private func prefixSections(_ prefix: InterfaceIPv6Prefix) -> some View {
+            AppSection(title: kind.title, note: "剩余时间以读取时刻为准，请刷新获取最新值。固件未报告时间时，不推定为已过期或无限期。") {
+                AppGroup {
+                    AppRow(title: "前缀", value: prefix.prefix.cidr)
+                    AppDivider()
+                    AppRow(title: "前缀类别", value: prefix.prefixClass ?? "未报告")
+                    AppDivider()
+                    AppRow(title: "首选剩余时间", value: prefix.preferredLifetime.map { "\($0) 秒" } ?? "未报告")
+                    AppDivider()
+                    AppRow(title: "有效剩余时间", value: prefix.validLifetime.map { "\($0) 秒" } ?? "未报告")
+                }
+            }
+            if kind == .delegated {
+                AppSection(title: "下游接口分配") {
+                    AppGroup {
+                        if let allocations = prefix.allocations {
+                            if allocations.isEmpty {
+                                AppRow(title: "固件明确返回空列表", detail: "没有下游接口分配记录。")
+                            } else {
+                                ForEach(Array(allocations.enumerated()), id: \.offset) { index, allocation in
+                                    if index > 0 { AppDivider() }
+                                    NavigationLink {
+                                        IPv6AllocationDetailView(name: name, prefixID: prefix.prefix.cidr,
+                                                                 allocationID: allocation.interfaceName, reads: reads)
+                                    } label: {
+                                        AppRow(title: allocation.interfaceName, value: allocation.prefix.cidr,
+                                               symbol: "arrow.down.right", chevron: true)
+                                    }.buttonStyle(.plain)
+                                        .accessibilityIdentifier("ipv6-allocation-\(index)")
+                                }
+                            }
+                        } else {
+                            AppRow(title: "未报告", detail: "固件没有报告下游分配，不能判断是否存在。")
+                        }
+                    }
+                }
+            }
+            if kind == .assigned {
+                localAddressSection(prefix)
+            }
+    }
+
+    @ViewBuilder private func localAddressSection(_ prefix: InterfaceIPv6Prefix) -> some View {
+        AppSection(title: "本地地址") {
+            AppGroup {
+                if !prefix.localAddressReported {
+                    AppRow(title: "未报告", detail: "固件没有报告此分配的本地地址。")
+                } else if let local = prefix.localAddress {
+                    AppRow(title: "地址", value: local.cidr)
+                } else {
+                    AppRow(title: "未启用本地地址", detail: "固件已明确报告此分配没有启用本地地址。")
+                }
+            }
+        }
+    }
+}
+
+private struct IPv6AllocationDetailView: View {
+    @Environment(RouterStore.self) private var store
+    let name: String
+    let prefixID: String
+    let allocationID: String
+    let reads: InterfaceReads
+    private var allocation: IPv6PrefixAllocation? {
+        reads.runtime?.first { $0.name == name }?.delegatedIPv6Prefixes?
+            .first { $0.prefix.cidr == prefixID }?.allocations?.first { $0.interfaceName == allocationID }
+    }
+    var body: some View {
+        AppPage(title: "", subtitle: nil) {
+            InterfaceReadStatus(reads: reads)
+            AppSection(title: "下游接口") {
+                AppGroup {
+                    AppRow(title: "来源接口", value: name)
+                    AppDivider()
+                    AppRow(title: "委派前缀", value: prefixID)
+                    AppDivider()
+                    if let allocation {
+                        AppRow(title: "接口", value: allocation.interfaceName)
+                        AppDivider()
+                        AppRow(title: "分配前缀", value: allocation.prefix.cidr)
+                        if reads.names.contains(allocation.interfaceName) {
+                            AppDivider()
+                            NavigationLink { NamedInterfaceView(name: allocation.interfaceName, reads: reads) } label: {
+                                AppRow(title: "查看接口", detail: allocation.interfaceName, symbol: "network", chevron: true)
+                            }.buttonStyle(.plain).accessibilityIdentifier("ipv6-allocation-interface")
+                        }
+                    } else {
+                        AppRow(title: "当前数据中未取得此分配", detail: "分配可能已变更；请核对读取状态后返回前缀选择。")
+                    }
+                }
+            }
+        }.appDetailStyle(allocationID)
+            .task(id: store.connectionID) { await reads.load(store) }
+            .refreshable { await reads.load(store) }
+            .toolbar { ToolbarItem(placement: .topBarTrailing) {
+                Button("重新读取", systemImage: "arrow.clockwise") { Task { await reads.load(store) } }.disabled(reads.loading)
+            } }
     }
 }
