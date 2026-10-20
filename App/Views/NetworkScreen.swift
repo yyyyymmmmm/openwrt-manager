@@ -128,6 +128,20 @@ struct RoutingTablesView: View {
         return values.filter { [$0.address, $0.mac ?? "", $0.interface, $0.device, $0.state].contains { $0.localizedCaseInsensitiveContains(query) } }
     }
 
+    private var routingHasSnapshot: Bool {
+        store.routing != nil && store.routingUpdatedAt != nil
+    }
+
+    private var neighborCountLabel: String {
+        guard routingHasSnapshot else { return "未知" }
+        return store.routingError == nil ? String(neighbors.count) : "\(neighbors.count)（上次读取）"
+    }
+
+    private var routeCountLabel: String {
+        guard routingHasSnapshot else { return "未知" }
+        return store.routingError == nil ? String(routes.count) : "\(routes.count)（上次读取）"
+    }
+
     var body: some View {
         AppPage(title: "", subtitle: nil) {
             ReadStatus(updatedAt: store.routingUpdatedAt, error: store.routingError,
@@ -139,7 +153,7 @@ struct RoutingTablesView: View {
             .accessibilityIdentifier("routingFamilyPicker")
             .padding(.top, 10)
 
-            AppSection(title: "邻居设备 · \(neighbors.count)", note: "来源：路由器内核 ARP/NDP 邻居表。DHCP 租约单独显示，不代表在线状态。") {
+            AppSection(title: "邻居设备 · \(neighborCountLabel)", note: "来源：路由器内核 ARP/NDP 邻居表。读取失败时数量为未知；DHCP 租约单独显示，不代表在线状态。") {
                 AppGroup {
                     if let error = store.routingError, store.routing == nil {
                         DataUnavailableView(title: "无法读取邻居表", message: "检查 file.exec 权限；应用仅请求固定的 /sbin/ip 查询命令。", error: error) {
@@ -167,9 +181,13 @@ struct RoutingTablesView: View {
                 }
             }
 
-            AppSection(title: "路由表 · \(routes.count)", note: "来源：路由器内核路由表；这里只读显示当前生效路由。") {
+            AppSection(title: "路由表 · \(routeCountLabel)", note: "来源：路由器内核路由表；读取失败时数量为未知，这里只读显示当前生效路由。") {
                 AppGroup {
-                    if store.routingUpdatedAt == nil {
+                    if let error = store.routingError, store.routing == nil {
+                        DataUnavailableView(title: "无法读取路由表", message: "检查 file.exec 权限；应用仅请求固定的 /sbin/ip 查询命令。", error: error) {
+                            Task { await store.refresh() }
+                        }
+                    } else if store.routingUpdatedAt == nil {
                         Text("路由数据尚未读取").font(AppTypography.secondary).foregroundStyle(AppPalette.muted).padding(12)
                     } else if routes.isEmpty && store.routingError == nil {
                         ContentUnavailableView("暂无路由记录", systemImage: "point.3.connected.trianglepath.dotted")
