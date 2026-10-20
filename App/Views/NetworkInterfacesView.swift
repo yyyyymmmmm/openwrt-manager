@@ -341,8 +341,8 @@ private struct IPv6PrefixDetailView: View {
                                         IPv6AllocationDetailView(name: name, prefixID: prefix.prefix.cidr,
                                                                  allocationID: allocation.interfaceName, reads: reads)
                                     } label: {
-                                        AppRow(title: allocation.interfaceName, value: allocation.prefix.cidr,
-                                               symbol: "arrow.down.right", chevron: true)
+                                        AppRow(title: allocation.interfaceName, symbol: "arrow.down.right",
+                                               value: allocation.prefix.cidr, chevron: true)
                                     }.buttonStyle(.plain)
                                         .accessibilityIdentifier("ipv6-allocation-\(index)")
                                 }
