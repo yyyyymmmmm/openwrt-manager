@@ -34,7 +34,11 @@ private struct FirmwareMenuRow: View {
         NativeConfigurationSchema.pluginAdapter(menuID: entry.id)
     }
     var body: some View {
-        if let adapter {
+        if adapter?.id == "wol" {
+            NavigationLink { NativePluginManagementView(schema: .wol, title: entry.title) } label: {
+                AppRow(title: entry.title, detail: "目标、工具与原生唤醒", symbol: "power", chevron: true)
+            }.buttonStyle(.plain).accessibilityIdentifier("native-menu-\(entry.id)")
+        } else if let adapter {
             NavigationLink { NativePluginManagementView(schema: adapter, title: entry.title) } label: {
                 AppRow(title: entry.title, detail: "配置与系统服务", symbol: "slider.horizontal.3", chevron: true)
             }.buttonStyle(.plain).accessibilityIdentifier("native-menu-\(entry.id)")
@@ -91,6 +95,47 @@ struct NativePluginManagementView: View {
                     }
                 }
             }
+            if schema.id == "ddns" {
+                AppSection(title: "运行管理") {
+                    AppGroup {
+                        NavigationLink { DDNSInstancesView() } label: {
+                            AppRow(title: "实例状态与日志", detail: "注册 IP、更新时间与单实例启停", symbol: "network", chevron: true)
+                        }.buttonStyle(.plain).accessibilityIdentifier("ddns-instances")
+                    }
+                }
+            }
+            if schema.id == "sqm" {
+                AppSection(title: "专用运行管理") {
+                    AppGroup {
+                        NavigationLink { SQMManagementView() } label: {
+                            AppRow(title: "实例、脚本与内核队列", detail: "读取实际 tc 队列、统计和启动日志", symbol: "waveform.path.ecg", chevron: true)
+                        }.buttonStyle(.plain).accessibilityIdentifier("sqm-runtime")
+                    }
+                }
+            }
+            if schema.id == "wol" {
+                AppSection(title: "运行管理") {
+                    AppGroup {
+                        NavigationLink { WakeOnLANView() } label: {
+                            AppRow(title: "唤醒目标与发送", detail: "工具、接口、权限与真实退出结果", symbol: "power", chevron: true)
+                        }.buttonStyle(.plain).accessibilityIdentifier("wol-targets")
+                    }
+                }
+            }
+            if schema.id == "mosdns" {
+                AppSection(title: "规则与自定义配置") {
+                    AppGroup {
+                        NavigationLink { MosDNSFilesView() } label: {
+                            AppRow(title: "规则文件", detail: "八类规则、预览和保存", symbol: "line.3.horizontal.decrease", chevron: true)
+                        }.buttonStyle(.plain).accessibilityIdentifier("mosdns-rules")
+                        AppDivider()
+                        NavigationLink { RouterTextFileView(file: .mosDNSCustom) } label: {
+                            AppRow(title: "自定义 YAML", symbol: "doc.text", chevron: true)
+                        }.buttonStyle(.plain).accessibilityIdentifier("mosdns-custom-file")
+                    }
+                }
+            }
+            if schema.id != "wol" {
             AppSection(title: "系统服务", note: "启动项与进程状态只代表系统服务，不证明插件业务成功。") {
                 AppGroup {
                     if serviceReported {
@@ -98,24 +143,26 @@ struct NativePluginManagementView: View {
                     } else { AppRow(title: "尚未读取到对应启动项", detail: "请刷新并查看服务读取权限与错误。") }
                 }
             }
+            }
             Text(schema.note).font(AppTypography.secondary).foregroundStyle(AppPalette.muted).padding(.top, 14)
         }.appDetailStyle(title)
     }
 }
 
-struct NetworkInterfacesView: View {
+struct MosDNSFilesView: View {
     var body: some View {
         AppPage(title: "", subtitle: nil) {
-            AppSection(title: "接口") {
+            AppSection(title: "默认配置规则", note: "自定义 YAML 只有明确引用这些文件时才会使用它们。保存文件后需重启 MosDNS 并核对日志及解析结果。") {
                 AppGroup {
-                    NavigationLink { InterfaceDetailView() } label: { AppRow(title: "运行状态", detail: "地址、上联网关、DNS 与错误", symbol: "network", chevron: true) }.buttonStyle(.plain)
-                    AppDivider()
-                    NativeConfigurationLink(schema: .interfaces, symbol: "point.3.connected.trianglepath.dotted")
-                    AppDivider()
-                    NativeConfigurationLink(schema: .devices, symbol: "point.3.filled.connected.trianglepath.dotted")
+                    ForEach(RouterSystemFile.mosDNSRules, id: \.self) { file in
+                        NavigationLink { RouterTextFileView(file: file) } label: {
+                            AppRow(title: file.title, detail: file.explanation, symbol: "doc.text", chevron: true)
+                        }.buttonStyle(.plain).accessibilityIdentifier("mosdns-file-" + file.rawValue)
+                        if file != RouterSystemFile.mosDNSRules.last { AppDivider() }
+                    }
                 }
             }
-        }.appDetailStyle("接口")
+        }.appDetailStyle("MosDNS 规则文件")
     }
 }
 
@@ -147,10 +194,20 @@ struct RouterAdministrationView: View {
     var body: some View {
         AppPage(title: "", subtitle: nil) {
             AppSection(title: "管理权") {
-                AppGroup { NativeConfigurationLink(schema: .ssh, symbol: "terminal") }
+                AppGroup {
+                    NavigationLink { RouterPasswordView() } label: {
+                        AppRow(title: "账户密码", detail: "系统与 rpcd 账户、固件密码策略", symbol: "key", chevron: true)
+                    }.buttonStyle(.plain).accessibilityIdentifier("admin-password")
+                    AppDivider()
+                    NativeConfigurationLink(schema: .ssh, symbol: "terminal")
+                    AppDivider()
+                    NavigationLink { SSHAuthorizedKeysView() } label: {
+                        AppRow(title: "SSH 公钥", detail: "公钥详情、添加与删除", symbol: "key.horizontal", chevron: true)
+                    }.buttonStyle(.plain).accessibilityIdentifier("admin-ssh-keys")
+                }
             }
-            AppSection(title: "其他管理选项", note: "账户密码、SSH 公钥与软件源公钥的原生管理尚未接入。") {
-                EmptyView()
+            AppSection(title: "尚待适配") {
+                AppGroup { AppRow(title: "软件源公钥", detail: "APK / opkg 公钥管理尚未接入") }
             }
         }.appDetailStyle("管理权")
     }

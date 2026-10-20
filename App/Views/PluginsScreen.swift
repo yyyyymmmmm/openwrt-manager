@@ -4,7 +4,6 @@ import OpenWrtKit
 struct PluginDirectoryView: View {
     var body: some View { AppPage(title: "插件", subtitle: nil) { PluginCollection() }.appDetailStyle("插件中心") }
 }
-
 struct PluginCollection: View {
     @Environment(RouterStore.self) private var store
     @State private var query = ""
@@ -106,51 +105,5 @@ struct PluginDetailView: View {
                 ContentUnavailableView(store.inventory.packagesRead ? "插件已不在当前清单中" : "软件包清单读取失败", systemImage: "puzzlepiece.extension")
             }
         }.appDetailStyle(plugin.title)
-    }
-}
-
-struct PackagesView: View {
-    @Environment(RouterStore.self) private var store
-    @State private var query = ""
-    private var packages: [InstalledPackage] {
-        store.inventory.packages.filter { query.isEmpty || ($0.name + $0.description).localizedCaseInsensitiveContains(query) }
-    }
-    var body: some View {
-        List {
-            Section { InventoryStatus() }
-            Section(store.inventory.packagesRead ? "已安装 · \(packages.count)" : "已安装软件包") {
-                ForEach(packages) { package in
-                    NavigationLink { PackageDetailView(package: package) } label: {
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text(package.name).font(AppTypography.rowTitle)
-                            Text(package.version).font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
-                        }
-                    }.accessibilityIdentifier("package-\(package.name)")
-                }
-            }
-        }.searchable(text: $query, prompt: "搜索软件包").appDetailStyle("已安装软件包")
-            .refreshable { await store.refresh() }.tint(AppPalette.accent)
-    }
-}
-
-private struct PackageDetailView: View {
-    let package: InstalledPackage
-    var body: some View {
-        List {
-            Section("软件包") {
-                LabeledContent("名称", value: package.name)
-                LabeledContent("版本", value: package.version)
-                if !package.description.isEmpty { Text(package.description) }
-            }
-            if !package.dependencies.isEmpty {
-                Section("返回的依赖 · \(package.dependencies.count)") { ForEach(package.dependencies, id: \.self) { Text($0) } }
-            }
-            if !package.files.isEmpty {
-                Section("返回的安装文件 · \(package.files.count)") { ForEach(package.files, id: \.self) { Text($0).font(AppTypography.secondary) } }
-            }
-            if package.dependencies.isEmpty && package.files.isEmpty {
-                Section { Text("当前软件包清单没有提供依赖与安装文件条目。").foregroundStyle(.secondary) }
-            }
-        }.font(AppTypography.row).textSelection(.enabled).appDetailStyle(package.name)
     }
 }

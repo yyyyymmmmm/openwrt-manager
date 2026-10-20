@@ -38,7 +38,9 @@
 - 网络列表→详情显示控制器状态、接口、地址、MAC、MTU、接口错误、控制器下发路由和实际接受策略。字段缺失为未返回，不能填成关闭、零或空列表。
 - `ONLINE` 不代表虚拟网络授权；`OK` 表示控制器返回配置，不代表连通；控制器路由不代表已进入内核。路由需另到概览的内核路由表核对。
 
-剩余：应用配置后的服务生命周期及实际加入/退出核对、控制器认证流程、真实连通性和不同软件包版本联调。
+配置页不再提供未经上游启动脚本核对的 network.enabled 开关。网络节由固件的 zerotier init 脚本生成 networks.d 配置；状态页提供该启动项的真实启停、重载和开机启动入口。重载后必须重新读取客户端网络列表，并到概览内核路由核对，不能把服务返回成功当成控制器授权或连通。
+
+剩余：加入/退出后的生命周期与不同自定义配置目录语义、控制器认证流程、真实连通性和不同软件包版本联调。
 
 依据：[OpenWrt 安装路径](https://github.com/openwrt/packages/blob/master/net/zerotier/Makefile)、[ZeroTier 1.16.2 CLI](https://github.com/zerotier/ZeroTierOne/blob/1.16.2/one.cpp)、[运行 JSON](https://github.com/zerotier/ZeroTierOne/blob/1.16.2/service/OneService.cpp)。
 
@@ -52,5 +54,11 @@
 剩余：各 miniupnpd 后端、IPv6/PCP/防火墙差异、并发条件及真实删除结果验收。
 
 依据：[UPnP RPC](https://github.com/openwrt/luci/blob/master/applications/luci-app-upnp/root/usr/share/rpcd/ucode/luci.upnp)、[原始设置字段](https://github.com/openwrt/luci/blob/master/applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js)。
+
+## 配置备份归档
+
+- 配置备份下载和上传会校验完整 gzip 流与 tar 结构：头部校验和、成员长度、PAX/GNU 长路径、路径穿越、重复成员和文件/目录冲突；拒绝设备文件、FIFO、稀疏及无法确认的扩展语义。链接目标需要存在且不穿越归档根目录。
+- 上传先把用户选择的文件复制到 App 私有暂存，再校验该副本并从同一副本制作 multipart，避免检查与上传之间源文件被替换。路由器随后仍复核暂存文件大小和 SHA-256。
+- 这些检查不验证备份来源身份或对另一固件的兼容性；路由器既有目标路径、链接状态及备份恢复命令行为仍需按实际固件核对。未运行本地解析测试。
 
 旁路由的硬件或菜单缺项不删除主路由、无线、WAN、IPv6 或其他插件的目标范围。更多未完成项目继续保留在 [TASKS.md](../TASKS.md)。

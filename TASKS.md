@@ -136,3 +136,9 @@
 - [x] 计划任务增量仅编译验收：c6c39fa 的 Xcode 26 / XcodeGen / iPhone Release / IPA 内容审计通过，Actions [39323573386](https://github.com/yyyyymmmmm/openwrt-manager/actions/runs/39323573386)；47 个生产 Swift 文件。包版本 0.3.4(10)，SHA-256 `668453f53317dfe1304b27c3f6da2b11aa1fb90465bfb0fac242330517b7558a`。按用户要求全部测试跳过，未在用户路由器保存或重载计划任务；编译不作为交互或功能验收。
 
 协议与恢复边界见 [docs/native-system-files.md](docs/native-system-files.md)。完整系统范围（账户/公钥、文件、磁盘、备份/升级等）继续保留待办；本增量不替代全部系统功能验收。
+
+## 2026-10-20 真实协议边界增量（未验收）
+
+- [ ] SQM 内核统计补齐 `tc` 的 `dropped`、硬件/软件计数及实际 IFB 队列；仍需真实固件逐项读取和服务生命周期验收。
+- [ ] ZeroTier 配置移除未经上游脚本核对的网络级启用开关；状态页增加真实 zerotier 启停、重载、开机启动入口。仍需验证 UCI 应用后服务重载、加入/退出和自定义配置目录。
+- [ ] 配置备份/恢复增加本机完整 gzip/tar 结构校验、PAX/GNU 路径处理、链接目标及冲突检查，并让校验与上传使用同一份私有暂存字节；仍需在真实固件验证合法备份、拒绝样例与恢复结果。

@@ -11,7 +11,9 @@ final class RouterTransport {
         delegate = RouterSessionDelegate(host: address.host, fingerprint: fingerprint)
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = 12
-        configuration.timeoutIntervalForResource = 18
+        // Package-manager CGI requests can hold the response until the fixed
+        // command exits. Ordinary RPCs keep their own 12-second request limit.
+        configuration.timeoutIntervalForResource = 660
         configuration.urlCache = nil
         configuration.httpCookieStorage = nil
         configuration.urlCredentialStorage = nil

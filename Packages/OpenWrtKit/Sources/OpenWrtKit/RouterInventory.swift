@@ -6,11 +6,18 @@ public struct InstalledPackage: Identifiable, Equatable, Sendable {
     public let description: String
     public let dependencies: [String]
     public let files: [String]
+    public let essential: Bool?
+    public let architecture: String?
+    public let installedSize: Int64?
+    public let downloadSize: Int64?
     public var id: String { name }
 
-    public init(name: String, version: String, description: String = "", dependencies: [String] = [], files: [String] = []) {
+    public init(name: String, version: String, description: String = "", dependencies: [String] = [], files: [String] = [],
+                essential: Bool? = nil, architecture: String? = nil, installedSize: Int64? = nil, downloadSize: Int64? = nil) {
         self.name = name; self.version = version; self.description = description
         self.dependencies = dependencies; self.files = files
+        self.essential = essential; self.architecture = architecture
+        self.installedSize = installedSize; self.downloadSize = downloadSize
     }
 }
 
@@ -93,7 +100,7 @@ public enum InventoryParser {
         guard let array = value.arrayValue else { throw OpenWrtKitError.malformedResponse }
         return try array.map { item in
             guard let name = item["name"].stringValue, let version = item["version"].stringValue,
-                  !name.isEmpty, !version.isEmpty else { throw OpenWrtKitError.malformedResponse }
+                  PackageOperation.validName(name), !version.isEmpty else { throw OpenWrtKitError.malformedResponse }
             func strings(_ field: String) throws -> [String] {
                 guard item[field] != .null else { return [] }
                 guard let list = item[field].arrayValue, list.allSatisfy({ $0.stringValue != nil }) else {
@@ -102,7 +109,10 @@ public enum InventoryParser {
                 return list.compactMap(\.stringValue)
             }
             return InstalledPackage(name: name, version: version, description: item["description"].stringValue ?? "",
-                                    dependencies: try strings("depends"), files: try strings("contents"))
+                                    dependencies: try strings("depends"), files: try strings("contents"),
+                                    essential: item["essential"].boolValue, architecture: item["architecture"].stringValue,
+                                    installedSize: item["installed-size"].intValue.map(Int64.init),
+                                    downloadSize: item["file-size"].intValue.map(Int64.init))
         }.sorted { $0.name < $1.name }
     }
 

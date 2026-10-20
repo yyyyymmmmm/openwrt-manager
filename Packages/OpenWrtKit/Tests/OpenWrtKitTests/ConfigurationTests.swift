@@ -21,6 +21,43 @@ final class ConfigurationTests: XCTestCase {
         XCTAssertEqual(edits, [.removeOption(section: "main", option: "hostname"), .set(section: "main", option: "server", value: .array([.string("one"), .string("two")]))])
     }
 
+    func testConfigurationPlanIncludesExplicitSectionOrderOnlyWhenNeeded() throws {
+        let sections = [
+            ConfigurationSection(id: "first", type: "queue", anonymous: true),
+            ConfigurationSection(id: "second", type: "queue", anonymous: true)
+        ]
+        let original = RouterConfiguration(name: "sqm", sections: sections)
+        let reordered = RouterConfiguration(name: "sqm", sections: Array(sections.reversed()))
+        XCTAssertEqual(try ConfigurationPlan(original: original, edited: reordered).edits, [.order(["second", "first"])])
+        XCTAssertEqual(try ConfigurationPlan(original: original, edited: original).edits, [])
+    }
+
+    func testConfigurationPlanOrdersNewAnonymousSectionsUsingDraftIdentifiers() throws {
+        let original = RouterConfiguration(name: "sqm", sections: [
+            ConfigurationSection(id: "existing", type: "queue", anonymous: true)
+        ])
+        let draft = RouterConfiguration(name: "sqm", sections: [
+            ConfigurationSection(id: "new-local-id", type: "queue", anonymous: true),
+            original.sections[0]
+        ])
+        XCTAssertEqual(try ConfigurationPlan(original: original, edited: draft).edits, [
+            .add(ConfigurationSection(id: "new-local-id", type: "queue", anonymous: true)),
+            .order(["new-local-id", "existing"])
+        ])
+    }
+
+    func testConfigurationPlanOrdersRetainedSectionsAfterDeletion() throws {
+        let original = RouterConfiguration(name: "sqm", sections: [
+            ConfigurationSection(id: "first", type: "queue", anonymous: true),
+            ConfigurationSection(id: "middle", type: "queue", anonymous: true),
+            ConfigurationSection(id: "last", type: "queue", anonymous: true)
+        ])
+        let draft = RouterConfiguration(name: "sqm", sections: [original.sections[2], original.sections[0]])
+        XCTAssertEqual(try ConfigurationPlan(original: original, edited: draft).edits, [
+            .removeSection("middle"), .order(["last", "first"])
+        ])
+    }
+
     func testInvalidNamesAndUnsupportedValuesRefused() {
         var draft = original
         draft.sections[0].values["bad/field"] = .string("x")
@@ -116,7 +153,7 @@ final class ConfigurationTests: XCTestCase {
         XCTAssertEqual(processes.count, 1); XCTAssertEqual(logs.count, 1)
     }
 
-    func testRoutingUsesOnlyFourFixedCommandsAndPreservesAddressFamilies() async throws {
+    func testRoutingUsesSixFixedJSONCommandsAndAllRouteTables() async throws {
         let fixture = RouterFixture()
         let (_, reader) = try fixture.clients()
         let routing = try await reader.routing(interfaces: [.init(name: "lan", protocolName: "static", addresses: [], up: true, device: "br-lan")])
@@ -124,19 +161,25 @@ final class ConfigurationTests: XCTestCase {
         XCTAssertEqual(routing.ipv6Routes.first?.destination, "fd00::/64")
         XCTAssertEqual(routing.ipv4Neighbors.first?.interface, "lan")
         XCTAssertEqual(routing.ipv6Neighbors.first?.state, "STALE")
-        XCTAssertEqual(fixture.calls.count, 4)
+        XCTAssertEqual(routing.rules4.value?.first?.priority, "100")
+        XCTAssertEqual(routing.rules6.value?.first?.priority, "32766")
+        XCTAssertTrue(routing.errors.isEmpty)
+        XCTAssertEqual(fixture.calls.count, 6)
         XCTAssertTrue(fixture.calls.allSatisfy { $0.object == "file" && $0.method == "exec" && $0.parameters["command"] == .string("/sbin/ip") })
         let queries = Set(try fixture.calls.map { call in
             try XCTUnwrap(call.parameters["params"]?.arrayValue).compactMap(\.stringValue).joined(separator: " ")
         })
-        XCTAssertEqual(queries, Set(["-4 route show", "-6 route show", "-4 neigh show", "-6 neigh show"]))
+        XCTAssertEqual(queries, Set(["-4 -j route show table all", "-6 -j route show table all", "-4 -j neigh show", "-6 -j neigh show", "-4 -j rule show", "-6 -j rule show"]))
     }
 
     func testRoutingACLFailureDoesNotBecomeAnEmptyTable() async throws {
         let fixture = RouterFixture(); fixture.denyRoutes = true
         let (_, reader) = try fixture.clients()
-        do { _ = try await reader.routing(interfaces: []); XCTFail("Expected ACL rejection") }
-        catch { XCTAssertEqual(error as? OpenWrtKitError, .permissionDenied) }
+        let routing = try await reader.routing(interfaces: [])
+        XCTAssertEqual(routing.errors.count, 6)
+        XCTAssertNil(routing.neighbors4.value)
+        XCTAssertNil(routing.neighbors4.updatedAt)
+        XCTAssertTrue(routing.errors.allSatisfy { $0.contains("权限不足") })
     }
 
     func testRoutingCommandAndMalformedFailuresArePropagated() async throws {
@@ -148,9 +191,37 @@ final class ConfigurationTests: XCTestCase {
         for response in responses {
             let fixture = RouterFixture(); fixture.routeResponse = response
             let (_, reader) = try fixture.clients()
-            do { _ = try await reader.routing(interfaces: []); XCTFail("Expected command/format failure") }
-            catch { XCTAssertNotNil(error as? OpenWrtKitError) }
+            let routing = try await reader.routing(interfaces: [])
+            XCTAssertEqual(routing.errors.count, 6)
+            XCTAssertNil(routing.routes4.value)
+            XCTAssertNil(routing.neighbors6.updatedAt)
         }
+    }
+
+    func testRoutingTextFallbackDoesNotDropPolicyTables() async throws {
+        let fixture = RouterFixture(); fixture.rejectJSON = true
+        let (_, reader) = try fixture.clients()
+        let routing = try await reader.routing(interfaces: [])
+        XCTAssertTrue(routing.errors.isEmpty)
+        XCTAssertEqual(routing.routes4.value?.first?.table, "100")
+        XCTAssertEqual(routing.rules4.value?.first?.priority, "100")
+        XCTAssertEqual(fixture.calls.count, 12)
+    }
+
+    func testOneFailedRoutingTableRetainsOnlyItsPreviousTimestamp() async throws {
+        let fixture = RouterFixture()
+        let (_, reader) = try fixture.clients()
+        let old = try await reader.routing(interfaces: [])
+        fixture.failedQuery = "-6 -j neigh show"
+        let fresh = try await reader.routing(interfaces: [])
+        XCTAssertEqual(fresh.errors.count, 1)
+        XCTAssertNotNil(fresh.routes4.value)
+        XCTAssertNil(fresh.neighbors6.value)
+        let retained = fresh.retainingLastRead(old)
+        XCTAssertEqual(retained.neighbors6.value, old.neighbors6.value)
+        XCTAssertEqual(retained.neighbors6.updatedAt, old.neighbors6.updatedAt)
+        XCTAssertNotNil(retained.neighbors6.error)
+        XCTAssertEqual(retained.routes4.updatedAt, fresh.routes4.updatedAt)
     }
 
     private func plan() throws -> ConfigurationPlan {
@@ -172,6 +243,8 @@ private final class RouterFixture: @unchecked Sendable {
     var hostname = "OpenWrt"
     var denyRoutes = false
     var routeResponse: JSONValue?
+    var rejectJSON = false
+    var failedQuery: String?
 
     func clients() throws -> (RouterConfigurationClient, RouterReader) {
         let host = UUID().uuidString.lowercased() + ".test"
@@ -220,12 +293,22 @@ private final class RouterFixture: @unchecked Sendable {
             code = denyRoutes ? 6 : 0
             let query = call.parameters["params"]?.arrayValue?.compactMap(\.stringValue).joined(separator: " ") ?? ""
             let outputs = [
-                "-4 route show": "default via 192.0.2.254 dev br-lan proto static metric 10",
-                "-6 route show": "fd00::/64 dev br-lan proto kernel metric 256",
+                "-4 -j route show table all": #"[{"dst":"default","gateway":"192.0.2.254","dev":"br-lan","table":100,"metric":10}]"#,
+                "-6 -j route show table all": #"[{"dst":"fd00::/64","dev":"br-lan","metric":256}]"#,
+                "-4 -j neigh show": #"[{"dst":"192.0.2.10","dev":"br-lan","lladdr":"02:00:00:00:00:01","state":["REACHABLE"]}]"#,
+                "-6 -j neigh show": #"[{"dst":"fd00::10","dev":"br-lan","lladdr":"02:00:00:00:00:01","state":["STALE"]}]"#,
+                "-4 -j rule show": #"[{"priority":100,"src":"all","table":100}]"#,
+                "-6 -j rule show": #"[{"priority":32766,"src":"all","table":"main"}]"#,
+                "-4 route show table all": "default via 192.0.2.254 dev br-lan table 100 proto static metric 10",
+                "-6 route show table all": "fd00::/64 dev br-lan proto kernel metric 256",
                 "-4 neigh show": "192.0.2.10 dev br-lan lladdr 02:00:00:00:00:01 REACHABLE",
-                "-6 neigh show": "fd00::10 dev br-lan lladdr 02:00:00:00:00:01 STALE router"
+                "-6 neigh show": "fd00::10 dev br-lan lladdr 02:00:00:00:00:01 STALE router",
+                "-4 rule show": "100: from all lookup 100",
+                "-6 rule show": "32766: from all lookup main"
             ]
-            result = routeResponse ?? .object(["code": .number(0), "stdout": .string(outputs[query] ?? "unexpected command"), "stderr": .string("")])
+            if query == failedQuery { result = .object(["code": .number(0), "stdout": .string("invalid JSON")]) }
+            else if rejectJSON && query.contains("-j") { result = .object(["code": .number(1), "stderr": .string("invalid option -j")]) }
+            else { result = routeResponse ?? .object(["code": .number(0), "stdout": .string(outputs[query] ?? "unexpected command"), "stderr": .string("")]) }
         default: result = .object([:])
         }
         return try JSONEncoder().encode(JSONValue.object(["jsonrpc": .string("2.0"), "id": body["id"], "result": .array([.number(Double(code)), result])]))

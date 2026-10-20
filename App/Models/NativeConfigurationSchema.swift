@@ -21,6 +21,8 @@ struct NativeField: Identifiable {
     var choiceLabels: [String: String] = [:]
     var additionalConditions: [String: [String]] = [:]
     var editingUnavailableReason: String? = nil
+    var restrictToChoices = false
+    var suggestions: [String: String] = [:]
     func visible(in section: ConfigurationSection) -> Bool {
         guard additionalConditions.allSatisfy({ key, values in values.contains(section.values[key]?.stringValue ?? "") }) else { return false }
         guard let (key, values) = when else { return true }
@@ -30,14 +32,14 @@ struct NativeField: Identifiable {
 
 struct NativeFieldGroup: Identifiable {
     let title: String
-    let fields: [NativeField]
+    var fields: [NativeField]
     var id: String { title }
 }
 
 struct NativeSectionSchema: Identifiable {
     let type: String
     let title: String
-    let groups: [NativeFieldGroup]
+    var groups: [NativeFieldGroup]
     var named = false
     var addable = true
     var sectionIDs: Set<String>? = nil
@@ -77,17 +79,72 @@ struct NativeConfigurationSchema: Identifiable {
     static let system = Self(id: "system", title: "系统", config: "system", sections: [
         s("system", "系统设置", [
             g("常规设置", [f("hostname", "主机名"), f("description", "设备描述"), f("notes", "备注"),
-                         f("timezone", "POSIX 时区", .text, "填写系统使用的 POSIX 时区；地区名称不会自动转换为 POSIX 值。"),
-                         f("zonename", "时区地区名称")]),
-            g("日志", [f("log_size", "日志缓冲区（KiB）", .integer(1, 2_147_483_647)),
-                     f("log_ip", "远程日志服务器", .address), f("log_port", "远程日志端口", .integer(1, 65535)),
+                         f("zonename", "时区", .choice([]), "选择地区后同步更新 POSIX 时区；目录由当前路由器返回。"),
+                         f("clock_timestyle", "显示完整时区名称", .flag),
+                         f("clock_hourcycle", "时间格式", .choice(["", "h12", "h23"]))]),
+            g("ZRam", [f("zram_size_mb", "ZRam 大小（MB）", .integer(0, 2_147_483_647), "空值交由固件处理；应用可能重建交换设备。"),
+                         f("zram_comp_algo", "ZRam 压缩算法", .choice([]), "读取内核 comp_algorithm 列出的实际算法，保留当前值。")]),
+            g("日志", [f("log_size", "日志缓冲区（KiB）", .integer(0, 2_147_483_647)),
+                     f("log_ip", "远程日志服务器", .text, "IP 地址或服务器域名。"), f("log_port", "远程日志端口", .integer(1, 65535)),
                      f("log_proto", "传输协议", .choice(["udp", "tcp"])), f("log_file", "日志文件路径"),
-                     f("conloglevel", "内核控制台日志等级", .integer(0, 8)), f("cronloglevel", "计划任务日志等级", .integer(0, 9))])
+                     f("conloglevel", "内核控制台日志等级", .choice((1...8).map(String.init))), f("cronloglevel", "计划任务日志等级", .choice(["5", "7", "9"]))])
         ], addable: false),
-        s("timeserver", "时间同步", [g("NTP", [f("enabled", "启用 NTP 客户端", .flag),
+        s("timeserver", "时间同步", [g("NTP", [f("enabled", "NTP 配置启用", .flag, "这是配置字段。NTP 服务的开机启用和运行状态须在时间状态与启动项中核对。"),
             f("enable_server", "提供 NTP 服务", .flag, "sysntpd 需已启用；开机启动在系统→启动项中单独管理。"), f("interface", "监听接口"),
             f("use_dhcp", "使用 DHCP 下发的服务器", .flag), f("server", "NTP 服务器", .list)])], addable: false)
     ])
+
+    static let luciInterface = Self(id: "luci-interface", title: "语言与界面", config: "luci", sections: [
+        s("core", "路由器 Web 管理界面", [g("语言与界面", [
+            f("lang", "界面语言", .choice([])), f("mediaurlbase", "界面主题", .choice([])),
+            f("tablefilters", "表格筛选器", .flag)
+        ])], addable: false, ids: ["main"])
+    ], note: "这些选项修改路由器 LuCI 的界面设置。手机 App 的外观和字号在底部“设置”中管理；本页独立预览并提交 luci 配置。")
+
+    func resolvedSystemSections(configuration: RouterConfiguration?, runtime: SystemRuntimeSnapshot?) -> [NativeSectionSchema] {
+        guard id == "system" || id == "luci-interface" else { return sections }
+        return sections.map { section in
+            var section = section
+            section.groups = section.groups.map { group in
+                var group = group
+                group.fields = group.fields.map { original in
+                    var field = original
+                    if id == "system" {
+                        switch field.id {
+                        case "zonename":
+                            field.restrictToChoices = true
+                            if let zones = runtime?.timezones { field.kind = .choice(zones.map(\.name)) }
+                            else { field.editingUnavailableReason = "未能读取路由器时区目录。" }
+                        case "zram_size_mb", "zram_comp_algo":
+                            if runtime?.zramSupported != true { field.editingUnavailableReason = runtime?.zramSupported == false ? "固件未提供 ZRam 能力。" : "未能确认 ZRam 能力。" }
+                            else if field.id == "zram_comp_algo" {
+                                field.restrictToChoices = true
+                                if let algorithms = runtime?.zramAlgorithms { field.kind = .choice(algorithms) }
+                                else { field.editingUnavailableReason = "未能读取内核可用算法；可能没有活动 ZRam 设备或缺少读取权限。" }
+                            }
+                        case "clock_hourcycle": field.choiceLabels = ["": "固件默认", "h12": "12 小时", "h23": "24 小时"]
+                        case "cronloglevel": field.choiceLabels = ["5": "调试", "7": "正常", "9": "禁用"]
+                        default: break
+                        }
+                    } else if field.id == "lang" {
+                        field.restrictToChoices = true
+                        let languages = configuration?.sections.first { $0.id == "languages" }?.values ?? [:]
+                        field.choiceLabels = languages.compactMapValues(\.stringValue).merging(["auto": "自动", "en": "English"]) { current, _ in current }
+                        field.kind = .choice(field.choiceLabels.keys.sorted())
+                    } else if field.id == "mediaurlbase" {
+                        field.restrictToChoices = true
+                        let themes = configuration?.sections.first { $0.id == "themes" }?.values ?? [:]
+                        field.choiceLabels = Dictionary(themes.compactMap { name, value in value.stringValue.map { ($0, name) } }, uniquingKeysWith: { first, _ in first })
+                        field.kind = .choice(field.choiceLabels.keys.sorted())
+                        if field.choiceLabels.isEmpty { field.editingUnavailableReason = "路由器未返回可用主题。" }
+                    }
+                    return field
+                }
+                return group
+            }
+            return section
+        }
+    }
 
     static let ssh = Self(id: "ssh", title: "SSH 访问", config: "dropbear", sections: [
         s("dropbear", "SSH 实例", [g("访问设置", [f("enable", "启用实例", .flag),
@@ -293,17 +350,23 @@ struct NativeConfigurationSchema: Identifiable {
     static let sqm = Self(id: "sqm", title: "SQM 配置", config: "sqm", sections: [
         s("queue", "队列实例", [g("基本设置", [f("enabled", "启用队列", .flag), f("interface", "网络设备", required: true),
             f("download", "下载速率（kbit/s）", .integer(0, 2_147_483_647)), f("upload", "上传速率（kbit/s）", .integer(0, 2_147_483_647)),
-            f("debug_logging", "调试日志", .flag), f("verbosity", "日志等级", .integer(0, 8))]),
-            g("队列设置", [f("qdisc", "队列规则", .text, "必须使用路由器已安装的队列规则。"),
-            f("script", "队列脚本", .text, "必须使用路由器已安装的 SQM 脚本文件名。"),
+            f("debug_logging", "调试日志", .flag), f("verbosity", "日志等级", .choice(["0", "1", "2", "5", "8", "10"]))]),
+            g("队列设置", [f("qdisc", "队列规则", .text, "必须使用路由器已安装的队列规则。", required: true),
+            f("script", "队列脚本", .text, "必须使用路由器已安装的 SQM 脚本文件名。", required: true),
             f("qdisc_advanced", "高级配置", .flag), f("use_mq", "多队列", .flag),
             f("squash_dscp", "清除入站 DSCP", .choice(["0", "1"])), f("squash_ingress", "忽略入站 DSCP", .choice(["0", "1"])),
-            f("ingress_ecn", "入站 ECN", .choice(["ECN", "NOECN"])), f("egress_ecn", "出站 ECN", .choice(["ECN", "NOECN"]))]),
+            f("ingress_ecn", "入站 ECN", .choice(["ECN", "NOECN"])), f("egress_ecn", "出站 ECN", .choice(["ECN", "NOECN"])),
+            f("qdisc_really_really_advanced", "危险队列参数", .flag),
+            f("ilimit", "入站队列上限", .integer(0, 2_147_483_647)), f("elimit", "出站队列上限", .integer(0, 2_147_483_647)),
+            f("itarget", "入站延迟目标", .text, "示例 5ms；允许 s、ms、us 或 default。留空由脚本决定。"),
+            f("etarget", "出站延迟目标", .text, "示例 5ms；允许 s、ms、us 或 default。留空由脚本决定。"),
+            f("iqdisc_opts", "入站队列参数", .text, "原样传给队列脚本，固件不校验语义；仅在确认上游脚本支持时使用。"),
+            f("eqdisc_opts", "出站队列参数", .text, "原样传给队列脚本，固件不校验语义；仅在确认上游脚本支持时使用。")]),
             g("链路层", [f("linklayer", "链路层类型", .choice(["none", "ethernet", "atm"])),
-            f("overhead", "每包额外开销（字节）", .integer(-127, 128)), f("linklayer_advanced", "高级链路层选项", .flag),
-            f("tcMTU", "最大报文大小", .integer(1, 65535)), f("tcTSIZE", "速率表大小", .integer(1, 65535)),
-            f("tcMPU", "最小报文大小", .integer(0, 65535)), f("linklayer_adaptation_mechanism", "开销补偿机制", .choice(["default", "cake", "htb_private", "tc_stab"]))])])
-    ], note: "速率为 kbit/s，设为 0 表示关闭该方向整形。队列规则和脚本是否安装、内核队列是否生效仍需核对，不能将配置启用视为运行成功。")
+            f("overhead", "每包额外开销（字节）", .integer(-1500, 2_147_483_647)), f("linklayer_advanced", "高级链路层选项", .flag),
+            f("tcMTU", "最大报文大小", .integer(0, 2_147_483_647)), f("tcTSIZE", "速率表大小", .integer(0, 2_147_483_647)),
+            f("tcMPU", "最小报文大小", .integer(0, 2_147_483_647)), f("linklayer_adaptation_mechanism", "开销补偿机制", .choice(["default", "cake", "htb_private", "tc_stab"]))])])
+    ], note: "速率为 kbit/s，设为 0 表示关闭该方向整形。高级参数按 SQM 上游配置语义显示；危险队列参数会原样传给脚本。实际队列及统计另在运行状态读取，不以配置替代。")
 
     static let upnp = Self(id: "upnp", title: "UPnP / PCP 配置", config: "upnpd", sections: [
         s("upnpd", "服务设置", [g("常规设置", [f("enabled", "启用服务", .flag), f("enable_upnp", "UPnP IGD", .flag),

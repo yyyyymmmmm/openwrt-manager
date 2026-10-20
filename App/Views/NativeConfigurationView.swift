@@ -7,6 +7,7 @@ struct NativeConfigurationView: View {
     @Environment(RouterStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let schema: NativeConfigurationSchema
+    var sectionID: String? = nil
     @State private var original: RouterConfiguration?
     @State private var draft: RouterConfiguration?
     @State private var writable = false
@@ -17,15 +18,32 @@ struct NativeConfigurationView: View {
     @State private var protocolError: String?
     @State private var homeProxyCapabilities: HomeProxyCapabilities?
     @State private var homeProxyCapabilityError: String?
+    @State private var systemRuntime: SystemRuntimeSnapshot?
+    @State private var wolRuntime: WakeOnLANSnapshot?
+    @State private var sqmRuntime: SQMRuntimeSnapshot?
     @State private var adding: NativeSectionSchema?
     @State private var discard = false
     @State private var preview: ConfigurationPlan?
     @State private var showPreview = false
     @State private var submitted = false
+    @State private var loadedConnectionID: UUID?
+    @State private var initialReadFinished = false
+    @State private var requestID = UUID()
     private var changed: Bool { draft != nil && draft != original }
-    private var editable: Bool { writable && !store.isMutating && store.pendingConfiguration == nil }
+    private var editable: Bool { writable && !loading && !store.isMutating && store.pendingConfiguration == nil }
+    private func includes(_ section: ConfigurationSection) -> Bool {
+        guard let sectionID else { return true }
+        return section.id == sectionID || section.type == "wireguard_\(sectionID)"
+    }
+    private func allowsAdding(_ sectionSchema: NativeSectionSchema) -> Bool {
+        guard let sectionID else { return true }
+        return sectionSchema.type == "wireguard_\(sectionID)"
+    }
     private var sectionSchemas: [NativeSectionSchema] {
-        let resolved = schema.resolvedPluginSections(configuration: draft, capabilities: homeProxyCapabilities)
+        let resolved = schema.id == "wol" ? schema.resolvedWOLSections(runtime: wolRuntime) : schema.id == "sqm"
+            ? schema.resolvedSQMSections(runtime: sqmRuntime) : ["system", "luci-interface"].contains(schema.id)
+            ? schema.resolvedSystemSections(configuration: draft, runtime: systemRuntime)
+            : schema.resolvedPluginSections(configuration: draft, capabilities: homeProxyCapabilities)
         guard schema.id == "interfaces", let draft else { return resolved }
         let interfaces = draft.sections.filter { $0.type == "interface" && $0.values["proto"]?.stringValue == "wireguard" }.map(\.id)
         let peers = draft.sections.filter { $0.type.hasPrefix("wireguard_") }.map { String($0.type.dropFirst(10)) }
@@ -45,13 +63,49 @@ struct NativeConfigurationView: View {
                     if let protocolError { Text(protocolError).foregroundStyle(AppPalette.orange) }
                     if let homeProxyCapabilityError { Text(homeProxyCapabilityError).foregroundStyle(AppPalette.orange) }
                 } footer: { Text(schema.note) }
+                if schema.id == "wol" {
+                    Section("工具与主机提示") {
+                        if let wolRuntime {
+                            ForEach(wolRuntime.issues.keys.sorted(), id: \.self) { key in
+                                Text(key + "：" + (wolRuntime.issues[key] ?? "")).foregroundStyle(AppPalette.orange)
+                            }
+                        }
+                        if !draft.sections.contains(where: { $0.id == "defaults" }) {
+                            Button("添加默认工具设置") {
+                                self.draft?.sections.append(ConfigurationSection(id: "defaults", type: "wol"))
+                            }.disabled(!editable).accessibilityIdentifier("wol-add-defaults")
+                        }
+                        NavigationLink("调整目标顺序") {
+                            WOLTargetOrderView(configuration: $draft, editable: editable)
+                        }.accessibilityIdentifier("wol-target-order")
+                    }
+                }
+                if schema.id == "system" {
+                    Section("时间与界面") {
+                        NavigationLink("时间与 NTP 状态") { SystemRuntimeView() }.accessibilityIdentifier("system-runtime-config")
+                        NavigationLink("语言与界面") { NativeConfigurationView(schema: .luciInterface) }.accessibilityIdentifier("system-interface")
+                        if let systemRuntime {
+                            ForEach(systemRuntime.issues.keys.sorted(), id: \.self) { key in
+                                Text(SystemRuntimeSnapshot.issueTitle(key) + "：" + (systemRuntime.issues[key] ?? ""))
+                                    .font(AppTypography.secondary).foregroundStyle(AppPalette.orange)
+                            }
+                        }
+                    }
+                }
                 ForEach(sectionSchemas) { sectionSchema in
-                    let sections = draft.sections.filter { sectionSchema.matches($0) }
+                    let sections = draft.sections.filter { sectionSchema.matches($0) && includes($0) }
+                    let isSelectedInterface = sectionID != nil && sectionSchema.type == "interface"
+                    let mayAdd = allowsAdding(sectionSchema)
+                    if sectionID == nil || isSelectedInterface || !sections.isEmpty || mayAdd {
                     Section(sectionSchema.title) {
                         ForEach(sections) { section in
+                            if isSelectedInterface {
+                                NativeFieldGroupLinks(schema: sectionSchema, section: sectionBinding(section.id),
+                                                      editable: editable, protocols: protocols, timezones: systemRuntime?.timezones ?? [])
+                            } else {
                             NavigationLink {
                                 NativeSectionView(schema: sectionSchema, section: sectionBinding(section.id),
-                                                  editable: editable, protocols: protocols)
+                                                  editable: editable, protocols: protocols, timezones: systemRuntime?.timezones ?? [])
                             } label: {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(sectionSchema.label(section)).font(AppTypography.rowTitle)
@@ -59,12 +113,14 @@ struct NativeConfigurationView: View {
                                         .font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
                                 }
                             }.accessibilityIdentifier("native-section-\(schema.id)-\(section.id)")
+                            }
                         }
-                        if sections.isEmpty { Text("路由器未返回此类配置").foregroundStyle(AppPalette.muted) }
-                        if sectionSchema.addable {
+                        if sections.isEmpty { Text(isSelectedInterface ? "此接口的持久配置已不存在，请返回重新读取接口。" : "路由器未返回此类配置").foregroundStyle(AppPalette.muted) }
+                        if sectionSchema.addable && mayAdd {
                             Button("新增\(sectionSchema.title)", systemImage: "plus") { adding = sectionSchema }
                                 .disabled(!editable).accessibilityIdentifier("native-add-\(schema.id)-\(sectionSchema.type)")
                         }
+                    }
                     }
                 }
                 Section {
@@ -74,7 +130,7 @@ struct NativeConfigurationView: View {
             }
         }
         .font(AppTypography.row).tint(AppPalette.accent)
-        .scrollContentBackground(.hidden).background(AppPalette.canvas).appDetailStyle(schema.title)
+        .scrollContentBackground(.hidden).background(AppPalette.canvas).appDetailStyle(sectionID.map { "编辑 · \($0)" } ?? schema.title)
         .navigationBarBackButtonHidden(changed)
         .toolbar {
             if changed { ToolbarItem(placement: .topBarLeading) { Button("返回", systemImage: "chevron.left") { discard = true } } }
@@ -95,7 +151,13 @@ struct NativeConfigurationView: View {
         .navigationDestination(isPresented: $showPreview) {
             if let preview { ConfigurationPreviewView(plan: preview, allowed: writable, onApplied: { submitted = true }) }
         }
-        .task(id: store.connectionID) { await load() }
+        .task(id: store.connectionID) {
+            if loadedConnectionID != store.connectionID {
+                loadedConnectionID = store.connectionID; initialReadFinished = false; original = nil; draft = nil
+            }
+            guard !initialReadFinished else { return }
+            await load()
+        }
         .onChange(of: store.pendingConfiguration) { previous, current in
             if previous != nil && current == nil && (submitted || !changed) {
                 submitted = false; Task { await load() }
@@ -119,14 +181,41 @@ struct NativeConfigurationView: View {
         } catch { self.error = error.localizedDescription }
     }
     private func load() async {
-        let generation = store.connectionID
+        let generation = store.connectionID, request = UUID()
+        requestID = request
         loading = true; error = nil; permissionError = nil; writable = false
         protocols = []; protocolError = nil; homeProxyCapabilities = nil; homeProxyCapabilityError = nil
-        defer { if generation == store.connectionID { loading = false } }
+        systemRuntime = nil; wolRuntime = nil; sqmRuntime = nil
+        defer {
+            if generation == store.connectionID, requestID == request {
+                loading = false
+                if !Task.isCancelled { initialReadFinished = true }
+            }
+        }
         do {
             let value = try await store.configuration(schema.config)
-            guard generation == store.connectionID, !Task.isCancelled else { return }
+            guard generation == store.connectionID, requestID == request, !Task.isCancelled else { return }
             original = value; draft = value
+            if schema.id == "wol" {
+                let runtime = try await store.wakeOnLAN()
+                guard generation == store.connectionID, requestID == request, !Task.isCancelled else { return }
+                wolRuntime = runtime
+            }
+            if schema.id == "sqm" {
+                let runtime = try await store.sqmRuntime()
+                guard generation == store.connectionID, requestID == request, !Task.isCancelled else { return }
+                sqmRuntime = runtime
+            }
+            if schema.id == "system" {
+                do {
+                    let runtime = try await store.readSystemRuntime()
+                    guard generation == store.connectionID, !Task.isCancelled else { return }
+                    systemRuntime = runtime
+                } catch {
+                    guard generation == store.connectionID, !Task.isCancelled else { return }
+                    permissionError = "系统运行能力读取失败：" + FriendlyError.message(error)
+                }
+            }
             do {
                 let allowed = try await store.canWriteConfiguration(schema.config)
                 guard generation == store.connectionID, !Task.isCancelled else { return }
@@ -162,22 +251,37 @@ struct NativeConfigurationView: View {
     }
 }
 
+private struct NativeFieldGroupLinks: View {
+    let schema: NativeSectionSchema
+    @Binding var section: ConfigurationSection?
+    let editable: Bool
+    let protocols: [String]
+    var timezones: [SystemTimeZone] = []
+
+    var body: some View {
+        if let section {
+            ForEach(schema.groups.filter { $0.fields.contains { $0.visible(in: section) } }) { group in
+                NavigationLink(group.title) {
+                    NativeFieldGroupView(group: group, section: $section, editable: editable, protocols: protocols, timezones: timezones)
+                }.accessibilityIdentifier("native-group-\(schema.type)-\(group.id)")
+            }
+        }
+    }
+}
+
 private struct NativeSectionView: View {
     @Environment(\.dismiss) private var dismiss
     let schema: NativeSectionSchema
     @Binding var section: ConfigurationSection?
     let editable: Bool
     let protocols: [String]
+    var timezones: [SystemTimeZone] = []
     @State private var deleting = false
     var body: some View {
         Form {
             if let section {
                 Section {
-                    ForEach(schema.groups.filter { $0.fields.contains { $0.visible(in: section) } }) { group in
-                        NavigationLink(group.title) {
-                            NativeFieldGroupView(group: group, section: $section, editable: editable, protocols: protocols)
-                        }.accessibilityIdentifier("native-group-\(schema.type)-\(group.id)")
-                    }
+                    NativeFieldGroupLinks(schema: schema, section: $section, editable: editable, protocols: protocols, timezones: timezones)
                 } header: { Text(schema.label(section)) } footer: {
                     Text("仅修改明确编辑的字段；未适配的固件扩展字段保留原值。删除配置节会删除其全部字段。")
                 }
@@ -199,6 +303,7 @@ private struct NativeFieldGroupView: View {
     @Binding var section: ConfigurationSection?
     let editable: Bool
     let protocols: [String]
+    var timezones: [SystemTimeZone] = []
     @State private var editing: NativeField?
     private var visibleFields: [NativeField] {
         guard let section else { return [] }
@@ -226,7 +331,16 @@ private struct NativeFieldGroupView: View {
         }.font(AppTypography.row).tint(AppPalette.accent).appDetailStyle(group.title)
             .sheet(item: $editing) { field in
                 NativeFieldEditor(field: field, value: section?.values[field.id]) { value in
-                    section?.values[field.id] = value
+                    guard var updated = section else { return }
+                    updated.values[field.id] = value
+                    if updated.type == "system", field.id == "zonename" {
+                        if let name = value?.stringValue, let zone = timezones.first(where: { $0.name == name }) {
+                            updated.values["timezone"] = .string(zone.posix)
+                        } else if value == nil {
+                            updated.values.removeValue(forKey: "timezone")
+                        }
+                    }
+                    section = updated
                 }
             }
     }
@@ -278,6 +392,13 @@ private struct NativeFieldEditor: View {
                             .textInputAutocapitalization(.never).autocorrectionDisabled()
                             .accessibilityIdentifier("native-value-\(field.id)")
                         if case .secret = field.kind { Toggle("显示内容", isOn: $reveal) }
+                        if !field.suggestions.isEmpty {
+                            Menu("从主机提示选择") {
+                                ForEach(field.suggestions.keys.sorted(), id: \.self) { key in
+                                    Button(field.suggestions[key] ?? key) { text = key }
+                                }
+                            }.accessibilityIdentifier("native-suggestions-\(field.id)")
+                        }
                     }
                 }
                 if !field.help.isEmpty { Section { Text(field.help).foregroundStyle(AppPalette.muted) } }
@@ -391,6 +512,9 @@ private enum NativeValidation {
                draft.sections.filter({ $0.type == "network" && $0.values["id"]?.stringValue?.lowercased() == networkID.lowercased() }).count > 1 {
                 throw Invalid(message: "ZeroTier 网络 ID 重复，请保留一个网络配置。")
             }
+            if schema.id == "wol", section.type == "target", old != section {
+                _ = try WakeOnLANTarget(section: section)
+            }
         }
     }
     static func validate(section: ConfigurationSection, schema: NativeSectionSchema) throws {
@@ -429,7 +553,7 @@ private enum NativeValidation {
                 valid = parsed && inverse & (inverse &+ 1) == 0
             case .flag: valid = ["1", "0", "true", "false", "on", "off", "yes", "no"].contains(text)
             case .hexadecimal(let count): valid = text.utf8.count == count && text.utf8.allSatisfy { (48...57).contains($0) || (65...70).contains($0) || (97...102).contains($0) }
-            case .choice(let options): valid = !text.isEmpty || options.contains("")
+            case .choice(let options): valid = field.restrictToChoices ? options.contains(text) : !text.isEmpty || options.contains("")
             default: valid = true
             }
             if !valid { throw Invalid(message: "\(field.title)的格式或范围不正确。") }

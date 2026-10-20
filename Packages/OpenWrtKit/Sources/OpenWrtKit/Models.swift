@@ -117,15 +117,20 @@ public struct IPRouteRecord: Identifiable, Equatable, Sendable {
     public let protocolName: String?
     public let metric: String?
     public let rawValue: String
+    public let table: String?
+    public let source: String?
+    public let routeType: String?
     public var id: String { rawValue }
 
-    public init(destination: String, gateway: String?, device: String?, protocolName: String?, metric: String?, rawValue: String) {
+    public init(destination: String, gateway: String?, device: String?, protocolName: String?, metric: String?, rawValue: String,
+                table: String? = nil, source: String? = nil, routeType: String? = nil) {
         self.destination = destination
         self.gateway = gateway
         self.device = device
         self.protocolName = protocolName
         self.metric = metric
         self.rawValue = rawValue
+        self.table = table; self.source = source; self.routeType = routeType
     }
 }
 
@@ -135,28 +140,45 @@ public struct IPNeighborRecord: Identifiable, Equatable, Sendable {
     public let device: String
     public let interface: String
     public let state: String
+    public let rawValue: String?
     public var id: String { address + "|" + device }
 
-    public init(address: String, mac: String?, device: String, interface: String, state: String) {
+    public init(address: String, mac: String?, device: String, interface: String, state: String, rawValue: String? = nil) {
         self.address = address
         self.mac = mac
         self.device = device
         self.interface = interface
         self.state = state
+        self.rawValue = rawValue
     }
 }
 
 public struct RouterRoutingSnapshot: Equatable, Sendable {
-    public let ipv4Routes: [IPRouteRecord]
-    public let ipv6Routes: [IPRouteRecord]
-    public let ipv4Neighbors: [IPNeighborRecord]
-    public let ipv6Neighbors: [IPNeighborRecord]
-
-    public init(ipv4Routes: [IPRouteRecord], ipv6Routes: [IPRouteRecord], ipv4Neighbors: [IPNeighborRecord], ipv6Neighbors: [IPNeighborRecord]) {
-        self.ipv4Routes = ipv4Routes
-        self.ipv6Routes = ipv6Routes
-        self.ipv4Neighbors = ipv4Neighbors
-        self.ipv6Neighbors = ipv6Neighbors
+    public var routes4: RoutingRead<[IPRouteRecord]>
+    public var routes6: RoutingRead<[IPRouteRecord]>
+    public var neighbors4: RoutingRead<[IPNeighborRecord]>
+    public var neighbors6: RoutingRead<[IPNeighborRecord]>
+    public var rules4: RoutingRead<[IPRuleRecord]>
+    public var rules6: RoutingRead<[IPRuleRecord]>
+    public var ipv4Routes: [IPRouteRecord] { routes4.value ?? [] }
+    public var ipv6Routes: [IPRouteRecord] { routes6.value ?? [] }
+    public var ipv4Neighbors: [IPNeighborRecord] { neighbors4.value ?? [] }
+    public var ipv6Neighbors: [IPNeighborRecord] { neighbors6.value ?? [] }
+    public var errors: [String] {
+        [routes4.error, routes6.error, neighbors4.error, neighbors6.error, rules4.error, rules6.error].compactMap { $0 }
+    }
+    public init(routes4: RoutingRead<[IPRouteRecord]>, routes6: RoutingRead<[IPRouteRecord]>,
+                neighbors4: RoutingRead<[IPNeighborRecord]>, neighbors6: RoutingRead<[IPNeighborRecord]>,
+                rules4: RoutingRead<[IPRuleRecord]>, rules6: RoutingRead<[IPRuleRecord]>) {
+        self.routes4 = routes4; self.routes6 = routes6
+        self.neighbors4 = neighbors4; self.neighbors6 = neighbors6
+        self.rules4 = rules4; self.rules6 = rules6
+    }
+    public func retainingLastRead(_ old: RouterRoutingSnapshot?) -> RouterRoutingSnapshot {
+        guard let old else { return self }
+        return .init(routes4: routes4.retaining(old.routes4), routes6: routes6.retaining(old.routes6),
+                     neighbors4: neighbors4.retaining(old.neighbors4), neighbors6: neighbors6.retaining(old.neighbors6),
+                     rules4: rules4.retaining(old.rules4), rules6: rules6.retaining(old.rules6))
     }
 }
 

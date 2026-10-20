@@ -30,6 +30,10 @@ struct ServiceDirectoryView: View {
     var body: some View {
         List {
             Section { InventoryStatus(); ReadStatus(updatedAt: store.servicesUpdatedAt, error: store.servicesError) }
+            Section("本地启动") {
+                NavigationLink("本地启动脚本") { LocalStartupScriptView() }
+                    .accessibilityIdentifier("startup-local-script")
+            }
             Section(store.inventory.initRead && store.servicesUpdatedAt != nil && store.servicesError == nil ? "服务与启动项 · \(names.count)" : "已读取的服务与启动项") {
                 if !store.inventory.initRead && !store.inventory.packagesRead && store.inventory.warnings.isEmpty {
                     ContentUnavailableView("正在读取服务目录", systemImage: "gearshape.2")

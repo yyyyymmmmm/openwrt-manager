@@ -7,6 +7,8 @@ struct ZeroTierNetworksView: View {
     @State private var loading = false
     @State private var error: String?
     @State private var updatedAt: Date?
+    @State private var requestID = UUID()
+    private var service: InitService? { store.inventory.initServices.first { $0.name == "zerotier" } }
     var body: some View {
         List {
             Section {
@@ -36,19 +38,33 @@ struct ZeroTierNetworksView: View {
                 Text("数据来自路由器上的 ZeroTier 客户端。配置保存不代表已加入网络；ACCESS_DENIED 需要控制器授权。控制器下发的路由是否进入内核，还需到概览的路由表核对。")
                 NativeConfigurationLink(schema: .zerotier)
             }
+            Section("应用配置与服务") {
+                if let service {
+                    NavigationLink {
+                        ServiceDetailView(name: service.name)
+                    } label: {
+                        Label("启停、重载与开机启动", systemImage: "gearshape.2")
+                    }.accessibilityIdentifier("zerotier-service-lifecycle")
+                    Text("编辑网络 ID 后，先在上方配置页预览、应用并确认，再返回此处重载服务。网络节由固件启动脚本处理；配置目录、客户端退出结果与控制器授权需在重读状态中分别核对。")
+                } else {
+                    Label("路由器没有报告 zerotier 启动项", systemImage: "exclamationmark.triangle")
+                    Text("不提供未经验证的启动命令。请先确认 ZeroTier 服务包及 LuCI 启动项 RPC。")
+                }
+            }
         }.font(AppTypography.row).tint(AppPalette.accent).appDetailStyle("ZeroTier 网络")
-            .task(id: store.connectionID) { networks = []; updatedAt = nil; await load() }
+            .task(id: store.connectionID) { networks = []; updatedAt = nil; error = nil; await load() }
     }
     private func load() async {
-        let generation = store.connectionID
+        let generation = store.connectionID, request = UUID()
+        requestID = request
         loading = true; error = nil
-        defer { if generation == store.connectionID { loading = false } }
+        defer { if generation == store.connectionID && request == requestID { loading = false } }
         do {
             let result = try await store.zeroTierNetworks()
-            guard generation == store.connectionID, !Task.isCancelled else { return }
+            guard generation == store.connectionID, request == requestID, !Task.isCancelled else { return }
             networks = result; updatedAt = Date()
         } catch {
-            guard generation == store.connectionID, !Task.isCancelled else { return }
+            guard generation == store.connectionID, request == requestID, !Task.isCancelled else { return }
             self.error = FriendlyError.message(error)
         }
     }

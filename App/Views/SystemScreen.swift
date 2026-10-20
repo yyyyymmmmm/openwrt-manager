@@ -23,20 +23,26 @@ struct SystemScreen: View {
                     AppGroup {
                         NativeConfigurationLink(schema: .system, symbol: "gearshape")
                         AppDivider()
-                        NavigationLink { RouterAdministrationView() } label: { AppRow(title: "管理权", detail: "SSH 访问设置", symbol: "lock.shield", chevron: true) }.buttonStyle(.plain)
+                        NavigationLink { SystemRuntimeView() } label: { AppRow(title: "时间与 NTP", detail: "实时钟、时区目录与同步请求", symbol: "clock", chevron: true) }
+                            .buttonStyle(.plain).accessibilityIdentifier("system-runtime")
                         AppDivider()
-                        NavigationLink { PackagesView() } label: { AppRow(title: "软件包", detail: "已安装软件与依赖", symbol: "shippingbox", chevron: true) }.buttonStyle(.plain)
+                        NavigationLink { RouterAdministrationView() } label: { AppRow(title: "管理权", detail: "账户密码、SSH 访问与公钥", symbol: "lock.shield", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("system-administration")
                         AppDivider()
-                        NavigationLink { ServiceDirectoryView() } label: { AppRow(title: "启动项", detail: "运行实例、启停与开机启动", symbol: "gearshape.2", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("services-directory")
+                        NavigationLink { PackagesView() } label: { AppRow(title: "软件包", detail: "可用、已安装、更新与任务", symbol: "shippingbox", chevron: true) }.buttonStyle(.plain)
+                        AppDivider()
+                        NavigationLink { ServiceDirectoryView() } label: { AppRow(title: "启动项", detail: "启停、开机启动与本地脚本", symbol: "gearshape.2", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("services-directory")
                         AppDivider()
                         NavigationLink { ScheduledTasksView() } label: { AppRow(title: "计划任务", detail: "任务文件、变更预览与 cron 重载", symbol: "calendar.badge.clock", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("system-crontab")
                         AppDivider()
                         NavigationLink { RouterRecordsView(kind: .mounts) } label: { AppRow(title: "挂载记录", detail: "只读存储挂载信息", symbol: "externaldrive", chevron: true) }.buttonStyle(.plain)
                         AppDivider()
+                        NavigationLink { FirmwareMaintenanceView() } label: { AppRow(title: "备份、恢复与固件", detail: "配置归档、镜像校验、刷写与重置", symbol: "internaldrive", chevron: true) }
+                            .buttonStyle(.plain).accessibilityIdentifier("system-firmware")
+                        AppDivider()
                         NavigationLink { RouterRebootView() } label: { AppRow(title: "重启", symbol: "restart", chevron: true) }.buttonStyle(.plain)
                     }
                 }
-                FirmwareMenuSection(group: "system", excluding: ["system", "admin", "package-manager", "startup", "crontab", "reboot"])
+                FirmwareMenuSection(group: "system", excluding: ["system", "admin", "package-manager", "startup", "crontab", "reboot", "flash"])
 
             }
         }

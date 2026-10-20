@@ -9,6 +9,82 @@ public struct RouterReader: Sendable {
         self.client = client; self.session = session
     }
 
+    public func firmwareCapabilities() async -> FirmwareCapabilities {
+        await FirmwareMaintenanceClient(client: client, session: session).capabilities()
+    }
+
+    public func configurationBackupList() async throws -> RouterCommandResult {
+        try await FirmwareMaintenanceClient(client: client, session: session).backupList()
+    }
+
+    public func downloadConfigurationBackup() async throws -> FirmwareBackupDownload {
+        try await FirmwareMaintenanceClient(client: client, session: session).backup()
+    }
+
+    public func uploadMaintenanceFile(_ url: URL, kind: FirmwareFileKind) async throws -> FirmwareUpload {
+        try await FirmwareMaintenanceClient(client: client, session: session).upload(url, kind: kind)
+    }
+
+    public func inspectConfigurationBackup(_ upload: FirmwareUpload) async throws -> BackupInspection {
+        try await FirmwareMaintenanceClient(client: client, session: session).inspectBackup(upload)
+    }
+
+    public func validateFirmware(_ upload: FirmwareUpload) async throws -> FirmwareValidation {
+        try await FirmwareMaintenanceClient(client: client, session: session).validate(upload)
+    }
+
+    public func discardMaintenanceFile(_ upload: FirmwareUpload) async throws {
+        try await FirmwareMaintenanceClient(client: client, session: session).discard(upload)
+    }
+
+    public func restoreConfigurationBackup(_ inspection: BackupInspection) async throws -> RouterCommandResult {
+        try await FirmwareMaintenanceClient(client: client, session: session).restore(inspection)
+    }
+
+    public func upgradeFirmware(_ validation: FirmwareValidation, options: FirmwareUpgradeOptions) async throws -> RouterCommandResult {
+        try await FirmwareMaintenanceClient(client: client, session: session).upgrade(validation, options: options)
+    }
+
+    public func factoryReset() async throws -> RouterCommandResult {
+        try await FirmwareMaintenanceClient(client: client, session: session).reset()
+    }
+
+    public func systemFile(_ file: RouterSystemFile) async throws -> RouterSystemFileSnapshot {
+        try await RouterSystemFileClient(client: client, session: session).read(file)
+    }
+
+    public func ddnsRuntime() async -> DDNSRuntimeSnapshot {
+        await DDNSClient(client: client, session: session).read()
+    }
+
+    public func ddnsLog(instanceID: String) async throws -> String {
+        try await DDNSClient(client: client, session: session).log(instanceID: instanceID)
+    }
+
+    public func ddnsActionAccess() async throws -> Bool {
+        try await DDNSClient(client: client, session: session).actionAccess()
+    }
+
+    public func ddnsAction(_ action: DDNSInstanceAction, observed: ConfigurationSection, status: DDNSInstanceStatus) async throws -> RouterCommandResult {
+        try await DDNSClient(client: client, session: session).perform(action, observed: observed, status: status)
+    }
+
+    public func systemFileWritable(_ file: RouterSystemFile) async throws -> Bool {
+        try await RouterSystemFileClient(client: client, session: session).writable(file)
+    }
+
+    public func saveSystemFile(observed: RouterSystemFileSnapshot, text: String) async throws -> RouterSystemFileSnapshot {
+        try await RouterSystemFileClient(client: client, session: session).save(observed: observed, text: text)
+    }
+
+    public func accounts() async -> RouterAccountsSnapshot {
+        await RouterAccountsClient(client: client, session: session).read()
+    }
+
+    public func changePassword(account: RouterAccount, policy: RouterPasswordPolicy, password: String, oldPassword: String) async throws {
+        try await RouterAccountsClient(client: client, session: session).change(account: account, observedPolicy: policy, password: password, oldPassword: oldPassword)
+    }
+
     public func snapshot() async throws -> RouterSnapshot {
         async let boardRead = read("system", "board")
         async let infoRead = read("system", "info")
@@ -44,22 +120,17 @@ public struct RouterReader: Sendable {
     }
 
     public func routing(interfaces: [NetworkInterfaceSnapshot]) async throws -> RouterRoutingSnapshot {
-        async let ipv4Routes = ipOutput(["-4", "route", "show"])
-        async let ipv6Routes = ipOutput(["-6", "route", "show"])
-        async let ipv4Neighbors = ipOutput(["-4", "neigh", "show"])
-        async let ipv6Neighbors = ipOutput(["-6", "neigh", "show"])
-        let output = try await (ipv4Routes, ipv6Routes, ipv4Neighbors, ipv6Neighbors)
-        return RouterRoutingSnapshot(
-            ipv4Routes: try SnapshotParser.routes(output.0),
-            ipv6Routes: try SnapshotParser.routes(output.1),
-            ipv4Neighbors: try SnapshotParser.neighbors(output.2, interfaces: interfaces),
-            ipv6Neighbors: try SnapshotParser.neighbors(output.3, interfaces: interfaces)
-        )
+        try await RouterRoutingClient(client: client, session: session).read(interfaces: interfaces)
     }
 
     public func wireless() async throws -> [WirelessRadio] {
         let value = try await client.call(session: session, object: "network.wireless", method: "status")
         return try SnapshotParser.wireless(value)
+    }
+
+    public func networkInterfaces() async throws -> [NetworkInterfaceSnapshot] {
+        let value = try await client.call(session: session, object: "network.interface", method: "dump")
+        return try SnapshotParser.interfaces(value)
     }
 
     public func networkProtocols() async throws -> [String] {
@@ -70,8 +141,113 @@ public struct RouterReader: Sendable {
         return handlers.keys.sorted()
     }
 
+    public func systemRuntime() async throws -> SystemRuntimeSnapshot {
+        async let clock = read("luci", "getUnixtime")
+        async let service = systemRead("rc", "list", ["name": .string("sysntpd")])
+        async let zones = read("luci", "getTimezones")
+        async let features = read("luci", "getFeatures")
+        let results = await (clock, service, zones, features)
+        try Task.checkCancellation()
+        var issues: [String: String] = [:]
+        var unixTime: Int64?; var enabled: Bool?; var running: Bool?
+        var timezones: [SystemTimeZone]?; var zram: Bool?; var compression: [String]?
+        do {
+            let value = try results.0.get()
+            guard let seconds = value["result"].intValue, seconds > 0 else { throw OpenWrtKitError.malformedResponse }
+            unixTime = Int64(seconds)
+        } catch { issues["clock"] = error.localizedDescription }
+        do {
+            let value = try results.1.get()
+            guard let state = value["sysntpd"].objectValue else { throw OpenWrtKitError.unsupported("固件没有返回 sysntpd 启动项。") }
+            guard let reported = state["enabled"]?.boolValue else { throw OpenWrtKitError.malformedResponse }
+            enabled = reported; running = state["running"]?.boolValue
+        } catch { issues["ntp"] = error.localizedDescription }
+        do { timezones = try SystemTimeZone.parse(results.2.get()) }
+        catch { issues["timezones"] = error.localizedDescription }
+        do {
+            let value = try results.3.get()
+            guard let supported = value["zram"].boolValue else { throw OpenWrtKitError.malformedResponse }
+            zram = supported
+        } catch { issues["features"] = error.localizedDescription }
+        if zram == true {
+            do {
+                let value = try await client.call(session: session, object: "file", method: "read", parameters: ["path": .string("/sys/block/zram0/comp_algorithm")])
+                guard let text = value["data"].stringValue else { throw OpenWrtKitError.malformedResponse }
+                compression = try SystemRuntimeSnapshot.parseAlgorithms(text)
+            } catch { issues["zram"] = error.localizedDescription }
+        }
+        return SystemRuntimeSnapshot(unixTime: unixTime, ntpdEnabled: enabled, ntpdRunning: running,
+                                     timezones: timezones, zramSupported: zram, zramAlgorithms: compression, issues: issues)
+    }
+
+    public func setLocaltime(_ date: Date = Date()) async throws {
+        try await requireAccess(object: "luci", function: "setLocaltime")
+        let value = try await client.call(session: session, object: "luci", method: "setLocaltime",
+                                  parameters: ["localtime": .number(floor(date.timeIntervalSince1970))])
+        guard value["result"].intValue == Int(floor(date.timeIntervalSince1970)) else { throw OpenWrtKitError.malformedResponse }
+    }
+
+    public func systemActionAccess(_ function: String) async throws -> Bool {
+        guard ["setLocaltime", "restartNTP"].contains(function) else { throw OpenWrtKitError.unsupported("未知时间操作。") }
+        let value = try await client.call(session: session, object: "session", method: "access", parameters: [
+            "scope": .string("ubus"), "object": .string(function == "setLocaltime" ? "luci" : "rc"),
+            "function": .string(function == "setLocaltime" ? "setLocaltime" : "init")
+        ])
+        guard let allowed = value["access"].boolValue else { throw OpenWrtKitError.malformedResponse }
+        return allowed
+    }
+
+    public func syncNTP() async throws {
+        try await requireAccess(object: "rc", function: "init")
+        let value = try await client.call(session: session, object: "rc", method: "init",
+                                  parameters: ["name": .string("sysntpd"), "action": .string("restart")])
+        if value["result"] == .bool(false) { throw OpenWrtKitError.unsupported("sysntpd 重启请求未获固件接受。") }
+        guard value.objectValue?.isEmpty == true || value["result"] == .bool(true) else { throw OpenWrtKitError.malformedResponse }
+    }
+
+    private func systemRead(_ object: String, _ method: String, _ parameters: [String: JSONValue]) async -> Result<JSONValue, Error> {
+        do { return .success(try await client.call(session: session, object: object, method: method, parameters: parameters)) }
+        catch { return .failure(error) }
+    }
+
+    private func requireAccess(object: String, function: String) async throws {
+        let value = try await client.call(session: session, object: "session", method: "access", parameters: [
+            "scope": .string("ubus"), "object": .string(object), "function": .string(function)
+        ])
+        guard let allowed = value["access"].boolValue else { throw OpenWrtKitError.malformedResponse }
+        guard allowed else { throw OpenWrtKitError.permissionDenied }
+    }
+
     public func homeProxyCapabilities() async throws -> HomeProxyCapabilities {
         try HomeProxyCapabilities(value: await pluginCall("luci.homeproxy", "singbox_get_features"))
+    }
+
+    public func wakeOnLAN() async -> WakeOnLANSnapshot {
+        await WakeOnLANClient(client: client, session: session).read()
+    }
+
+    public func sqmRuntime() async -> SQMRuntimeSnapshot {
+        await SQMClient(client: client, session: session).read()
+    }
+
+    public func pluginServiceSnapshot(_ target: PluginServiceTarget) async -> PluginServiceSnapshot {
+        await PluginLifecycleClient(client: client, session: session).read(target)
+    }
+
+    public func pluginServiceAction(_ target: PluginServiceTarget, action: ServiceAction, observed: RouterConfiguration) async throws {
+        try await PluginLifecycleClient(client: client, session: session).action(target, action, observed: observed)
+    }
+
+    public func sqmKernel() async throws -> SQMKernelSnapshot {
+        try await SQMClient(client: client, session: session).kernel()
+    }
+
+    public func sqmText(_ request: SQMReadRequest) async throws -> String {
+        try await SQMClient(client: client, session: session).text(request)
+    }
+
+    public func sendWakeOnLAN(sectionID: String, tool: WakeOnLANTool, observed: RouterConfiguration) async throws -> RouterCommandResult {
+        try await WakeOnLANClient(client: client, session: session).send(sectionID: sectionID, tool: tool, observed: observed)
     }
 
     public func upnpMappings() async throws -> [UPnPMapping] {
@@ -280,6 +456,31 @@ public struct RouterReader: Sendable {
         case .failure(let error): inventory.warnings.append("启动项：\(error.localizedDescription)")
         }
         return inventory
+    }
+
+    public func packageList(installed: Bool) async throws -> PackageListSnapshot {
+        try await client.packageList(session: session, installed: installed)
+    }
+
+    public func packageOperationAccess(_ operation: PackageOperation) async throws -> Bool {
+        try await client.packageOperationAccess(session: session, operation: operation)
+    }
+
+    public func packageOperation(_ operation: PackageOperation, installedVersion: String?, availableVersion: String?) async throws -> PackageOperationResult {
+        if let name = operation.name {
+            let installed = try await packageList(installed: true).packages.first { $0.name == name }
+            guard installed?.version == installedVersion else { throw PackageOperationError.changed }
+            if operation.removesPackage {
+                guard installed != nil else { throw PackageOperationError.changed }
+                guard installed?.essential != true else { throw PackageOperationError.essential }
+            } else {
+                let available = try await packageList(installed: false).packages.first { $0.name == name }
+                guard let available, available.version == availableVersion else { throw PackageOperationError.changed }
+                if case .install = operation, installed != nil { throw PackageOperationError.changed }
+                if case .upgrade = operation, installed == nil { throw PackageOperationError.changed }
+            }
+        }
+        return try await client.performPackageOperation(session: session, operation: operation)
     }
 
     public func serviceAction(name: String, action: ServiceAction) async throws {
@@ -539,7 +740,7 @@ public enum SnapshotParser {
             guard fields.indices.contains(destinationIndex) else { throw OpenWrtKitError.malformedResponse }
             let destination = fields[destinationIndex]
             guard destination == "default" || validIPPrefix(destination),
-                  ["via", "dev", "proto", "metric"].allSatisfy({ key in
+                  ["via", "dev", "proto", "metric", "table", "src", "from"].allSatisfy({ key in
                       fields.firstIndex(of: key).map { fields.indices.contains($0 + 1) } ?? true
                   }) else { throw OpenWrtKitError.malformedResponse }
             func value(after key: String) -> String? {
@@ -549,7 +750,9 @@ public enum SnapshotParser {
             if let gateway = value(after: "via"), !validIPAddress(gateway) { throw OpenWrtKitError.malformedResponse }
             if let metric = value(after: "metric"), UInt32(metric) == nil { throw OpenWrtKitError.malformedResponse }
             return IPRouteRecord(destination: destination, gateway: value(after: "via"), device: value(after: "dev"),
-                                 protocolName: value(after: "proto"), metric: value(after: "metric"), rawValue: raw)
+                                 protocolName: value(after: "proto"), metric: value(after: "metric"), rawValue: raw,
+                                 table: value(after: "table"), source: value(after: "src") ?? value(after: "from"),
+                                 routeType: destinationIndex == 1 ? fields[0] : nil)
         }
     }
 
@@ -572,8 +775,9 @@ public enum SnapshotParser {
             } else {
                 mac = nil
             }
-            let interface = interfaces.first(where: { $0.device == device })?.name ?? device
-            return IPNeighborRecord(address: address, mac: mac, device: device, interface: interface, state: state.uppercased())
+            let names = interfaces.filter { $0.device == device }.map(\.name).sorted()
+            let interface = names.isEmpty ? device : names.joined(separator: " / ")
+            return IPNeighborRecord(address: address, mac: mac, device: device, interface: interface, state: state.uppercased(), rawValue: String(line))
         }
     }
 

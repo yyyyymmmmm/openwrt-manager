@@ -1,6 +1,7 @@
 """CI-only HTTP fixture. Not an app resource; never connects to a real router."""
 
 import copy
+import ipaddress
 import json
 import secrets
 import threading
@@ -26,7 +27,10 @@ MENU = {"children": {"admin": {"children": {"services": {
 def new_state(readonly):
     return {"readonly": readonly, "configs": {
         "system": {"main": {".type": "system", ".index": 0, ".anonymous": False, "hostname": "ci-router"}},
-        "network": {"lan": {".type": "interface", ".index": 0, ".anonymous": False, "proto": "static", "ipaddr": "192.0.2.1", "netmask": "255.255.255.0", "device": "br-lan"}},
+        "network": {
+            "lan": {".type": "interface", ".index": 0, ".anonymous": False, "proto": "static", "ipaddr": "192.0.2.1", "netmask": "255.255.255.0", "ip6addr": ["fd00::1/64"], "device": "br-lan", "vendor_extension": "preserve-me"},
+            "guest": {".type": "interface", ".index": 1, ".anonymous": False, "proto": "none", "auto": "0", "device": "br-guest"},
+            "bridge": {".type": "device", ".index": 2, ".anonymous": False, "name": "br-lan", "type": "bridge", "ports": ["eth0"]}},
         "dhcp": {"lan": {".type": "dhcp", ".index": 0, ".anonymous": False, "interface": "lan", "start": "100", "limit": "150"}},
         "firewall": {"defaults": {".type": "defaults", ".index": 0, ".anonymous": False, "input": "REJECT", "forward": "REJECT"}},
         "wireless": {"radio0": {".type": "wifi-device", ".index": 0, ".anonymous": False, "disabled": "0", "channel": "auto"}},
@@ -79,7 +83,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def rpc(self, token, obj, method, args):
         if (obj, method) == ("session", "login"):
-            if args.get("username") not in ("root", "readonly", "route-denied", "route-failure") or args.get("password") != "ci-only-password":
+            if args.get("username") not in ("root", "readonly", "route-denied", "route-failure", "interfaces-denied", "interfaces-malformed", "network-config-denied", "protocols-denied") or args.get("password") != "ci-only-password":
                 return 6, {}
             token = secrets.token_hex(16)
             SESSIONS[token] = new_state(args["username"] == "readonly")
@@ -102,7 +106,21 @@ class Handler(BaseHTTPRequestHandler):
         if (obj, method) == ("system", "info"):
             return 0, {"uptime": 3600, "memory": {"total": 1073741824, "available": 536870912}, "load": [6553, 3276, 1638], "root": {"total": 1000000, "used": 250000}}
         if (obj, method) == ("network.interface", "dump"):
-            return 0, {"interface": [{"interface": "lan", "up": True, "proto": "static", "l3_device": "br-lan", "route": [{"target": "0.0.0.0", "mask": 0, "nexthop": "192.0.2.254", "metric": 10}], "dns-server": ["192.0.2.254"], "ipv4-address": [{"address": "192.0.2.1", "mask": 24}]}, {"interface": "wan", "up": False, "proto": "dhcp", "l3_device": "eth1"}]}
+            if state["route_mode"] == "interfaces-denied":
+                return 6, {}
+            if state["route_mode"] == "interfaces-malformed":
+                return 0, {"interface": "invalid-CI-response"}
+            lan = state["configs"]["network"]["lan"]
+            def addresses(key, default_mask):
+                values = lan.get(key, [])
+                if isinstance(values, str):
+                    values = [values]
+                result = []
+                for value in values:
+                    prefix = ipaddress.ip_interface(value if "/" in value else f"{value}/{default_mask}")
+                    result.append({"address": str(prefix.ip), "mask": prefix.network.prefixlen})
+                return result
+            return 0, {"interface": [{"interface": "lan", "up": True, "proto": lan["proto"], "l3_device": lan["device"], "route": [{"target": "0.0.0.0", "mask": 0, "nexthop": "192.0.2.254", "metric": 10}], "dns-server": ["192.0.2.254"], "ipv4-address": addresses("ipaddr", lan.get("netmask", 24)), "ipv6-address": addresses("ip6addr", 64)}, {"interface": "wan", "up": False, "proto": "dhcp", "l3_device": "eth1"}]}
         if (obj, method) == ("file", "exec"):
             command, params = args.get("command"), args.get("params", [])
             if command == "/etc/init.d/cron" and params == ["reload"]:
@@ -122,10 +140,20 @@ class Handler(BaseHTTPRequestHandler):
                     state["processes"] = [process for process in state["processes"] if process["PID"] != 432]
                 return 0, {"code": 0, "stdout": "", "stderr": ""}
             outputs = {
-                ("-4", "route", "show"): "default via 192.0.2.254 dev br-lan proto static metric 10\n192.0.2.0/24 dev br-lan proto kernel scope link src 192.0.2.1",
-                ("-6", "route", "show"): "fd00::/64 dev br-lan proto kernel metric 256",
+                ("-4", "-j", "route", "show", "table", "all"): json.dumps([
+                    {"dst": "default", "gateway": "192.0.2.254", "dev": "br-lan", "protocol": "static", "metric": 10, "table": "main"},
+                    {"dst": "192.0.2.0/24", "dev": "br-lan", "protocol": "kernel", "prefsrc": "192.0.2.1", "table": 100}]),
+                ("-6", "-j", "route", "show", "table", "all"): json.dumps([{"dst": "fd00::/64", "dev": "br-lan", "protocol": "kernel", "metric": 256}]),
+                ("-4", "-j", "neigh", "show"): json.dumps([{"dst": "192.0.2.10", "dev": "br-lan", "lladdr": "02:00:00:00:00:01", "state": ["REACHABLE"]}]),
+                ("-6", "-j", "neigh", "show"): json.dumps([{"dst": "fd00::10", "dev": "br-lan", "lladdr": "02:00:00:00:00:01", "state": ["STALE"], "router": True}]),
+                ("-4", "-j", "rule", "show"): json.dumps([{"priority": 100, "src": "all", "table": 100, "fwmark": "0x1", "fwmask": "0xff"}]),
+                ("-6", "-j", "rule", "show"): json.dumps([{"priority": 32766, "src": "all", "table": "main"}]),
+                ("-4", "route", "show", "table", "all"): "default via 192.0.2.254 dev br-lan table main proto static metric 10\n192.0.2.0/24 dev br-lan table 100 proto kernel scope link src 192.0.2.1",
+                ("-6", "route", "show", "table", "all"): "fd00::/64 dev br-lan proto kernel metric 256",
                 ("-4", "neigh", "show"): "192.0.2.10 dev br-lan lladdr 02:00:00:00:00:01 REACHABLE",
                 ("-6", "neigh", "show"): "fd00::10 dev br-lan lladdr 02:00:00:00:00:01 STALE router",
+                ("-4", "rule", "show"): "100: from all fwmark 0x1/0xff lookup 100",
+                ("-6", "rule", "show"): "32766: from all lookup main",
             }
             query = tuple(args.get("params", []))
             if args.get("command") != "/sbin/ip" or query not in outputs:
@@ -155,6 +183,8 @@ class Handler(BaseHTTPRequestHandler):
         if (obj, method) == ("luci-rpc", "getDHCPLeases"):
             return 0, {"dhcp_leases": [{"hostname": "CI Phone", "ipaddr": "192.0.2.10", "macaddr": "02:00:00:00:00:01", "expires": 1800}], "dhcp6_leases": []}
         if (obj, method) == ("network", "get_proto_handlers"):
+            if state["route_mode"] == "protocols-denied":
+                return 6, {}
             return 0, {"static": {}, "dhcp": {}, "dhcpv6": {}, "none": {}}
         if (obj, method) == ("network.wireless", "status"):
             return 6, {}
@@ -188,6 +218,8 @@ class Handler(BaseHTTPRequestHandler):
         if obj == "uci":
             if method == "get":
                 config = args.get("config")
+                if config == "network" and state["route_mode"] == "network-config-denied":
+                    return 6, {}
                 if config not in state["configs"]:
                     return 4, {}
                 return 0, {"values": state["staged"].get(config, state["configs"][config])}

@@ -43,6 +43,8 @@ struct ConfigurationEditorView: View {
     @State private var showPreview = false
     @State private var preview: ConfigurationPlan?
     @State private var submitted = false
+    @State private var loadedConnectionID: UUID?
+    @State private var initialReadFinished = false
     private var changed: Bool { draft != nil && draft != original }
 
     var body: some View {
@@ -98,7 +100,13 @@ struct ConfigurationEditorView: View {
         .navigationDestination(isPresented: $showPreview) {
             if let preview { ConfigurationPreviewView(plan: preview, allowed: allowed, onApplied: { submitted = true }) }
         }
-        .task(id: store.connectionID) { await load() }
+        .task(id: store.connectionID) {
+            if loadedConnectionID != store.connectionID {
+                loadedConnectionID = store.connectionID; initialReadFinished = false; original = nil; draft = nil
+            }
+            guard !initialReadFinished else { return }
+            await load()
+        }
         .onChange(of: store.pendingConfiguration) { previous, current in
             if previous != nil && current == nil && (submitted || !changed) {
                 submitted = false; Task { await load() }
@@ -115,7 +123,12 @@ struct ConfigurationEditorView: View {
     private func load() async {
         let generation = store.connectionID
         loading = true; error = nil; accessError = nil; allowed = false
-        defer { loading = false }
+        defer {
+            if generation == store.connectionID {
+                loading = false
+                if !Task.isCancelled { initialReadFinished = true }
+            }
+        }
         do {
             let value = try await store.configuration(name)
             guard generation == store.connectionID, !Task.isCancelled else { return }
@@ -285,6 +298,13 @@ struct ConfigurationPreviewView: View {
                             ForEach(section.values.keys.sorted(), id: \.self) { key in
                                 Text("\(key)：\(ConfigurationDisplay.value(section.values[key], key: key))")
                                     .foregroundStyle(AppPalette.muted).font(AppTypography.secondary)
+                            }
+                        }
+                        if case .order(let sections) = edit {
+                            ForEach(Array(sections.enumerated()), id: \.offset) { index, id in
+                                let section = plan.edited.sections.first { $0.id == id }
+                                let label = section?.values["name"]?.stringValue ?? section?.values["label"]?.stringValue ?? id
+                                Text("\(index + 1). \(label)").foregroundStyle(AppPalette.muted).font(AppTypography.secondary)
                             }
                         }
                     }

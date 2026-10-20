@@ -156,16 +156,28 @@ final class RouterSmokeTests: XCTestCase {
         v4Neighbor.tap()
         expectText("REACHABLE", app); expectText("lan", app)
         attach("30-neighbor-ipv4", app); back(app)
-        tapVisible(app.buttons["route-IPv4-default via 192.0.2.254 dev br-lan proto static metric 10"], app)
+        app.segmentedControls["routingTablePicker"].buttons["路由"].tap()
+        tapVisible(app.buttons["route-IPv4-default-main-br-lan"], app)
         expectText("目标网络", app); expectText("192.0.2.254", app)
         attach("31-route-ipv4", app); back(app)
+        tapVisible(app.buttons["route-IPv4-192.0.2.0/24-100-br-lan"], app)
+        expectText("192.0.2.0/24", app); expectText("100", app); back(app)
+        app.segmentedControls["routingTablePicker"].buttons["策略规则"].tap()
+        tapVisible(app.buttons["rule-IPv4-100"], app)
+        expectText("0x1", app); expectText("0xff", app)
+        attach("46-rule-ipv4", app); back(app)
         app.segmentedControls["routingFamilyPicker"].buttons["IPv6"].tap()
+        tapVisible(app.buttons["rule-IPv6-32766"], app)
+        expectText("main", app); attach("47-rule-ipv6", app); back(app)
+        app.segmentedControls["routingTablePicker"].buttons["邻居"].tap()
         tapVisible(app.buttons["neighbor-IPv6-fd00::10|br-lan"], app)
         expectText("STALE", app); expectText("fd00::10", app)
         attach("32-neighbor-ipv6", app); back(app)
-        tapVisible(app.buttons["route-IPv6-fd00::/64 dev br-lan proto kernel metric 256"], app)
+        app.segmentedControls["routingTablePicker"].buttons["路由"].tap()
+        tapVisible(app.buttons["route-IPv6-fd00::/64-unreported-br-lan"], app)
         expectText("fd00::/64", app); expectText("kernel", app)
         attach("33-route-ipv6", app); back(app)
+        app.segmentedControls["routingTablePicker"].buttons["邻居"].tap()
         let search = app.searchFields.firstMatch
         if !search.isHittable { app.swipeDown() }
         replace(search, with: "no-match")
@@ -357,7 +369,7 @@ final class RouterSmokeTests: XCTestCase {
         let app = launch(); connect(app)
         for entry in ["overview-wan", "overview-interfaces"] {
             tapVisible(app.buttons[entry], app)
-            XCTAssertTrue(app.buttons["interface-edit-config"].waitForExistence(timeout: 5)); back(app)
+            XCTAssertTrue(app.buttons["native-config-interfaces"].waitForExistence(timeout: 5)); back(app)
         }
         tapVisible(app.buttons["overview-wireless"], app); expectText("权限不足", app); back(app)
         tapVisible(app.buttons["overview-leases"], app)
@@ -420,10 +432,114 @@ final class RouterSmokeTests: XCTestCase {
     }
 
     @MainActor
+    func testRNamedInterfaceEditsConfirmRollbackAndRuntimeReadback() {
+        let app = launch(); connect(app); visit("网络", app)
+        tapVisible(app.buttons["network-interfaces"], app)
+        tapVisible(app.buttons["network-interface-wan"], app)
+        expectText("没有对应的持久配置", app)
+        XCTAssertFalse(app.buttons["interface-edit-wan"].exists)
+        back(app)
+        tapVisible(app.buttons["network-interface-guest"], app)
+        expectText("未取得此接口的运行状态", app)
+        tapVisible(app.buttons["interface-edit-guest"], app)
+        XCTAssertTrue(app.buttons["native-group-interface-常规设置"].exists)
+        XCTAssertFalse(app.buttons["native-section-interfaces-lan"].exists)
+        back(app); back(app)
+        tapVisible(app.buttons["network-interface-lan"], app)
+        expectText("192.0.2.1/24", app)
+        tapVisible(app.buttons["interface-edit-lan"], app)
+        for (group, fields) in [
+            ("常规设置", ["proto", "device", "ipaddr", "netmask", "gateway"]),
+            ("高级设置", ["metric", "dns", "mtu"]), ("IPv6", ["ip6addr", "ip6gw", "ip6assign"])
+        ] {
+            tapVisible(app.buttons["native-group-interface-\(group)"], app)
+            for field in fields {
+                tapVisible(app.buttons["native-field-\(field)"], app)
+                XCTAssertTrue(app.switches["明确设置此项"].exists)
+                app.buttons["取消"].tap()
+            }
+            back(app)
+        }
+        setInterfaceField("ipaddr", group: "常规设置", value: "192.0.2.2", app)
+        setInterfaceField("ip6addr", group: "IPv6", value: "fd00::2/64", app)
+        tapVisible(app.buttons["native-preview-interfaces"], app)
+        expectText("192.0.2.2", app); expectText("fd00::2/64", app)
+        attach("46-interface-draft-preview", app)
+        tapVisible(app.buttons["applyConfigurationButton"], app); app.buttons["应用修改"].tap()
+        XCTAssertTrue(app.buttons["验证连接并保留修改"].waitForExistence(timeout: 10))
+        app.buttons["验证连接并保留修改"].tap()
+        XCTAssertTrue(app.buttons["native-group-interface-常规设置"].waitForExistence(timeout: 15))
+        back(app)
+        expectText("192.0.2.2/24", app); expectText("fd00::2/64", app)
+        attach("47-interface-confirmed-readback", app)
+        tapVisible(app.buttons["interface-edit-lan"], app)
+        setInterfaceField("ipaddr", group: "常规设置", value: "192.0.2.3", app)
+        tapVisible(app.buttons["native-preview-interfaces"], app)
+        tapVisible(app.buttons["applyConfigurationButton"], app); app.buttons["应用修改"].tap()
+        XCTAssertTrue(app.buttons["回滚修改"].waitForExistence(timeout: 10)); app.buttons["回滚修改"].tap()
+        XCTAssertTrue(app.buttons["native-group-interface-常规设置"].waitForExistence(timeout: 15))
+        back(app); expectText("192.0.2.2/24", app)
+        attach("48-interface-rollback-readback", app)
+    }
+
+    @MainActor
+    func testSNamedInterfaceReadOnly() {
+        let app = launch(); connect(app, username: "readonly"); visit("网络", app)
+        tapVisible(app.buttons["network-interfaces"], app)
+        tapVisible(app.buttons["network-interface-lan"], app)
+        tapVisible(app.buttons["interface-edit-lan"], app)
+        expectText("当前仅可查看", app)
+        tapVisible(app.buttons["native-group-interface-常规设置"], app)
+        XCTAssertFalse(app.buttons["native-field-ipaddr"].isEnabled)
+        XCTAssertFalse(app.buttons["native-field-proto"].isEnabled)
+    }
+
+    @MainActor
+    func testTInterfaceRuntimeReadFailureKeepsConfigAccess() {
+        let app = launch(); connect(app, username: "interfaces-denied"); visit("网络", app)
+        tapVisible(app.buttons["network-interfaces"], app)
+        expectText("权限不足", app)
+        tapVisible(app.buttons["network-interface-lan"], app)
+        expectText("请先解决运行状态读取错误", app)
+        XCTAssertTrue(app.buttons["interface-edit-lan"].exists)
+    }
+
+    @MainActor
+    func testUInterfaceConfigReadFailureKeepsRuntime() {
+        let app = launch(); connect(app, username: "network-config-denied"); visit("网络", app)
+        tapVisible(app.buttons["network-interfaces"], app)
+        tapVisible(app.buttons["network-interface-lan"], app)
+        expectText("192.0.2.1/24", app); expectText("持久配置未确认", app)
+        XCTAssertFalse(app.buttons["interface-edit-lan"].exists)
+    }
+
+    @MainActor
+    func testVProtocolReadFailureDisablesProtocolSelection() {
+        let app = launch(); connect(app, username: "protocols-denied"); visit("网络", app)
+        tapVisible(app.buttons["network-interfaces"], app)
+        tapVisible(app.buttons["network-interface-lan"], app)
+        tapVisible(app.buttons["interface-edit-lan"], app)
+        expectText("协议能力读取失败", app)
+        tapVisible(app.buttons["native-group-interface-常规设置"], app)
+        XCTAssertFalse(app.buttons["native-field-proto"].isEnabled)
+        XCTAssertTrue(app.buttons["native-field-ipaddr"].isEnabled)
+    }
+
+    @MainActor
+    private func setInterfaceField(_ field: String, group: String, value: String, _ app: XCUIApplication) {
+        tapVisible(app.buttons["native-group-interface-\(group)"], app)
+        tapVisible(app.buttons["native-field-\(field)"], app)
+        let input = app.textFields["native-value-\(field)"].exists
+            ? app.textFields["native-value-\(field)"] : app.textViews["native-value-\(field)"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5)); replace(input, with: value)
+        app.buttons["native-save-field"].tap(); back(app)
+    }
+
+    @MainActor
     private func checkRoutingFailure(username: String, message: String, screenshot: String) {
         let app = launch(); connect(app, username: username); visit("概览", app)
         tapVisible(app.buttons["network-routing"], app)
-        expectText("无法读取邻居表", app); expectText(message, app)
+        expectText("无法读取邻居", app); expectText(message, app)
         XCTAssertFalse(app.staticTexts["暂无邻居记录"].exists)
         XCTAssertFalse(app.staticTexts["暂无路由记录"].exists)
         tapVisible(app.buttons["重试"], app)

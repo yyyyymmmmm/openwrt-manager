@@ -47,36 +47,9 @@ struct NetworkTaskGroups: View {
 }
 
 struct InterfaceDetailView: View {
-    @Environment(RouterStore.self) private var store
     var scope: String? = nil
-    private var interfaces: [NetworkInterfaceSnapshot] {
-        (store.snapshot?.interfaces ?? []).filter { interface in scope.map { interface.name.lowercased().hasPrefix($0) } ?? true }
-    }
     var body: some View {
-        AppPage(title: "", subtitle: nil) {
-            ReadStatus(updatedAt: store.overviewUpdatedAt, error: store.overviewError)
-            ForEach(interfaces) { interface in
-                AppSection(title: interface.name) { AppGroup {
-                    InterfaceRow(interface: interface, showAddresses: true).padding(12)
-                    if let device = interface.device { AppDivider(); AppRow(title: "网络设备", value: device) }
-                    ForEach(Array(interface.defaultRoutes.enumerated()), id: \.offset) { _, route in
-                        AppDivider()
-                        AppRow(title: route.ipv6 ? "IPv6 默认网关" : "IPv4 默认网关", detail: route.metric.map { "跃点 \($0)" }, value: route.gateway ?? "无下一跳（链路路由）")
-                    }
-                    if !interface.dnsServers.isEmpty { AppDivider(); AppRow(title: "DNS", value: interface.dnsServers.joined(separator: " · ")) }
-                    ForEach(interface.errors, id: \.self) { error in AppDivider(); AppRow(title: "固件错误", detail: error, symbol: "exclamationmark.triangle") }
-                } }
-            }
-            if interfaces.isEmpty { ContentUnavailableView("暂无接口信息", systemImage: "network", description: Text("路由器没有返回匹配接口。请核对读取权限与错误信息。")) }
-            if store.inventory.configNames.contains("network") {
-                AppSection(title: "接口配置") {
-                    AppGroup {
-                        NavigationLink { NativeConfigurationView(schema: .interfaces) } label: { AppRow(title: "编辑网络配置", symbol: "slider.horizontal.3", chevron: true) }.buttonStyle(.plain).accessibilityIdentifier("interface-edit-config")
-                    }
-                }
-            }
-        }.appDetailStyle(scope == "wan" ? "互联网 · WAN" : scope == "lan" ? "局域网 · LAN" : "网络接口")
-            .refreshable { await store.refresh() }
+        NetworkInterfacesView(scope: scope)
     }
 }
 
@@ -117,35 +90,47 @@ private enum AddressFamily: String, CaseIterable, Identifiable {
 struct RoutingTablesView: View {
     @Environment(RouterStore.self) private var store
     @State private var family: AddressFamily = .ipv4
+    @State private var table: RoutingTable = .neighbors
     @State private var query = ""
 
+    private enum RoutingTable: String, CaseIterable, Identifiable {
+        case neighbors = "邻居", routes = "路由", rules = "策略规则"
+        var id: String { rawValue }
+    }
+    private var routeRead: RoutingRead<[IPRouteRecord]>? { family == .ipv4 ? store.routing?.routes4 : store.routing?.routes6 }
+    private var neighborRead: RoutingRead<[IPNeighborRecord]>? { family == .ipv4 ? store.routing?.neighbors4 : store.routing?.neighbors6 }
+    private var ruleRead: RoutingRead<[IPRuleRecord]>? { family == .ipv4 ? store.routing?.rules4 : store.routing?.rules6 }
     private var routes: [IPRouteRecord] {
-        family == .ipv4 ? (store.routing?.ipv4Routes ?? []) : (store.routing?.ipv6Routes ?? [])
+        let values = routeRead?.value ?? []
+        return query.isEmpty ? values : values.filter { $0.rawValue.localizedCaseInsensitiveContains(query) }
     }
     private var neighbors: [IPNeighborRecord] {
-        let values = family == .ipv4 ? (store.routing?.ipv4Neighbors ?? []) : (store.routing?.ipv6Neighbors ?? [])
+        let values = neighborRead?.value ?? []
         guard !query.isEmpty else { return values }
         return values.filter { [$0.address, $0.mac ?? "", $0.interface, $0.device, $0.state].contains { $0.localizedCaseInsensitiveContains(query) } }
     }
-
-    private var routingHasSnapshot: Bool {
-        store.routing != nil && store.routingUpdatedAt != nil
+    private var rules: [IPRuleRecord] {
+        let values = ruleRead?.value ?? []
+        guard !query.isEmpty else { return values }
+        return values.filter { $0.rawValue.localizedCaseInsensitiveContains(query) }
     }
-
-    private var neighborCountLabel: String {
-        guard routingHasSnapshot else { return "未知" }
-        return store.routingError == nil ? String(neighbors.count) : "\(neighbors.count)（上次读取）"
+    private var activeRead: AnyRoutingRead {
+        switch table {
+        case .neighbors: return AnyRoutingRead(valueIsAvailable: neighborRead?.value != nil, updatedAt: neighborRead?.updatedAt, error: neighborRead?.error)
+        case .routes: return AnyRoutingRead(valueIsAvailable: routeRead?.value != nil, updatedAt: routeRead?.updatedAt, error: routeRead?.error)
+        case .rules: return AnyRoutingRead(valueIsAvailable: ruleRead?.value != nil, updatedAt: ruleRead?.updatedAt, error: ruleRead?.error)
+        }
     }
-
-    private var routeCountLabel: String {
-        guard routingHasSnapshot else { return "未知" }
-        return store.routingError == nil ? String(routes.count) : "\(routes.count)（上次读取）"
+    private var activeCount: String {
+        guard activeRead.valueIsAvailable else { return "未知" }
+        let count = switch table { case .neighbors: neighbors.count; case .routes: routes.count; case .rules: rules.count }
+        return activeRead.error == nil ? String(count) : "\(count)（上次读取）"
     }
 
     var body: some View {
         AppPage(title: "", subtitle: nil) {
-            ReadStatus(updatedAt: store.routingUpdatedAt, error: store.routingError,
-                       retry: { Task { await store.refresh() } }, loading: store.isRefreshing && store.routingUpdatedAt == nil)
+            ReadStatus(updatedAt: activeRead.updatedAt, error: activeRead.error ?? (store.routing == nil ? store.routingError : nil),
+                       retry: { Task { await store.refresh() } }, loading: store.isRefreshing)
             Picker("地址族", selection: $family) {
                 ForEach(AddressFamily.allCases) { item in Text(item.rawValue).tag(item) }
             }
@@ -153,54 +138,71 @@ struct RoutingTablesView: View {
             .accessibilityIdentifier("routingFamilyPicker")
             .padding(.top, 10)
 
-            AppSection(title: "邻居设备 · \(neighborCountLabel)", note: "来源：路由器内核 ARP/NDP 邻居表。读取失败时数量为未知；DHCP 租约单独显示，不代表在线状态。") {
-                AppGroup {
-                    if let error = store.routingError, store.routing == nil {
-                        DataUnavailableView(title: "无法读取邻居表", message: "检查 file.exec 权限；应用仅请求固定的 /sbin/ip 查询命令。", error: error) {
-                            Task { await store.refresh() }
-                        }
-                    } else if store.routingUpdatedAt == nil {
-                        DataUnavailableView(title: "正在读取邻居表", message: "", error: nil, isLoading: store.isRefreshing)
-                    } else if neighbors.isEmpty {
-                        ContentUnavailableView(query.isEmpty ? "暂无邻居记录" : "没有匹配邻居", systemImage: "network.slash",
-                                               description: Text(query.isEmpty ? "路由器当前没有返回此地址族的邻居项。静态配置但近期未通信的设备不会出现在内核邻居表中。" : "请更换 IP、MAC、接口或状态关键词。"))
-                    } else {
-                        ForEach(neighbors) { neighbor in
-                            NavigationLink {
-                                NeighborRecordDetailView(neighbor: neighbor, family: family)
-                            } label: {
-                                AppRow(title: neighbor.address,
-                                       detail: "\(neighbor.mac ?? "未报告 MAC") · \(neighbor.interface)",
-                                       symbol: "desktopcomputer", value: neighbor.state, chevron: true)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("neighbor-\(family.rawValue)-\(neighbor.id)")
-                            if neighbor.id != neighbors.last?.id { AppDivider(inset: 48) }
-                        }
-                    }
-                }
+            Picker("路由数据", selection: $table) {
+                ForEach(RoutingTable.allCases) { item in Text(item.rawValue).tag(item) }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("routingTablePicker")
+
+            if let updatedAt = activeRead.updatedAt {
+                Text("本表读取于 \(updatedAt.formatted(date: .abbreviated, time: .standard))")
+                    .font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
             }
 
-            AppSection(title: "路由表 · \(routeCountLabel)", note: "来源：路由器内核路由表；读取失败时数量为未知，这里只读显示当前生效路由。") {
+            AppSection(title: "\(table.rawValue) · \(activeCount)", note: table == .neighbors
+                       ? "来源：路由器内核 ARP/NDP 邻居表。DHCP 租约单独显示，不代表设备在线。"
+                       : table == .routes ? "来源：路由器全部内核路由表，包含策略路由表。" : "来源：路由器 IPv4/IPv6 策略规则。") {
                 AppGroup {
-                    if let error = store.routingError, store.routing == nil {
-                        DataUnavailableView(title: "无法读取路由表", message: "检查 file.exec 权限；应用仅请求固定的 /sbin/ip 查询命令。", error: error) {
+                    if let error = activeRead.error, !activeRead.valueIsAvailable {
+                        DataUnavailableView(title: "无法读取\(table.rawValue)", message: "应用请求固定的只读 /sbin/ip 命令；错误会按地址族和数据表分别显示。", error: error) {
                             Task { await store.refresh() }
                         }
-                    } else if store.routingUpdatedAt == nil {
-                        Text("路由数据尚未读取").font(AppTypography.secondary).foregroundStyle(AppPalette.muted).padding(12)
-                    } else if routes.isEmpty && store.routingError == nil {
-                        ContentUnavailableView("暂无路由记录", systemImage: "point.3.connected.trianglepath.dotted")
+                    } else if activeRead.updatedAt == nil {
+                        DataUnavailableView(title: "正在读取\(table.rawValue)", message: "", error: nil, isLoading: store.isRefreshing)
                     } else {
-                        ForEach(routes) { route in
-                            NavigationLink { RouteRecordDetailView(route: route, family: family) } label: {
-                                AppRow(title: route.destination,
-                                       detail: [route.gateway.map { "网关 \($0)" }, route.device.map { "设备 \($0)" }].compactMap { $0 }.joined(separator: " · "),
-                                       symbol: "arrow.triangle.branch", value: route.metric.map { "Metric \($0)" }, chevron: true)
+                        if let error = activeRead.error {
+                            Label("本次读取失败；以下为上次成功读取的数据。", systemImage: "exclamationmark.triangle")
+                                .font(.footnote).foregroundStyle(AppPalette.orange).textSelection(.enabled)
+                            Text(error).font(.caption).foregroundStyle(AppPalette.muted).textSelection(.enabled)
+                        }
+                        switch table {
+                        case .neighbors:
+                            if neighbors.isEmpty {
+                                ContentUnavailableView(query.isEmpty ? "暂无邻居记录" : "没有匹配邻居", systemImage: "network.slash",
+                                    description: Text(query.isEmpty ? "路由器当前没有返回此地址族的邻居项。静态配置但近期未通信的设备不会出现在内核邻居表中。" : "请更换 IP、MAC、接口或状态关键词。"))
+                            } else {
+                                ForEach(neighbors) { neighbor in
+                                    NavigationLink { NeighborRecordDetailView(neighbor: neighbor, family: family) } label: {
+                                        AppRow(title: neighbor.address, detail: "\(neighbor.mac ?? "未报告 MAC") · \(neighbor.interface)",
+                                               symbol: "desktopcomputer", value: neighbor.state, chevron: true)
+                                    }
+                                    .buttonStyle(.plain).accessibilityIdentifier("neighbor-\(family.rawValue)-\(neighbor.id)")
+                                    if neighbor.id != neighbors.last?.id { AppDivider(inset: 48) }
+                                }
                             }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("route-\(family.rawValue)-\(route.id)")
-                            if route.id != routes.last?.id { AppDivider(inset: 48) }
+                        case .routes:
+                            if routes.isEmpty { ContentUnavailableView(query.isEmpty ? "暂无路由记录" : "没有匹配路由", systemImage: "point.3.connected.trianglepath.dotted") }
+                            else {
+                                ForEach(routes) { route in
+                                    NavigationLink { RouteRecordDetailView(route: route, family: family) } label: {
+                                        AppRow(title: route.destination,
+                                            detail: [route.table.map { "表 \($0)" }, route.gateway.map { "网关 \($0)" }, route.device.map { "设备 \($0)" }].compactMap { $0 }.joined(separator: " · "),
+                                            symbol: "arrow.triangle.branch", value: route.metric.map { "Metric \($0)" }, chevron: true)
+                                    }
+                                    .buttonStyle(.plain).accessibilityIdentifier("route-\(family.rawValue)-\(route.destination)-\(route.table ?? "unreported")-\(route.device ?? "none")")
+                                    if route.id != routes.last?.id { AppDivider(inset: 48) }
+                                }
+                            }
+                        case .rules:
+                            if rules.isEmpty { ContentUnavailableView(query.isEmpty ? "暂无策略规则" : "没有匹配规则", systemImage: "line.3.horizontal.decrease.circle") }
+                            else {
+                                ForEach(rules) { rule in
+                                    NavigationLink { RoutingRuleDetailView(rule: rule, family: family) } label: {
+                                        AppRow(title: "优先级 \(rule.priority)", detail: ruleSummary(rule), symbol: "line.3.horizontal.decrease.circle", chevron: true)
+                                    }
+                                    .buttonStyle(.plain).accessibilityIdentifier("rule-\(family.rawValue)-\(rule.priority)")
+                                }
+                            }
                         }
                     }
                 }
@@ -210,6 +212,12 @@ struct RoutingTablesView: View {
         .searchable(text: $query, prompt: "搜索 IP、MAC、接口或状态")
         .refreshable { await store.refresh() }
     }
+}
+
+private struct AnyRoutingRead {
+    let valueIsAvailable: Bool
+    let updatedAt: Date?
+    let error: String?
 }
 
 private struct NeighborRecordDetailView: View {
@@ -234,6 +242,13 @@ private struct NeighborRecordDetailView: View {
             }
             Text("邻居状态来自路由器内核的 ARP/NDP 表，不等同于 DHCP 租约或持续在线检测。")
                 .font(AppTypography.secondary).foregroundStyle(AppPalette.muted).padding(.horizontal, 6).padding(.top, 8)
+            if let raw = neighbor.rawValue {
+                AppSection(title: "路由器原始记录") {
+                    Text(raw).font(AppTypography.secondary.monospaced()).textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(12)
+                        .background(AppPalette.surface, in: RoundedRectangle(cornerRadius: 12))
+                }
+            }
         }
         .appDetailStyle("设备详情")
         .textSelection(.enabled)
@@ -254,6 +269,9 @@ private struct RouteRecordDetailView: View {
                     if let device = route.device { AppDivider(inset: 12); AppRow(title: "内核设备", value: device) }
                     if let protocolName = route.protocolName { AppDivider(inset: 12); AppRow(title: "路由来源", value: protocolName) }
                     if let metric = route.metric { AppDivider(inset: 12); AppRow(title: "Metric", value: metric) }
+                    if let table = route.table { AppDivider(inset: 12); AppRow(title: "路由表", value: table) }
+                    if let source = route.source { AppDivider(inset: 12); AppRow(title: "源地址", value: source) }
+                    if let type = route.routeType { AppDivider(inset: 12); AppRow(title: "路由类型", value: type) }
                 }
             }
             AppSection(title: "路由器原始记录") {
@@ -264,6 +282,53 @@ private struct RouteRecordDetailView: View {
         }
         .appDetailStyle("路由详情")
     }
+}
+
+private struct RoutingRuleDetailView: View {
+    let rule: IPRuleRecord
+    let family: AddressFamily
+    private var values: [(String, String)] {
+        let labels = ["iif": "入口设备", "oif": "出口设备", "from": "源地址", "to": "目标地址", "priority": "优先级",
+                      "table": "路由表", "action": "动作", "fwmark": "防火墙标记", "ipproto": "IP 协议", "sport": "源端口", "dport": "目标端口", "uidrange": "用户 ID 范围"]
+        return rule.fields.keys.sorted().compactMap { key in
+            guard let value = rule.fields[key] else { return nil }
+            // iproute2 emits presence-only flags such as `not` and `nop` as null.
+            if value == .null { return (labels[key] ?? key, "存在") }
+            return (labels[key] ?? key, display(value))
+        }
+    }
+    var body: some View {
+        AppPage(title: "", subtitle: nil) {
+            AppSection(title: "\(family.rawValue) 策略规则") {
+                AppGroup {
+                    ForEach(Array(values.enumerated()), id: \.offset) { index, pair in
+                        if index > 0 { AppDivider(inset: 12) }
+                        AppRow(title: pair.0, value: pair.1)
+                    }
+                    if values.isEmpty { Text(rule.rawValue).font(AppTypography.secondary.monospaced()).textSelection(.enabled).padding(12) }
+                }
+            }
+            AppSection(title: "路由器原始记录") {
+                Text(rule.rawValue).font(AppTypography.secondary.monospaced()).textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(12)
+                    .background(AppPalette.surface, in: RoundedRectangle(cornerRadius: 12))
+            }
+        }.appDetailStyle("策略规则详情")
+    }
+    private func display(_ value: JSONValue) -> String {
+        if let text = value.textValue { return text }
+        if let list = value.arrayValue { return list.map(display).joined(separator: " · ") }
+        if let object = value.objectValue { return object.keys.sorted().compactMap { key in object[key].map { "\(key)=\(display($0))" } }.joined(separator: ", ") }
+        return value == .bool(true) ? "是" : value == .bool(false) ? "否" : "—"
+    }
+}
+
+private func ruleSummary(_ rule: IPRuleRecord) -> String {
+    let parts = ["iif", "src", "dst", "from", "to", "table", "action"].compactMap { key -> String? in
+        guard let value = rule.fields[key]?.textValue else { return nil }
+        return "\(key)=\(value)"
+    }
+    return parts.isEmpty ? "查看路由器返回的完整规则" : parts.joined(separator: " · ")
 }
 
 struct InterfaceRow: View {

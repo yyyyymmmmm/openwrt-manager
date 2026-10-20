@@ -37,6 +37,16 @@ public enum ConfigurationEdit: Equatable, Sendable {
     case removeSection(String)
     case set(section: String, option: String, value: JSONValue)
     case removeOption(section: String, option: String)
+    case order([String])
+
+    var method: String {
+        switch self {
+        case .add: return "add"
+        case .removeSection, .removeOption: return "delete"
+        case .set: return "set"
+        case .order: return "order"
+        }
+    }
 
     public var summary: String {
         switch self {
@@ -44,6 +54,7 @@ public enum ConfigurationEdit: Equatable, Sendable {
         case .removeSection(let name): return "删除配置节 \(name)"
         case .set(let section, let option, _): return "设置 \(section).\(option)"
         case .removeOption(let section, let option): return "删除 \(section).\(option)"
+        case .order: return "调整配置节顺序"
         }
     }
 }
@@ -79,6 +90,13 @@ public struct ConfigurationPlan: Sendable {
                 guard Self.validValue(value) else { throw ConfigurationError.invalidValue }
                 edits.append(.set(section: section.id, option: option, value: value))
             }
+        }
+        let requestedOrder = edited.sections.map(\.id)
+        let remainingIDs = Set(requestedOrder)
+        let naturalOrder = original.sections.map(\.id).filter { remainingIDs.contains($0) }
+            + requestedOrder.filter { old[$0] == nil }
+        if naturalOrder != requestedOrder {
+            edits.append(.order(requestedOrder))
         }
         self.original = original; self.edited = edited; self.edits = edits
     }
@@ -144,7 +162,7 @@ public actor RouterConfigurationClient {
         busy = true
         defer { busy = false }
         guard try await access(config: plan.original.name, write: true) else { throw OpenWrtKitError.permissionDenied }
-        for method in ["apply", "confirm", "revert", "rollback"] {
+        for method in Set(["apply", "confirm", "revert", "rollback"] + plan.edits.map(\.method)).sorted() {
             let permission = try await client.call(session: session, object: "session", method: "access", parameters: [
                 "scope": .string("ubus"), "object": .string("uci"), "function": .string(method)
             ])
@@ -155,6 +173,8 @@ public actor RouterConfigurationClient {
         guard existing.isEmpty else { throw ConfigurationError.existingChanges }
         guard try await read(plan.original.name) == plan.original else { throw ConfigurationError.changedElsewhere }
         let config: [String: JSONValue] = ["config": .string(plan.original.name)]
+        let reorders = plan.edits.contains { if case .order = $0 { return true }; return false }
+        var sectionIDs: [String: String] = [:]
         do {
             for edit in plan.edits {
                 try Task.checkCancellation()
@@ -170,8 +190,25 @@ public actor RouterConfigurationClient {
                     method = "set"; parameters["section"] = .string(section); parameters["values"] = .object([option: value])
                 case .removeOption(let section, let option):
                     method = "delete"; parameters["section"] = .string(section); parameters["option"] = .string(option)
+                case .order(let sections):
+                    method = "order"
+                    parameters["sections"] = .array(sections.map { .string(sectionIDs[$0] ?? $0) })
                 }
-                _ = try await client.call(session: session, object: "uci", method: method, parameters: parameters)
+                let response = try await client.call(session: session, object: "uci", method: method, parameters: parameters)
+                if case .add(let section) = edit, section.anonymous, reorders {
+                    guard let assigned = response["section"].stringValue,
+                          InventoryParser.validIdentifier(assigned),
+                          !plan.original.sections.contains(where: { $0.id == assigned }),
+                          !sectionIDs.values.contains(assigned) else { throw OpenWrtKitError.malformedResponse }
+                    sectionIDs[section.id] = assigned
+                }
+            }
+            if reorders {
+                let staged = try await read(plan.original.name)
+                let requested = plan.edited.sections.map { sectionIDs[$0.id] ?? $0.id }
+                guard staged.sections.map(\.id) == requested else {
+                    throw OpenWrtKitError.unsupported("路由器暂存的配置顺序与预览不一致，未应用。")
+                }
             }
         } catch {
             // Only this transaction's config is reverted; pre-existing changes were refused.

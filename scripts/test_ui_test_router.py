@@ -33,18 +33,28 @@ class RouterHTTPTests(unittest.TestCase):
         self.assertEqual(code, 0)
         return result["ubus_rpc_session"]
 
-    def test_four_fixed_queries_and_unknown_command_rejection(self):
+    def test_six_fixed_json_and_text_queries_and_unknown_command_rejection(self):
         token = self.login()
         for family in ("-4", "-6"):
-            for table in ("route", "neigh"):
-                code, result = self.rpc(token, "file", "exec", {"command": "/sbin/ip", "params": [family, table, "show"]})
-                self.assertEqual((code, result["code"]), (0, 0))
-                self.assertTrue(result["stdout"])
+            for table in ("route", "neigh", "rule"):
+                tail = [table, "show"] + (["table", "all"] if table == "route" else [])
+                for json_mode in (True, False):
+                    args = [family] + (["-j"] if json_mode else []) + tail
+                    code, result = self.rpc(token, "file", "exec", {"command": "/sbin/ip", "params": args})
+                    self.assertEqual((code, result["code"]), (0, 0))
+                    self.assertTrue(result["stdout"])
+                    if json_mode:
+                        rows = json.loads(result["stdout"])
+                        self.assertIsInstance(rows, list)
+                        if family == "-4" and table == "route":
+                            self.assertEqual({str(row["table"]) for row in rows}, {"main", "100"})
+                        if table == "rule":
+                            self.assertIn("priority", rows[0])
         for args in ({"command": "/bin/sh", "params": ["-c", "true"]}, {"command": "/sbin/ip", "params": ["link", "set", "br-lan", "down"]}):
             self.assertEqual(self.rpc(token, "file", "exec", args)[0], 6)
 
     def test_denied_command_error_and_expired_session_remain_distinct(self):
-        args = {"command": "/sbin/ip", "params": ["-4", "route", "show"]}
+        args = {"command": "/sbin/ip", "params": ["-4", "-j", "route", "show", "table", "all"]}
         self.assertEqual(self.rpc(self.login("route-denied"), "file", "exec", args)[0], 6)
         code, result = self.rpc(self.login("route-failure"), "file", "exec", args)
         self.assertEqual((code, result["code"]), (0, 1))
@@ -72,6 +82,29 @@ class RouterHTTPTests(unittest.TestCase):
             ("luci", "setInitAction", {"name": "ci_extension", "action": "stop"}),
         ]:
             self.assertEqual(self.rpc(token, obj, method, args)[0], 6)
+
+    def test_network_interface_runtime_and_persistent_config_are_distinct(self):
+        token = self.login()
+        code, runtime = self.rpc(token, "network.interface", "dump")
+        self.assertEqual(code, 0)
+        self.assertEqual([row["interface"] for row in runtime["interface"]], ["lan", "wan"])
+        self.assertEqual(runtime["interface"][0]["ipv6-address"][0]["address"], "fd00::1")
+        code, config = self.rpc(token, "uci", "get", {"config": "network"})
+        self.assertEqual(code, 0)
+        self.assertEqual(config["values"]["lan"]["vendor_extension"], "preserve-me")
+        self.assertNotIn("wan", config["values"])
+
+    def test_network_interface_read_errors_are_not_empty_success(self):
+        token = self.login("interfaces-denied")
+        self.assertEqual(self.rpc(token, "network.interface", "dump")[0], 6)
+        token = self.login("interfaces-malformed")
+        self.assertEqual(self.rpc(token, "network.interface", "dump")[0], 0)
+        self.assertIsInstance(self.rpc(token, "network.interface", "dump")[1]["interface"], str)
+
+    def test_network_config_write_permission_is_separate(self):
+        token = self.login("network-config-denied")
+        self.assertEqual(self.rpc(token, "network.interface", "dump")[0], 0)
+        self.assertEqual(self.rpc(token, "uci", "get", {"config": "network"})[0], 6)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 /// Isolates IDs and mutable transport state. The app uses a URLSession delegate
 /// that refuses redirects: credentials must never leave the selected origin.
@@ -54,49 +55,167 @@ public actor UbusClient {
 
     /// Native data requests only. No arbitrary commands or web UI are exposed.
     public func installedPackages(session auth: UbusSession) async throws -> [InstalledPackage] {
-        var request = URLRequest(url: address.url.appendingPathComponent("cgi-bin/cgi-exec"))
-        request.httpMethod = "POST"
-        request.timeoutInterval = 30
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        var form = URLComponents()
-        form.queryItems = [URLQueryItem(name: "sessionid", value: auth.token),
-                           URLQueryItem(name: "command", value: "/usr/libexec/package-manager-call list-installed"),
-                           URLQueryItem(name: "stderr", value: "0")]
-        request.httpBody = form.percentEncodedQuery?.data(using: .utf8)
         do {
-            let data = try await checkedData(request)
-            return try InventoryParser.packages(JSONDecoder().decode(JSONValue.self, from: data))
+            return try await packageList(session: auth, installed: true).packages
         } catch {
             let primaryError = error
             if error is URLError || error is CancellationError { throw error }
             if let failure = error as? OpenWrtKitError {
                 switch failure {
-                case .permissionDenied, .http(401), .http(403): throw error
-                case .http(let code) where code != 404 && code != 405: throw error
-                default: break
+                case .http(404), .http(405): break
+                default: throw error
                 }
-            }
-            // Older opkg firmware has no package-manager-call helper.
+            } else { throw error }
             do {
                 let result = try await call(session: auth, object: "file", method: "exec", parameters: [
                     "command": .string("/bin/opkg"), "params": .array([.string("list-installed")])
                 ])
-                guard result["code"].intValue == 0, let text = result["stdout"].stringValue else { throw primaryError }
-                return try InventoryParser.opkg(text)
+                let output = try RouterCommandResult(value: result)
+                guard output.exitCode == 0 else { throw primaryError }
+                return try InventoryParser.opkg(output.stdout)
             } catch {
                 throw OpenWrtKitError.unsupported("软件包主接口：\(primaryError.localizedDescription)；opkg 接口：\(error.localizedDescription)")
             }
         }
     }
 
-    private func checkedData(_ request: URLRequest) async throws -> Data {
+    /// The CGI endpoint accepts shell command text. Only this closed protocol
+    /// builds that text; no caller-provided command, flags, paths or URLs.
+    public func packageList(session auth: UbusSession, installed: Bool) async throws -> PackageListSnapshot {
+        let operation = installed ? "list-installed" : "list-available"
+        let data = try await packageHelper(session: auth, command: PackageOperation.helper + " " + operation, timeout: 60, limit: 32 * 1024 * 1024)
+        return try PackageListSnapshot(data: data, installed: installed)
+    }
+
+    public func packageOperationAccess(session auth: UbusSession, operation: PackageOperation) async throws -> Bool {
+        let command = try operation.command()
+        let cgi = try await call(session: auth, object: "session", method: "access", parameters: [
+            "scope": .string("cgi-io"), "object": .string("exec"), "function": .string("read")
+        ])
+        let path = try await call(session: auth, object: "session", method: "access", parameters: [
+            "scope": .string("file"), "object": .string(command), "function": .string("exec")
+        ])
+        guard let cgiAllowed = cgi["access"].boolValue, let commandAllowed = path["access"].boolValue else {
+            throw OpenWrtKitError.malformedResponse
+        }
+        return cgiAllowed && commandAllowed
+    }
+
+    public func performPackageOperation(session auth: UbusSession, operation: PackageOperation) async throws -> PackageOperationResult {
+        guard try await packageOperationAccess(session: auth, operation: operation) else { throw OpenWrtKitError.permissionDenied }
+        let command = try operation.command()
+        try Task.checkCancellation()
+        do {
+            let data = try await packageHelper(session: auth, command: command, timeout: 600, limit: 4 * 1024 * 1024)
+            return try PackageOperationResult(data: data)
+        } catch {
+            // Do not retry a mutation or silently fall back to another backend.
+            throw PackageOperationError.uncertain(error.localizedDescription)
+        }
+    }
+
+    private func packageHelper(session auth: UbusSession, command: String, timeout: TimeInterval, limit: Int) async throws -> Data {
+        var request = URLRequest(url: address.url.appendingPathComponent("cgi-bin/cgi-exec"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = timeout
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        // URLComponents leaves '+' unescaped, which form decoders treat as a
+        // space. Encode each form component with the unreserved character set.
+        let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+        let fields = [("sessionid", auth.token), ("command", command), ("stderr", "0")]
+        request.httpBody = fields.map { key, value in
+            key + "=" + (value.addingPercentEncoding(withAllowedCharacters: allowed) ?? "")
+        }.joined(separator: "&").data(using: .utf8)
+        return try await checkedData(request, limit: limit)
+    }
+
+    /// Files are streamed from a private multipart spool, never loaded as a
+    /// firmware-sized Data value. Only the two closed maintenance paths exist.
+    func uploadMaintenanceFile(session auth: UbusSession, url: URL, kind: FirmwareFileKind) async throws -> FirmwareUpload {
+        let body = try FirmwareLocalFile.multipart(url, token: auth.token, kind: kind)
+        defer { try? FileManager.default.removeItem(at: body.url) }
+        var request = URLRequest(url: address.url.appendingPathComponent("cgi-bin/cgi-upload"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 600
+        request.setValue("multipart/form-data; boundary=" + body.boundary, forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json, text/plain", forHTTPHeaderField: "Accept")
+        try Task.checkCancellation()
+        let data: Data
+        do {
+            let response: URLResponse
+            (data, response) = try await session.upload(for: request, fromFile: body.url)
+            try checkResponse(response, request: request)
+        } catch {
+            throw FirmwareMaintenanceError.failed("上传未确认，暂存文件可能只写入了一部分；请重新上传并校验，未请求恢复或刷写。" + error.localizedDescription)
+        }
+        guard data.count <= 65_536 else { throw OpenWrtKitError.malformedResponse }
+        let result = try JSONDecoder().decode(JSONValue.self, from: data)
+        if result["failure"] != .null {
+            let failure = String(data: try JSONEncoder().encode(result["failure"]), encoding: .utf8) ?? "未知失败"
+            throw FirmwareMaintenanceError.failed("固件拒绝上传：" + (result["message"].stringValue ?? failure))
+        }
+        guard result["size"].intValue == body.size,
+              let hash = result["sha256sum"].stringValue, hash.lowercased() == body.sha256 else {
+            throw FirmwareMaintenanceError.failed("路由器回传的大小或 SHA-256 与本机文件不一致；未开放后续操作。")
+        }
+        return FirmwareUpload(kind: kind, size: body.size, sha256: body.sha256,
+                              md5: result["checksum"].stringValue, originalFilename: url.lastPathComponent)
+    }
+
+    func downloadConfigurationBackup(session auth: UbusSession) async throws -> FirmwareBackupDownload {
+        var request = URLRequest(url: address.url.appendingPathComponent("cgi-bin/cgi-backup"))
+        request.httpMethod = "POST"; request.timeoutInterval = 180
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.httpBody = Data(("sessionid=" + auth.token).utf8)
+        let (bytes, response) = try await session.bytes(for: request)
+        try checkResponse(response, request: request)
+        let type = (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Type")?.lowercased() ?? ""
+        guard ["application/x-targz", "application/gzip", "application/x-gzip", "application/octet-stream"].contains(where: { type.hasPrefix($0) }) else {
+            throw FirmwareMaintenanceError.failed("备份接口没有返回归档文件；未将登录页或错误页保存为备份。")
+        }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("zirox-backup-" + UUID().uuidString + ".tar.gz")
+        guard FileManager.default.createFile(atPath: url.path, contents: nil, attributes: [.posixPermissions: 0o600]) else {
+            throw FirmwareMaintenanceError.failed("无法创建本机备份暂存文件。")
+        }
+        let output: FileHandle
+        do { output = try FileHandle(forWritingTo: url) }
+        catch { try? FileManager.default.removeItem(at: url); throw error }
+        var keep = false
+        defer { try? output.close(); if !keep { try? FileManager.default.removeItem(at: url) } }
+        var chunk = Data(), header = Data(), hash = SHA256(), size = 0
+        for try await byte in bytes {
+            if size % 65_536 == 0 { try Task.checkCancellation() }
+            size += 1
+            guard size <= 128 * 1024 * 1024 else { throw FirmwareMaintenanceError.failed("备份超过本机下载限制 128 MiB。") }
+            if header.count < 3 { header.append(byte) }
+            chunk.append(byte)
+            if chunk.count == 65_536 {
+                try output.write(contentsOf: chunk); hash.update(data: chunk); chunk.removeAll(keepingCapacity: true)
+            }
+        }
+        guard size >= 18, header == Data([0x1f, 0x8b, 0x08]) else { throw FirmwareMaintenanceError.failed("备份响应不是 gzip 归档，未开放导出。") }
+        try output.write(contentsOf: chunk); hash.update(data: chunk)
+        try output.synchronize(); try output.close()
+        try FirmwareLocalFile.validateBackupArchive(url)
+        keep = true
+        return FirmwareBackupDownload(fileURL: url, size: size, sha256: hash.finalize().map { String(format: "%02x", $0) }.joined())
+    }
+
+    private func checkResponse(_ response: URLResponse, request: URLRequest) throws {
+        guard let http = response as? HTTPURLResponse, http.url == request.url else {
+            throw OpenWrtKitError.malformedResponse
+        }
+        guard (200..<300).contains(http.statusCode) else { throw OpenWrtKitError.http(http.statusCode) }
+    }
+
+    private func checkedData(_ request: URLRequest, limit: Int = 4 * 1024 * 1024) async throws -> Data {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, http.url?.host == address.url.host,
               http.url?.scheme == address.scheme, http.url?.port == address.url.port else {
             throw OpenWrtKitError.malformedResponse
         }
         guard (200..<300).contains(http.statusCode) else { throw OpenWrtKitError.http(http.statusCode) }
-        guard data.count <= 4 * 1024 * 1024 else { throw OpenWrtKitError.unsupported("响应过大，已停止解析。") }
+        guard data.count <= limit else { throw OpenWrtKitError.unsupported("响应过大，已停止解析。") }
         return data
     }
 

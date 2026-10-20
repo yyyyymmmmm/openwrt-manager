@@ -42,7 +42,7 @@ public enum DiagnosticTool: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-public struct RouterCommandResult: Equatable, Sendable {
+public struct RouterCommandResult: Codable, Equatable, Sendable {
     public let exitCode: Int
     public let stdout: String
     public let stderr: String
