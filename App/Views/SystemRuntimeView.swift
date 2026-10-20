@@ -56,7 +56,7 @@ struct SystemRuntimeView: View {
                 AppSection(title: "时区目录", note: "选择时区请返回系统配置。地区名称和 POSIX 时区会一同进入变更预览。") {
                     AppGroup {
                         Button { showingZones = true } label: {
-                            AppRow(title: "可用时区", value: value.timezones.map { "\($0.count) 项" } ?? "读取失败", symbol: "globe", chevron: true)
+                            AppRow(title: "可用时区", symbol: "globe", value: value.timezones.map { "\($0.count) 项" } ?? "读取失败", chevron: true)
                         }.buttonStyle(.plain).disabled(value.timezones == nil).accessibilityIdentifier("system-timezones")
                     }
                 }

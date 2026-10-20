@@ -113,7 +113,7 @@ struct RouterPasswordView: View {
             error = passwordError.localizedDescription
             if passwordError == .uncertain { needsRead = true; uncertainAccountID = account.id }
         } catch {
-            error = FriendlyError.message(error)
+            self.error = FriendlyError.message(error)
         }
     }
 }
@@ -210,7 +210,7 @@ struct SSHAuthorizedKeysView: View {
             let value = try await store.systemFile(.sshKeys)
             guard generation == store.connectionID, !Task.isCancelled else { return }
             observed = value; draft = value.contents ?? ""; needsRead = false
-        } catch { if generation == store.connectionID { observed = nil; error = FriendlyError.message(error) } }
+        } catch { if generation == store.connectionID { observed = nil; self.error = FriendlyError.message(error) } }
         do {
             let allowed = try await store.systemFileWritable(.sshKeys)
             guard generation == store.connectionID, !Task.isCancelled else { return }
@@ -221,12 +221,12 @@ struct SSHAuthorizedKeysView: View {
     private func add() {
         guard let observed else { return }
         do { let proposed = try SSHAuthorizedKeysSnapshot(text: observed.contents ?? "").adding(newKey); preview = FilePreview(observed: observed, proposed: proposed, connectionID: store.connectionID); error = nil }
-        catch { error = FriendlyError.message(error) }
+        catch { self.error = FriendlyError.message(error) }
     }
     private func remove(_ key: SSHAuthorizedKey) {
         guard let observed else { return }
         do { let proposed = try SSHAuthorizedKeysSnapshot(text: observed.contents ?? "").removing(key); preview = FilePreview(observed: observed, proposed: proposed, connectionID: store.connectionID); pendingDelete = nil; error = nil }
-        catch { error = FriendlyError.message(error) }
+        catch { self.error = FriendlyError.message(error) }
     }
 }
 
@@ -348,7 +348,7 @@ struct RouterTextFileView: View {
     private func makePreview() {
         guard let observed else { return }
         do { preview = FilePreview(observed: observed, proposed: try file.prepared(draft), connectionID: store.connectionID); error = nil }
-        catch { error = FriendlyError.message(error) }
+        catch { self.error = FriendlyError.message(error) }
     }
 }
 
