@@ -65,6 +65,8 @@ open OpenWrtManager.xcodeproj
 
 每个提交的实际构建结果以 [GitHub Actions](https://github.com/yyyyymmmmm/openwrt-manager/actions) 为准。未签名 IPA 需自行签名后安装；TestFlight/App Store 分发还需 Apple Developer Program。工作流不收集或导出 Apple 私钥。
 
+当前 IPv6 前缀增量包为 `0.3.5(12)`，对应源码 `a3cae81386466332f7abd58bc5328aa35df95ac4`，可从 [Actions 39411948059](https://github.com/yyyyymmmmm/openwrt-manager/actions/runs/39411948059) 下载 `Zirox-openwrt-unsigned-IPA`。包大小 3,593,816 字节，SHA256 `b94a84e1ef349d91ded9e1d2f579ac46b09bae9e362d7fddc7b305f430b42453`。本次仅 Release 编译和包审计通过，按用户要求跳过全部测试；原生逐层交互及真实固件验收仍见任务台账，不能据此认定模块全部完成。
+
 本轮逐层导航的自动化范围与尚未验证的分支见 [docs/native-validation.md](docs/native-validation.md)。本机可运行 `python -m unittest discover -s scripts -p 'test_*.py'`，目前包括 6 项发布审计规则和 4 项 CI HTTP 服务器协议测试；Swift 与模拟器结果以对应提交的 macOS 构建为准。
 
 ## 联调证据与边界

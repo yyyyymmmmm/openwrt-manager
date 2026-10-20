@@ -21,7 +21,7 @@
 
 ## 当前总览
 
-- `TASKS.md`：85 项，18 项已勾选，67 项未勾选。
+- 逐项状态以 `TASKS.md` 的勾选和对应证据为准；这里不维护容易过期的固定总数。
 - 已勾选内容主要是源码/发布审计、协议边界、Windows 测试和历史 Release/IPA 证据。
 - 五项 Tab、登录、部分状态读取、部分 UCI/服务/网络/系统/插件页面属于已有代码或部分实现；当前没有核心业务模块满足上述完整门槛。
 - 所有既有用户改动和未跟踪 `.impeccable/` 必须保留。
@@ -125,4 +125,5 @@ ACL / 只读行为：
 - 协议依据：netifd `ubus.c` 的两种前缀 dump；LuCI `protocol/static.js` 的单值 `ip6prefix`；`protocol/dhcpv6.js` 的前缀和 DUID 选项；`validation.js` 的 `hexstring` / `ip6hostid`。长度输入不再人为限制为 64，上游实际分配仍由服务端决定。带 IAID 的多前缀请求等扩展语法仍待单独适配。
 - 维护但未执行的定义：解析缺失/空值、地址族、0/128 掩码、时间上限、错误类型、空本地地址；UI R 的前缀逐层导航及编辑应用回读；UI W–Z 的缺失/空/错误/未启用本地地址。CI fixture 与生产应用分离。
 - 本轮不运行 Python/Swift/UI 测试，不在真实路由器写入。Release 构建与正式包审计独立记录，不能作为业务验收。
+- 本增量已打包：源码 `a3cae81386466332f7abd58bc5328aa35df95ac4`（含 AppRow 参数顺序编译修复），[Actions 39411948059](https://github.com/yyyyymmmmm/openwrt-manager/actions/runs/39411948059) 的 XcodeGen、iPhone Release 和正式包审计通过，全部测试跳过。IPA `0.3.5(12)`，3,593,816 字节；SHA256 `b94a84e1ef349d91ded9e1d2f579ac46b09bae9e362d7fddc7b305f430b42453`。本地包在 `.artifacts/run-39411948059/ios-build-results/Zirox-openwrt-unsigned.ipa`，保留旧包，不清理 `.artifacts/`。
 - 下次直接从 NET-01 剩余协议高级字段和未验收的事务恢复衔接；不要重新读全仓或把“有字段”当作完整模块完成。

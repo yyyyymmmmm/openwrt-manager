@@ -147,5 +147,6 @@
 
 - [ ] 接口→委派前缀→下游分配→对应接口，以及接口→分配前缀→本地地址：已编码，缺失/空/错误及刷新身份分别处理，尚未交互验收。
 - [ ] IPv6 子网提示/后缀/权重/静态前缀，DHCPv6 前缀与 DUID：已接原生编辑及校验；逐层编辑、应用、回读定义已维护，按用户要求未运行测试，真实固件尚未验收。
+- [x] NET-01F 仅编译打包证据：`a3cae81386466332f7abd58bc5328aa35df95ac4` 的 Xcode 26 / XcodeGen / iPhone Release / IPA 内容审计通过，Actions [39411948059](https://github.com/yyyyymmmmm/openwrt-manager/actions/runs/39411948059)。包版本 `0.3.5(12)`，3,593,816 字节，SHA256 `b94a84e1ef349d91ded9e1d2f579ac46b09bae9e362d7fddc7b305f430b42453`；Python、Swift、UI 测试均跳过，未操作真实路由器，不作为业务验收。
 
 精确范围、协议来源、剩余缺口及续接位置见 [任务台账 NET-01F](docs/native-task-ledger.md#net-01f-续接记录仅记录本增量避免重复全仓阅读)。本增量不代表 NET-01 或所有网络功能完成。
