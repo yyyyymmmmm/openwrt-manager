@@ -18,6 +18,9 @@ struct RootView: View {
             ConnectFlowView(isModal: true)
                 .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: Binding(get: { store.pendingConfiguration != nil }, set: { _ in })) {
+            PendingConfigurationView().interactiveDismissDisabled()
+        }
         .task(id: store.connectionID) {
             guard store.hasConnection else { return }
             await store.refresh()

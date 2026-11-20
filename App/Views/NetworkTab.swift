@@ -97,6 +97,11 @@ struct InterfacesView: View {
                     } label: {
                         Label("网桥、端口与 VLAN 配置", systemImage: "rectangle.3.group")
                     }
+                    NavigationLink {
+                        ConfigEditorView(configName: "network", title: "接口配置")
+                    } label: {
+                        Label("编辑接口配置（协议、地址、网关、DHCP 服务器）", systemImage: "square.and.pencil")
+                    }
                 }
             }
         }
@@ -187,6 +192,11 @@ struct DHCPView: View {
                 }
             }
             Section {
+                NavigationLink {
+                    StaticLeaseEditorView()
+                } label: {
+                    Label("管理静态租约", systemImage: "square.and.pencil")
+                }
                 NavigationLink {
                     UCIConfigView(title: "DHCP 完整配置", configNames: ["dhcp"])
                 } label: {
@@ -371,6 +381,15 @@ struct FirewallConfigView: View {
         }
         .navigationTitle("防火墙")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    ConfigEditorView(configName: "firewall", title: "防火墙")
+                } label: {
+                    Label("编辑", systemImage: "square.and.pencil")
+                }
+            }
+        }
         .task { await load() }
     }
 

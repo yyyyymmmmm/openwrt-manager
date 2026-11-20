@@ -47,6 +47,17 @@ struct UCIConfigView: View {
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if configNames.count == 1, let name = configNames.first {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        ConfigEditorView(configName: name, title: title)
+                    } label: {
+                        Label("编辑", systemImage: "square.and.pencil")
+                    }
+                }
+            }
+        }
         .task { await load() }
     }
 
@@ -94,6 +105,9 @@ struct GenericServiceView: View {
                         }
                         LabeledContent("来源", value: service.source == .initFallback ? "init.d 核心服务" : "菜单 ∩ init.d")
                     }
+                    if let initName = service.initNames.first {
+                        ServiceActionsSection(serviceName: initName)
+                    }
                 }
             } else {
                 EmptyStateView(title: "服务不存在", message: "发现快照中没有此服务，可能已被移除。")
@@ -110,6 +124,66 @@ struct GenericServiceView: View {
                     Text("配置")
                 }
             }
+        }
+    }
+}
+
+/// Service actions for one init.d service, each behind a confirmation and
+/// executed through the store's service-action transaction (snapshot ->
+/// perform -> re-read -> verify).
+struct ServiceActionsSection: View {
+    @Environment(RouterStore.self) private var store
+    let serviceName: String
+    @State private var pendingAction: ServiceAction?
+    @State private var result: String?
+    @State private var working = false
+
+    var body: some View {
+        Section("操作") {
+            ForEach(ServiceAction.allCases) { action in
+                Button {
+                    pendingAction = action
+                } label: {
+                    Label(action.title, systemImage: Self.symbol(for: action))
+                }
+                .disabled(working || store.isMutating)
+            }
+            if working { HStack { ProgressView(); Text("正在执行…") } }
+            if let result {
+                Text(result).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+            }
+        }
+        .confirmationDialog(
+            pendingAction.map { "确认\($0.title)「\(serviceName)」？" } ?? "",
+            isPresented: Binding(get: { pendingAction != nil }, set: { if !$0 { pendingAction = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button(pendingAction?.title ?? "确认") {
+                if let action = pendingAction { Task { await run(action) } }
+                pendingAction = nil
+            }
+            Button("取消", role: .cancel) { pendingAction = nil }
+        }
+    }
+
+    private static func symbol(for action: ServiceAction) -> String {
+        switch action {
+        case .start: return "play.circle"
+        case .stop: return "stop.circle"
+        case .restart: return "arrow.triangle.2.circlepath"
+        case .enable: return "checkmark.circle"
+        case .disable: return "xmark.circle"
+        }
+    }
+
+    private func run(_ action: ServiceAction) async {
+        working = true
+        defer { working = false }
+        do {
+            try await store.performServiceAction(name: serviceName, action: action)
+            result = "已执行\(action.title)，状态已重新读取。"
+        } catch {
+            result = FriendlyError.message(error)
         }
     }
 }

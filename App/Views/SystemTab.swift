@@ -109,6 +109,18 @@ struct StartupView: View {
                             StatusBadge(title: service.enabled == true ? "自启" : service.enabled == false ? "不自启" : "未知",
                                         good: service.enabled == true)
                         }
+                        .swipeActions(edge: .trailing) {
+                            if service.enabled == true {
+                                Button("关闭自启") {
+                                    Task { try? await store.performServiceAction(name: service.name, action: .disable) }
+                                }
+                            } else if service.enabled == false {
+                                Button("启用自启") {
+                                    Task { try? await store.performServiceAction(name: service.name, action: .enable) }
+                                }
+                                .tint(AppPalette.accent)
+                            }
+                        }
                     }
                 }
             }
@@ -278,7 +290,7 @@ struct BackupRestoreView: View {
                 LabeledContent("配置文件数", value: "\(store.inventory.configNames.count)")
             }
             Section {
-                Text("备份生成与恢复写入将在写操作阶段提供，并走统一事务通道。本页为只读视图。")
+                Text("备份生成与恢复属于高风险写操作，仍不在本页提供；配置类修改请在各配置页经事务通道完成。")
                     .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
             }
         }
@@ -291,6 +303,8 @@ struct BackupRestoreView: View {
 
 struct RebootInfoView: View {
     @Environment(RouterStore.self) private var store
+    @State private var stage = 0 // 0 idle, 1 first confirm, 2 final confirm, 3 sent
+    @State private var error: String?
 
     var body: some View {
         List {
@@ -307,11 +321,47 @@ struct RebootInfoView: View {
                 }
             }
             Section {
-                Text("重启动作将在写操作阶段以强确认方式提供，本页不提供执行按钮。")
-                    .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                if stage == 3 {
+                    Label("重启指令已发送，连接即将中断。", systemImage: "checkmark.circle")
+                        .foregroundStyle(AppPalette.green)
+                } else {
+                    Button("重启路由器", role: .destructive) { stage = 1 }
+                        .disabled(store.isMutating)
+                }
+                if let error {
+                    Text(error).font(AppTypography.secondary).foregroundStyle(AppPalette.red)
+                }
             }
         }
         .navigationTitle("重启")
         .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog("确定要重启这台路由器吗？", isPresented: Binding(
+            get: { stage == 1 }, set: { if !$0 { stage = 0 } }), titleVisibility: .visible) {
+            Button("继续", role: .destructive) { stage = 2 }
+            Button("取消", role: .cancel) { stage = 0 }
+        } message: {
+            Text("全屋网络将中断数分钟，正在进行的连接会断开。")
+        }
+        .alert("最后确认：现在重启？", isPresented: Binding(
+            get: { stage == 2 }, set: { if !$0 { stage = 0 } })) {
+            Button("立即重启", role: .destructive) { Task { await reboot() } }
+            Button("取消", role: .cancel) { stage = 0 }
+        }
+    }
+
+    private func reboot() async {
+        do {
+            try await store.rebootRouter()
+            stage = 3
+        } catch {
+            // A dropped connection while the router goes down is the
+            // expected shape of success here; other errors are shown.
+            if error is URLError {
+                stage = 3
+            } else {
+                self.error = FriendlyError.message(error)
+                stage = 0
+            }
+        }
     }
 }

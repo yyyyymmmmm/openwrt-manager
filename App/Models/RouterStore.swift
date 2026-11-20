@@ -363,13 +363,73 @@ final class RouterStore {
         await refresh()
     }
 
+    /// Service actions run as mini-transactions (phase 2): snapshot the
+    /// state, perform through the reader, re-read and verify the end
+    /// state; a contradiction is reported, never hidden.
     func performServiceAction(name: String, action: ServiceAction) async throws {
         guard !isMutating, pendingConfiguration == nil, let reader else { throw ConfigurationError.busy }
         isMutating = true
         defer { isMutating = false }
-        try await reader.serviceAction(name: name, action: action)
-        recordActivity("服务操作已执行", detail: "\(name)：\(action.title)。")
+        let transaction = ServiceActionTransaction(
+            readState: { serviceName in
+                async let services = try? reader.services()
+                async let inventory = reader.inventory()
+                let (serviceList, directory) = await (services, inventory)
+                let running = serviceList?.first { $0.name == serviceName }.flatMap { service -> Bool? in
+                    guard let total = service.totalInstances, total > 0 else { return nil }
+                    return (service.runningInstances ?? 0) > 0
+                }
+                let enabled = directory.initServices.first { $0.name == serviceName }?.enabled
+                return ServiceActionTransaction.State(running: running, enabled: enabled)
+            },
+            perform: { serviceName, serviceAction in
+                try await reader.serviceAction(name: serviceName, action: serviceAction)
+            })
+        let outcome = try await transaction.execute(name: name, action: action)
+        if outcome.verified == false {
+            recordActivity("服务操作后状态未达预期", detail: "\(name)：\(action.title) 已下发，但路由器报告的状态与预期不一致，请核对。", isWarning: true)
+        } else {
+            recordActivity("服务操作已执行", detail: "\(name)：\(action.title)。")
+        }
         await refresh()
+    }
+
+    /// The one door for configuration writes (spec L4): every editing
+    /// page builds a ConfigurationPlan and comes through here. The client
+    /// stages, applies inside the rollback window, reloads services,
+    /// verifies by re-reading, and confirms — or rolls back.
+    func executeConfiguration(plan: ConfigurationPlan, reloadServices: [String] = []) async throws -> TransactionReceipt {
+        guard !isMutating, pendingConfiguration == nil, let configurationClient, let reader else { throw ConfigurationError.busy }
+        isMutating = true
+        defer { isMutating = false }
+        do {
+            let receipt = try await configurationClient.execute(plan: plan, reloadServices: reloadServices) { name, action in
+                try await reader.serviceAction(name: name, action: action)
+            }
+            recordActivity("配置已更新", detail: "\(plan.original.name)：\(plan.edits.count) 项修改已下发、回读验证并确认。")
+            await refresh()
+            return receipt
+        } catch let error as TransactionError {
+            if error == .unacknowledged {
+                // The client still holds the pending transaction; surface
+                // it for explicit resolution instead of guessing.
+                pendingConfiguration = PendingConfiguration(config: plan.original.name,
+                                                            deadline: Date().addingTimeInterval(90),
+                                                            acknowledged: false)
+                recordActivity("配置应用结果待确认", detail: "\(plan.original.name) 的应用请求未收到确认，请验证连接后决定保留或回滚。", isWarning: true)
+            } else {
+                recordActivity("配置事务失败", detail: error.localizedDescription, isWarning: true)
+            }
+            throw error
+        }
+    }
+
+    /// Device reboot: a single ubus call behind the UI's strong
+    /// confirmation. The connection drops afterwards by design.
+    func rebootRouter() async throws {
+        guard !isMutating, pendingConfiguration == nil, let sessionManager else { throw ConfigurationError.busy }
+        try await SystemControlClient(caller: sessionManager).reboot()
+        recordActivity("已发送重启指令", detail: "路由器正在重启，连接将中断数分钟。", isWarning: true)
     }
 
     func records(_ kind: RouterRecordKind) async throws -> [JSONValue] {

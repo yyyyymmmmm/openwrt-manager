@@ -81,6 +81,8 @@ struct OpenBoxView: View {
     @State private var state: LoadState<(OpenBoxServiceStatus, String?, [OpenBoxProxy])> = .loading
     @State private var panelPassword = ""
     @State private var needsLogin = false
+    @State private var switchTarget: (group: String, node: String)?
+    @State private var switchResult: String?
 
     var body: some View {
         List {
@@ -120,7 +122,23 @@ struct OpenBoxView: View {
                                 }
                                 Spacer()
                                 Text(proxy.current ?? "—").font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                                if proxy.members.count > 1, proxy.current != nil {
+                                    Menu {
+                                        ForEach(proxy.members, id: \.self) { member in
+                                            Button(member) {
+                                                switchTarget = (group: proxy.name, node: member)
+                                            }
+                                            .disabled(member == proxy.current)
+                                        }
+                                    } label: {
+                                        Image(systemName: "arrow.left.arrow.right.circle")
+                                    }
+                                    .accessibilityLabel("切换 \(proxy.name) 的节点")
+                                }
                             }
+                        }
+                        if let switchResult {
+                            Text(switchResult).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                         }
                     }
                 }
@@ -135,6 +153,34 @@ struct OpenBoxView: View {
         .navigationTitle("Open-Box")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
+        .confirmationDialog(
+            switchTarget.map { "将「\($0.group)」切换到节点「\($0.node)」？" } ?? "",
+            isPresented: Binding(get: { switchTarget != nil }, set: { if !$0 { switchTarget = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("确认切换") {
+                if let target = switchTarget { Task { await performSwitch(target) } }
+                switchTarget = nil
+            }
+            Button("取消", role: .cancel) { switchTarget = nil }
+        }
+    }
+
+    private func performSwitch(_ target: (group: String, node: String)) async {
+        guard let client = panelClient() else { return }
+        do {
+            try await client.selectProxy(group: target.group, node: target.node)
+            // Verify by re-reading the group state before claiming success.
+            let proxies = try await client.proxies()
+            if proxies.first(where: { $0.name == target.group })?.current == target.node {
+                switchResult = "已切换：\(target.group) → \(target.node)（回读确认）。"
+            } else {
+                switchResult = "已下发切换，但回读的当前节点与目标不一致，请核对。"
+            }
+            await load()
+        } catch {
+            switchResult = FriendlyError.message(error)
+        }
     }
 
     private func panelClient() -> OpenBoxPanelClient? {
@@ -196,6 +242,14 @@ struct HomeProxyView: View {
                         Label(title, systemImage: "list.bullet.rectangle")
                     }
                 }
+                NavigationLink {
+                    ConfigEditorView(configName: "homeproxy", title: "HomeProxy")
+                } label: {
+                    Label("编辑配置（含节点选择）", systemImage: "square.and.pencil")
+                }
+            }
+            if let service, let initName = service.initNames.first {
+                ServiceActionsSection(serviceName: initName)
             }
         }
         .navigationTitle("HomeProxy")
@@ -240,6 +294,15 @@ struct MosDNSView: View {
         }
         .navigationTitle("MosDNS")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    ConfigEditorView(configName: "mosdns", title: "MosDNS")
+                } label: {
+                    Label("编辑", systemImage: "square.and.pencil")
+                }
+            }
+        }
         .task { await load() }
     }
 
