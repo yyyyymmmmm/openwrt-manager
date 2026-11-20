@@ -33,8 +33,16 @@ public struct UbusError: Decodable, Error, Sendable {
 public struct UbusSession: Sendable, Equatable {
     public let token: String
     public let expiresIn: Int
-    public init(token: String, expiresIn: Int = 3600) {
-        self.token = token; self.expiresIn = expiresIn
+    /// When the router issued this session. Expiry tracking lives here so
+    /// every holder of a session can judge freshness without a side table.
+    public let issuedAt: Date
+    public init(token: String, expiresIn: Int = 3600, issuedAt: Date = Date()) {
+        self.token = token; self.expiresIn = expiresIn; self.issuedAt = issuedAt
+    }
+    public var expiresAt: Date { issuedAt.addingTimeInterval(TimeInterval(expiresIn)) }
+    /// True while the session is valid and stays valid for at least `margin`.
+    public func isUsable(now: Date = Date(), margin: TimeInterval = 0) -> Bool {
+        expiresAt.timeIntervalSince(now) > margin
     }
 }
 

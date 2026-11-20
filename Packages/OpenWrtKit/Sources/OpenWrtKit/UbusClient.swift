@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// Isolates IDs and mutable transport state. The app uses a URLSession delegate
 /// that refuses redirects: credentials must never leave the selected origin.
