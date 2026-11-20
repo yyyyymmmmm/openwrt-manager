@@ -28,6 +28,8 @@ public enum PageKind: Equatable, Sendable {
     case serviceDedicated(key: String), serviceGeneric(key: String)
     // System
     case packages, startup, crontab, mounts, onlineUpgrade, backupRestore, rebootInfo
+    // Phase 3 native long-tail (not menu-discovered; core router planes)
+    case terminal, fileManager
     // Generic fallbacks
     case uci, genericMenuPage
     // App settings
@@ -225,6 +227,12 @@ public enum PageRegistry {
                 pages.append(descriptor(child, tab: .system, kind: .genericMenuPage, generic: true))
             }
         }
+        // Phase 3: the native terminal (SSH) and file manager (ubus file)
+        // join the system tab as app-provided pages. Their LuCI menu
+        // counterparts stay excluded above — these are the native
+        // implementations, present on every OpenWrt.
+        pages.append(PageDescriptor(id: "app/file-manager", tab: .system, title: "文件管理", kind: .fileManager))
+        pages.append(PageDescriptor(id: "app/terminal", tab: .system, title: "终端", kind: .terminal))
         return pages
     }
 

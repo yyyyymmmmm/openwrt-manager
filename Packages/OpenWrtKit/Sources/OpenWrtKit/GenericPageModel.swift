@@ -6,9 +6,13 @@ import Foundation
 public struct GenericRow: Identifiable, Equatable, Sendable {
     public var key: String
     public var valueText: String
+    /// Human label from the field catalog when one is known; nil keeps
+    /// the raw option key as the display text.
+    public var label: String?
     public var id: String { key }
-    public init(key: String, valueText: String) {
-        self.key = key; self.valueText = valueText
+    public var displayKey: String { label ?? key }
+    public init(key: String, valueText: String, label: String? = nil) {
+        self.key = key; self.valueText = valueText; self.label = label
     }
 }
 
@@ -27,7 +31,8 @@ public enum GenericPageModel {
         configuration.sections.map { section in
             let title = section.anonymous ? section.type : "\(section.type) · \(section.id)"
             let rows = section.values.keys.sorted().map { key in
-                GenericRow(key: key, valueText: displayText(section.values[key] ?? .null))
+                GenericRow(key: key, valueText: displayText(section.values[key] ?? .null),
+                           label: FieldCatalog.label(config: configuration.name, sectionType: section.type, option: key))
             }
             return GenericSection(id: section.id, type: section.type, title: title, rows: rows)
         }
