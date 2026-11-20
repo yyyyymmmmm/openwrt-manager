@@ -38,7 +38,7 @@ class ReleaseAuditTests(unittest.TestCase):
         contents = {
             "Info.plist": plistlib.dumps({
                 "CFBundleExecutable": "OpenWrtManager", "CFBundleIdentifier": "app.openwrtmanager.ios",
-                "CFBundleShortVersionString": "1.0", "CFBundleVersion": "1", "MinimumOSVersion": "17.0",
+                "CFBundleShortVersionString": "1.0", "CFBundleVersion": "1", "MinimumOSVersion": "26.0",
             }),
             "PrivacyInfo.xcprivacy": plistlib.dumps({"NSPrivacyTracking": False}),
             "OpenWrtManager": struct.pack("<II", 0xFEEDFACF, 0x0100000C) + bytes(24),

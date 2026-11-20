@@ -35,7 +35,7 @@ HTTPS 默认验证系统信任链。自签名证书须核对 SHA-256 指纹后�
 
 ## 构建与测试
 
-原生 SwiftUI，最低 iOS 17，使用 Xcode 26 SDK。在 iOS 26 上使用系统导航、TabView 与材质外观。协议、解析与配置事务位于独立 Swift Package `Packages/OpenWrtKit`。
+原生 SwiftUI，最低 iOS 26（定版：只做 iOS 26 原生），使用 Xcode 26 SDK 与 iOS 26 系统导航、TabView 与 Liquid Glass 材质外观，不为旧系统做降级兼容。协议、解析与配置事务位于独立 Swift Package `Packages/OpenWrtKit`。
 
 在安装 Xcode 26 和 XcodeGen 的 Mac 上运行：
 

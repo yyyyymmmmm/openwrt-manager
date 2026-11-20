@@ -2,7 +2,7 @@ name: OpenWrtManager
 options:
   bundleIdPrefix: app.openwrtmanager
   deploymentTarget:
-    iOS: "17.0"
+    iOS: "26.0"
   createIntermediateGroups: true
 
 packages:
@@ -29,7 +29,7 @@ targets:
         INFOPLIST_FILE: App/Info.plist
         GENERATE_INFOPLIST_FILE: NO
         SWIFT_VERSION: "5.0"
-        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "26.0"
         TARGETED_DEVICE_FAMILY: "1"
         MARKETING_VERSION: "0.3.0"
         CURRENT_PROJECT_VERSION: "6"
@@ -50,7 +50,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.openwrtmanager.ios.uitests
         TEST_TARGET_NAME: OpenWrtManager
         SWIFT_VERSION: "5.0"
-        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "26.0"
         GENERATE_INFOPLIST_FILE: YES
         TARGETED_DEVICE_FAMILY: "1"
 

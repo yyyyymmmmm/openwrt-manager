@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "OpenWrtKit",
-    platforms: [.iOS(.v17), .macOS(.v13)],
+    platforms: [.iOS(.v26), .macOS(.v13)],
     products: [
         .library(name: "OpenWrtKit", targets: ["OpenWrtKit"])
     ],

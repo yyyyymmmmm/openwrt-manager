@@ -8,7 +8,7 @@ ios
 
 ## Stack
 
-用户已确认原生 SwiftUI；GitHub Actions 在 macOS runner 编译。协议与模型使用独立 Swift Package。iOS 26 SDK 构建，最低 iOS 17 是本轮实现默认值，旧系统使用相应系统外观。
+用户已确认原生 SwiftUI；GitHub Actions 在 macOS runner 编译。协议与模型使用独立 Swift Package。iOS 26 SDK 构建，最低系统 iOS 26（定版决议：只做 iOS 26 原生，不做旧系统降级兼容）。
 
 ## Users
 
