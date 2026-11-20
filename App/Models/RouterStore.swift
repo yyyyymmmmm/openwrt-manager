@@ -28,17 +28,33 @@ final class RouterStore {
     private(set) var wirelessUpdatedAt: Date?
     private(set) var servicesUpdatedAt: Date?
 
+    private(set) var capability: CapabilitySnapshot?
+    private(set) var capabilityUpdatedAt: Date?
+    private(set) var capabilityError: String?
+    private(set) var capabilityIsFromCache = false
+    private(set) var realtimeSamples: [RealtimeSample] = []
+    private(set) var realtimeUpdatedAt: Date?
+    private(set) var defaultProfileID: UUID?
+
     @ObservationIgnored private var transport: RouterTransport?
     @ObservationIgnored private var reader: RouterReader?
+    @ObservationIgnored private var sessionManager: SessionManager?
+    @ObservationIgnored private(set) var readClient: ReadOnlyDataClient?
     @ObservationIgnored private var configurationClient: RouterConfigurationClient?
+    @ObservationIgnored private var realtimeEngine: RealtimeEngine?
+    @ObservationIgnored private var pollTask: Task<Void, Never>?
     @ObservationIgnored private let credentials = CredentialStore()
     @ObservationIgnored private let defaults: UserDefaults
     private let profilesKey = "router-profiles.v1"
 
     var hasConnection: Bool { activeProfile != nil }
 
+    private let defaultProfileKey = "default-router-profile.v1"
+    private let capabilityCachePrefix = "capability-cache.v1."
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        if let raw = defaults.string(forKey: defaultProfileKey) { defaultProfileID = UUID(uuidString: raw) }
         if let data = defaults.data(forKey: profilesKey) {
             do { profiles = try JSONDecoder().decode([RouterProfile].self, from: data) }
             catch { storageError = "保存的路由器列表无法读取。原始记录仍保留在设备上。" }
@@ -84,8 +100,18 @@ final class RouterStore {
         let oldReader = reader
         let oldTransport = transport
         transport = candidateTransport
-        reader = RouterReader(client: client, session: session)
-        configurationClient = RouterConfigurationClient(client: client, session: session)
+        // All data flow goes through the SessionManager from here on: when
+        // the router session expires it re-logs in silently (spec L1)
+        // instead of surfacing an error. The password stays in memory for
+        // this connection only; the Keychain copy (when the user chose to
+        // remember it) is the fallback.
+        let credentialBox = LiveCredentialBox(username: saved.username, password: password)
+        let manager = SessionManager(client: client, credentialProvider: credentialBox)
+        sessionManager = manager
+        let newReader = RouterReader(caller: manager)
+        reader = newReader
+        configurationClient = RouterConfigurationClient(caller: manager)
+        readClient = ReadOnlyDataClient(caller: manager)
         activeProfile = saved
         connectionID = UUID()
         clearData()
@@ -93,8 +119,104 @@ final class RouterStore {
         profiles.removeAll { $0.id == saved.id }
         profiles.insert(saved, at: 0)
         persist()
+        if defaultProfileID == nil { setDefaultProfile(saved) }
         if let oldReader { Task { await oldReader.logout(); oldTransport?.close() } }
         else { oldTransport?.close() }
+        await loadCapability()
+        startPolling()
+    }
+
+    /// L2 discovery: build the CapabilitySnapshot the whole navigation is
+    /// generated from, cache its collected form, and fall back to that
+    /// cache (clearly marked) when the live haul fails.
+    func loadCapability() async {
+        guard let reader, let profile = activeProfile else { return }
+        let discovery = RouterDiscovery(reader: reader)
+        let result = await discovery.discoverWithCollected(
+            routerID: profile.id.uuidString, address: profile.address, role: nil)
+        let snapshot = result.snapshot
+        if snapshot.menuTree.isEmpty, snapshot.board.hostname == nil {
+            capabilityError = "实时发现失败：路由器未返回菜单与设备信息。"
+            if let cached = cachedCapability(for: profile) {
+                capability = cached
+                capabilityIsFromCache = true
+                capabilityUpdatedAt = nil
+                recordActivity("显示离线缓存", detail: "实时发现失败，导航来自上次成功发现的缓存快照。", isWarning: true)
+            }
+            return
+        }
+        capability = snapshot
+        capabilityIsFromCache = false
+        capabilityUpdatedAt = Date()
+        capabilityError = result.snapshot.warnings.isEmpty ? nil : result.snapshot.warnings.joined(separator: "\n")
+        if let data = try? JSONEncoder().encode(result.collected) {
+            defaults.set(data, forKey: capabilityCachePrefix + profile.id.uuidString)
+        }
+    }
+
+    private func cachedCapability(for profile: RouterProfile) -> CapabilitySnapshot? {
+        guard let data = defaults.data(forKey: capabilityCachePrefix + profile.id.uuidString),
+              let collected = try? JSONDecoder().decode(CollectedRouterSnapshot.self, from: data) else { return nil }
+        return CapabilitySnapshot(collected: collected)
+    }
+
+    var tabs: [TabDescriptor] {
+        capability.map(PageRegistry.tabs(for:)) ?? PageRegistry.settingsOnlyTabs()
+    }
+
+    var freshnessPolicy: FreshnessPolicy {
+        FreshnessPolicy(staleAfter: pollInterval * 2.5)
+    }
+
+    private var pollInterval: TimeInterval {
+        let stored = defaults.double(forKey: "refresh-interval.v1")
+        return stored >= 5 ? min(stored, 120) : 10
+    }
+
+    /// One realtime engine for the whole app (spec L3): load, bandwidth
+    /// and connection count share this cadence and freshness clock.
+    private func startPolling() {
+        pollTask?.cancel()
+        guard let readClient else { return }
+        let engine = RealtimeEngine(fetch: {
+            async let info = try? readClient.systemInfo()
+            async let traffic = try? readClient.deviceTraffic()
+            async let connections = try? readClient.connectionCount()
+            let (infoValue, trafficValue, connectionValue) = await (info, traffic, connections)
+            guard infoValue != nil || trafficValue != nil else { return nil }
+            let load = (infoValue?["load"].arrayValue ?? []).compactMap { $0.doubleValue.map { $0 / 65536 } }
+            return RawRealtimeReading(load: load, traffic: trafficValue ?? [],
+                                      connections: connectionValue?.count)
+        })
+        realtimeEngine = engine
+        let interval = pollInterval
+        pollTask = Task { [weak self] in
+            while !Task.isCancelled {
+                if let sample = await engine.pollOnce() {
+                    let samples = await engine.samples
+                    await MainActor.run { [weak self] in
+                        self?.realtimeSamples = samples
+                        self?.realtimeUpdatedAt = sample.at
+                    }
+                }
+                try? await Task.sleep(for: .seconds(interval))
+            }
+        }
+    }
+
+    func setDefaultProfile(_ profile: RouterProfile?) {
+        defaultProfileID = profile?.id
+        if let profile { defaults.set(profile.id.uuidString, forKey: defaultProfileKey) }
+        else { defaults.removeObject(forKey: defaultProfileKey) }
+    }
+
+    var defaultProfile: RouterProfile? {
+        profiles.first { $0.id == defaultProfileID }
+    }
+
+    func uciConfiguration(_ name: String) async throws -> RouterConfiguration {
+        guard let readClient else { throw OpenWrtKitError.authenticationFailed }
+        return try await readClient.configuration(name)
     }
 
     func refresh() async {
@@ -133,6 +255,7 @@ final class RouterStore {
         }
         inventory = results.4
         inventoryUpdatedAt = Date()
+        if capability == nil || capabilityIsFromCache { await loadCapability() }
         let errors = [overviewError, devicesError, wirelessError, servicesError].compactMap { $0 }
         if !errors.isEmpty && (!wasLoaded || !previouslyFailed) {
             recordActivity("部分信息读取失败", detail: "\(errors.count) 项数据未能更新，请在对应页面查看原因。", isWarning: true)
@@ -146,9 +269,12 @@ final class RouterStore {
 
     func disconnect() {
         guard pendingConfiguration == nil, !isMutating else { return }
+        pollTask?.cancel(); pollTask = nil
+        realtimeEngine = nil
         let oldReader = reader
         let oldTransport = transport
         reader = nil; transport = nil; configurationClient = nil
+        sessionManager = nil; readClient = nil
         activeProfile = nil; connectionID = UUID()
         clearData()
         if let oldReader { Task { await oldReader.logout(); oldTransport?.close() } }
@@ -172,6 +298,8 @@ final class RouterStore {
 
     private func clearData() {
         snapshot = nil; leases = []; radios = []; services = []
+        capability = nil; capabilityUpdatedAt = nil; capabilityError = nil; capabilityIsFromCache = false
+        realtimeSamples = []; realtimeUpdatedAt = nil
         activities = []
         inventory = RouterInventory(); inventoryUpdatedAt = nil; pendingConfiguration = nil
         overviewError = nil; devicesError = nil; wirelessError = nil; servicesError = nil
@@ -253,4 +381,16 @@ final class RouterStore {
         do { return .success(try await operation()) }
         catch { return .failure(error) }
     }
+}
+
+
+/// In-memory credentials for the SessionManager's automatic re-login.
+/// The password lives only for the duration of the connection; nothing is
+/// written anywhere by this type.
+private final class LiveCredentialBox: SessionCredentialProvider, @unchecked Sendable {
+    private let credentials: RouterCredentials
+    init(username: String, password: String) {
+        credentials = RouterCredentials(username: username, password: password)
+    }
+    func routerCredentials() async -> RouterCredentials? { credentials }
 }

@@ -83,6 +83,14 @@ public enum PageRegistry {
          TabDescriptor(tab: .settings, pages: settingsPages())]
     }
 
+    /// All five tabs with only the app-local settings pages populated —
+    /// used before discovery completes or when it failed without a cache.
+    public static func settingsOnlyTabs() -> [TabDescriptor] {
+        AppTabID.allCases.map { tab in
+            TabDescriptor(tab: tab, pages: tab == .settings ? settingsPages() : [])
+        }
+    }
+
     public static func page(id: String, in tabs: [TabDescriptor]) -> PageDescriptor? {
         tabs.flatMap(\.pages).first { $0.id == id }
     }

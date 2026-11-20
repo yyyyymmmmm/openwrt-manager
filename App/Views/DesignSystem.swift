@@ -1,4 +1,5 @@
 import SwiftUI
+import OpenWrtKit
 import UIKit
 
 // These tokens are copied from the approved HTML prototype, including dark mode.
@@ -338,13 +339,33 @@ struct RootPageHeader: View {
 }
 
 struct ManagementSearchView: View {
+    @Environment(RouterStore.self) private var store
     @State private var query = ""
     @Environment(\.dismiss) private var dismiss
+
+    private var results: [PageDescriptor] {
+        let all = store.tabs.flatMap(\.pages)
+        guard !query.isEmpty else { return all }
+        return all.filter { $0.title.localizedCaseInsensitiveContains(query) }
+    }
+
     var body: some View {
         NavigationStack {
-            AppPage(title: "搜索", subtitle: "查找网络功能与管理入口") {
+            AppPage(title: "搜索", subtitle: "在已发现的管理页面中查找") {
                 AppSearchField(prompt: "无线、接口、防火墙…", text: $query)
-                NetworkTaskGroups(query: query)
+                AppSection(title: "页面") {
+                    AppGroup {
+                        if results.isEmpty {
+                            AppRow(title: "没有匹配的页面", detail: "这台路由器未发现对应功能，或发现尚未完成。")
+                        } else {
+                            ForEach(results) { page in
+                                AppRow(title: page.title,
+                                       detail: page.tab.title + (page.isGenericFallback ? " · 通用页" : ""))
+                                if page.id != results.last?.id { AppDivider() }
+                            }
+                        }
+                    }
+                }
             }
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("完成") { dismiss() } } }
         }
