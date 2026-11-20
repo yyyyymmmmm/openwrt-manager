@@ -78,6 +78,45 @@ public struct RouterReader: Sendable {
         return inventory
     }
 
+    /// Raw discovery inputs that the typed SnapshotParser views discard
+    /// (interface routes, l3 devices, per-service instance state). Each read
+    /// is captured independently; failures land in warnings, never as
+    /// fabricated data.
+    public struct DiscoveryRawData: Sendable {
+        public var board: JSONValue?
+        public var interfaces: JSONValue?
+        public var wireless: JSONValue?
+        public var services: JSONValue?
+        public var warnings: [String] = []
+        public init() {}
+    }
+
+    public func discoveryRawData() async -> DiscoveryRawData {
+        async let board = capture { try await client.call(session: session, object: "system", method: "board") }
+        async let interfaces = capture { try await client.call(session: session, object: "network.interface", method: "dump") }
+        async let wireless = capture { try await client.call(session: session, object: "network.wireless", method: "status") }
+        async let services = capture { try await client.call(session: session, object: "service", method: "list") }
+        let results = await (board, interfaces, wireless, services)
+        var data = DiscoveryRawData()
+        switch results.0 {
+        case .success(let value): data.board = value
+        case .failure(let error): data.warnings.append("发现-硬件信息：\(error.localizedDescription)")
+        }
+        switch results.1 {
+        case .success(let value): data.interfaces = value
+        case .failure(let error): data.warnings.append("发现-接口：\(error.localizedDescription)")
+        }
+        switch results.2 {
+        case .success(let value): data.wireless = value
+        case .failure(let error): data.warnings.append("发现-无线：\(error.localizedDescription)")
+        }
+        switch results.3 {
+        case .success(let value): data.services = value
+        case .failure(let error): data.warnings.append("发现-服务状态：\(error.localizedDescription)")
+        }
+        return data
+    }
+
     public func serviceAction(name: String, action: ServiceAction) async throws {
         guard InventoryParser.validIdentifier(name) else { throw ConfigurationError.invalidIdentifier }
         let initList = try InventoryParser.initServices(await client.call(session: session, object: "luci", method: "getInitList"))
