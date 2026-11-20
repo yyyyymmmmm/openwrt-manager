@@ -1,6 +1,10 @@
 import SwiftUI
 import OpenWrtKit
 
+/// Disambiguation: OpenWrtKit's process model shadows Foundation's
+/// `ProcessInfo` (NSProcessInfo) inside this file.
+private typealias ProcessInfo = OpenWrtKit.ProcessInfo
+
 /// Overview tab (spec 3.1): the home page is the router's status overview;
 /// the remaining status pages hang below it as registry-driven entries.
 struct OverviewTabScreen: View {
