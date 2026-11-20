@@ -12,12 +12,20 @@ public struct RouterDiscovery: Sendable {
     }
 
     public func discover(routerID: String, address: String, role: String? = nil) async -> CapabilitySnapshot {
+        await discoverWithCollected(routerID: routerID, address: address, role: role).snapshot
+    }
+
+    /// Same haul as discover(), but also returns the collected form so the
+    /// app can cache it and rebuild the identical snapshot offline.
+    public func discoverWithCollected(routerID: String, address: String, role: String? = nil)
+        async -> (collected: CollectedRouterSnapshot, snapshot: CapabilitySnapshot) {
         async let inventoryRead = reader.inventory()
         async let rawRead = reader.discoveryRawData()
         let (inventory, raw) = await (inventoryRead, rawRead)
         let collected = Self.assemble(routerID: routerID, address: address, role: role,
                                       inventory: inventory, raw: raw)
-        return CapabilitySnapshot(collected: collected, warnings: inventory.warnings + raw.warnings)
+        let snapshot = CapabilitySnapshot(collected: collected, warnings: inventory.warnings + raw.warnings)
+        return (collected, snapshot)
     }
 
     static func assemble(routerID: String, address: String, role: String?,

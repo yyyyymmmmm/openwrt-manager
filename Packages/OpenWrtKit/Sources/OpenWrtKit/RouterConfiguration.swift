@@ -118,20 +118,20 @@ public struct PendingConfiguration: Equatable, Sendable {
 
 /// A single session owns the staging area. Never commit without rpcd rollback.
 public actor RouterConfigurationClient {
-    private let client: UbusClient
-    private let session: UbusSession
+    private let caller: any UbusCalling
     private var busy = false
     private var pending: PendingConfiguration?
-    public init(client: UbusClient, session: UbusSession) { self.client = client; self.session = session }
+    public init(caller: any UbusCalling) { self.caller = caller }
+    public init(client: UbusClient, session: UbusSession) { self.caller = FixedSessionCaller(client: client, session: session) }
 
     public func read(_ name: String) async throws -> RouterConfiguration {
         guard InventoryParser.validIdentifier(name) else { throw ConfigurationError.invalidIdentifier }
-        let value = try await client.call(session: session, object: "uci", method: "get", parameters: ["config": .string(name)])
+        let value = try await caller.call(object: "uci", method: "get", parameters: ["config": .string(name)])
         return try RouterConfiguration.parse(name: name, value: value)
     }
 
     public func access(config: String, write: Bool) async throws -> Bool {
-        let result = try await client.call(session: session, object: "session", method: "access", parameters: [
+        let result = try await caller.call(object: "session", method: "access", parameters: [
             "scope": .string("uci"), "object": .string(config), "function": .string(write ? "write" : "read")
         ])
         guard let allowed = result["access"].boolValue else { throw OpenWrtKitError.malformedResponse }
@@ -145,12 +145,12 @@ public actor RouterConfigurationClient {
         defer { busy = false }
         guard try await access(config: plan.original.name, write: true) else { throw OpenWrtKitError.permissionDenied }
         for method in ["apply", "confirm", "revert", "rollback"] {
-            let permission = try await client.call(session: session, object: "session", method: "access", parameters: [
+            let permission = try await caller.call(object: "session", method: "access", parameters: [
                 "scope": .string("ubus"), "object": .string("uci"), "function": .string(method)
             ])
             guard permission["access"].boolValue == true else { throw OpenWrtKitError.permissionDenied }
         }
-        let changes = try await client.call(session: session, object: "uci", method: "changes")
+        let changes = try await caller.call(object: "uci", method: "changes")
         guard let existing = changes["changes"].objectValue else { throw OpenWrtKitError.malformedResponse }
         guard existing.isEmpty else { throw ConfigurationError.existingChanges }
         guard try await read(plan.original.name) == plan.original else { throw ConfigurationError.changedElsewhere }
@@ -171,17 +171,17 @@ public actor RouterConfigurationClient {
                 case .removeOption(let section, let option):
                     method = "delete"; parameters["section"] = .string(section); parameters["option"] = .string(option)
                 }
-                _ = try await client.call(session: session, object: "uci", method: method, parameters: parameters)
+                _ = try await caller.call(object: "uci", method: method, parameters: parameters)
             }
         } catch {
             // Only this transaction's config is reverted; pre-existing changes were refused.
-            do { _ = try await client.call(session: session, object: "uci", method: "revert", parameters: config) }
+            do { _ = try await caller.call(object: "uci", method: "revert", parameters: config) }
             catch { throw OpenWrtKitError.unsupported("写入未完成，暂存修改也未能清理。请保持会话并重新检查配置，勿重复提交。") }
             throw error
         }
         let deadline = Date().addingTimeInterval(90)
         do {
-            _ = try await client.call(session: session, object: "uci", method: "apply", parameters: ["rollback": .bool(true), "timeout": .number(90)])
+            _ = try await caller.call(object: "uci", method: "apply", parameters: ["rollback": .bool(true), "timeout": .number(90)])
             let value = PendingConfiguration(config: plan.original.name, deadline: deadline, acknowledged: true)
             pending = value
             return value
@@ -192,7 +192,7 @@ public actor RouterConfigurationClient {
             _ = error
             return value
         } catch {
-            _ = try? await client.call(session: session, object: "uci", method: "revert", parameters: config)
+            _ = try? await caller.call(object: "uci", method: "revert", parameters: config)
             throw error
         }
     }
@@ -202,8 +202,8 @@ public actor RouterConfigurationClient {
         guard let pending, pending.deadline > Date() else { throw ConfigurationError.noPending }
         busy = true
         defer { busy = false }
-        _ = try await client.call(session: session, object: "system", method: "board")
-        _ = try await client.call(session: session, object: "uci", method: "confirm")
+        _ = try await caller.call(object: "system", method: "board")
+        _ = try await caller.call(object: "uci", method: "confirm")
         self.pending = nil
     }
 
@@ -212,7 +212,7 @@ public actor RouterConfigurationClient {
         guard pending != nil else { throw ConfigurationError.noPending }
         busy = true
         defer { busy = false }
-        _ = try await client.call(session: session, object: "uci", method: "rollback")
+        _ = try await caller.call(object: "uci", method: "rollback")
         pending = nil
     }
 

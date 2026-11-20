@@ -1,11 +1,14 @@
 import Foundation
 
 public struct RouterReader: Sendable {
-    private let client: UbusClient
-    private let session: UbusSession
+    private let caller: any UbusCalling
+
+    public init(caller: any UbusCalling) {
+        self.caller = caller
+    }
 
     public init(client: UbusClient, session: UbusSession) {
-        self.client = client; self.session = session
+        self.caller = FixedSessionCaller(client: client, session: session)
     }
 
     public func snapshot() async throws -> RouterSnapshot {
@@ -38,25 +41,25 @@ public struct RouterReader: Sendable {
     }
 
     public func leases() async throws -> [DHCPLease] {
-        let value = try await client.call(session: session, object: "luci-rpc", method: "getDHCPLeases")
+        let value = try await caller.call(object: "luci-rpc", method: "getDHCPLeases")
         return try SnapshotParser.leases(value)
     }
 
     public func wireless() async throws -> [WirelessRadio] {
-        let value = try await client.call(session: session, object: "network.wireless", method: "status")
+        let value = try await caller.call(object: "network.wireless", method: "status")
         return try SnapshotParser.wireless(value)
     }
 
     public func services() async throws -> [RouterService] {
-        let value = try await client.call(session: session, object: "service", method: "list")
+        let value = try await caller.call(object: "service", method: "list")
         return try SnapshotParser.services(value)
     }
 
     public func inventory() async -> RouterInventory {
-        async let menu = capture { try InventoryParser.menus(await client.menu(session: session)) }
-        async let packages = capture { try await client.installedPackages(session: session) }
-        async let configs = capture { try InventoryParser.configNames(await client.call(session: session, object: "file", method: "list", parameters: ["path": .string("/etc/config")])) }
-        async let startup = capture { try InventoryParser.initServices(await client.call(session: session, object: "luci", method: "getInitList")) }
+        async let menu = capture { try InventoryParser.menus(await caller.menu()) }
+        async let packages = capture { try await caller.installedPackages() }
+        async let configs = capture { try InventoryParser.configNames(await caller.call(object: "file", method: "list", parameters: ["path": .string("/etc/config")])) }
+        async let startup = capture { try InventoryParser.initServices(await caller.call(object: "luci", method: "getInitList")) }
         let results = await (menu, packages, configs, startup)
         var inventory = RouterInventory()
         switch results.0 {
@@ -92,10 +95,10 @@ public struct RouterReader: Sendable {
     }
 
     public func discoveryRawData() async -> DiscoveryRawData {
-        async let board = capture { try await client.call(session: session, object: "system", method: "board") }
-        async let interfaces = capture { try await client.call(session: session, object: "network.interface", method: "dump") }
-        async let wireless = capture { try await client.call(session: session, object: "network.wireless", method: "status") }
-        async let services = capture { try await client.call(session: session, object: "service", method: "list") }
+        async let board = capture { try await caller.call(object: "system", method: "board") }
+        async let interfaces = capture { try await caller.call(object: "network.interface", method: "dump") }
+        async let wireless = capture { try await caller.call(object: "network.wireless", method: "status") }
+        async let services = capture { try await caller.call(object: "service", method: "list") }
         let results = await (board, interfaces, wireless, services)
         var data = DiscoveryRawData()
         switch results.0 {
@@ -119,13 +122,13 @@ public struct RouterReader: Sendable {
 
     public func serviceAction(name: String, action: ServiceAction) async throws {
         guard InventoryParser.validIdentifier(name) else { throw ConfigurationError.invalidIdentifier }
-        let initList = try InventoryParser.initServices(await client.call(session: session, object: "luci", method: "getInitList"))
+        let initList = try InventoryParser.initServices(await caller.call(object: "luci", method: "getInitList"))
         guard initList.contains(where: { $0.name == name }) else { throw OpenWrtKitError.unsupported("此服务不在路由器的启动项目录中。") }
-        let access = try await client.call(session: session, object: "session", method: "access", parameters: [
+        let access = try await caller.call(object: "session", method: "access", parameters: [
             "scope": .string("ubus"), "object": .string("luci"), "function": .string("setInitAction")
         ])
         guard access["access"].boolValue == true else { throw OpenWrtKitError.permissionDenied }
-        let value = try await client.call(session: session, object: "luci", method: "setInitAction", parameters: [
+        let value = try await caller.call(object: "luci", method: "setInitAction", parameters: [
             "name": .string(name), "action": .string(action.rawValue)
         ])
         guard value["result"].boolValue == true else { throw OpenWrtKitError.unsupported("路由器未确认服务操作成功，请检查日志和当前状态。") }
@@ -134,14 +137,14 @@ public struct RouterReader: Sendable {
     public func records(_ kind: RouterRecordKind) async throws -> [JSONValue] {
         switch kind {
         case .logs:
-            let value = try await client.call(session: session, object: "log", method: "read", parameters: [
+            let value = try await caller.call(object: "log", method: "read", parameters: [
                 "lines": .number(200), "oneshot": .bool(true), "stream": .bool(false)
             ])
             guard let records = value["log"].arrayValue else { throw OpenWrtKitError.malformedResponse }
             return records
         case .processes, .mounts:
             let method = kind == .processes ? "getProcessList" : "getMountPoints"
-            let value = try await client.call(session: session, object: "luci", method: method)
+            let value = try await caller.call(object: "luci", method: method)
             guard let records = value["result"].arrayValue else { throw OpenWrtKitError.malformedResponse }
             return records
         }
@@ -153,12 +156,12 @@ public struct RouterReader: Sendable {
     }
 
     public func logout() async {
-        _ = try? await client.call(session: session, object: "session", method: "destroy")
+        await caller.destroySession()
     }
 
     private func read(_ object: String, _ method: String) async -> Result<JSONValue, Error> {
         do {
-            let value = try await client.call(session: session, object: object, method: method)
+            let value = try await caller.call(object: object, method: method)
             guard value.objectValue != nil else { throw OpenWrtKitError.malformedResponse }
             return .success(value)
         }
