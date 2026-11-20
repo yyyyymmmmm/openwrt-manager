@@ -119,7 +119,7 @@ struct TerminalView: View {
     private var storedPasswordAvailable: Bool {
         guard let profile = store.activeProfile,
               let credential = try? store.credential(for: profile) else { return false }
-        return credential?.password != nil
+        return credential.password != nil
     }
 
     private func forwardInput(from old: String, to new: String) {
@@ -140,7 +140,7 @@ struct TerminalView: View {
             return
         }
         let loginPassword: String
-        if let credential = try? store.credential(for: profile), let saved = credential?.password {
+        if let credential = try? store.credential(for: profile), let saved = credential.password {
             loginPassword = saved
         } else {
             loginPassword = password

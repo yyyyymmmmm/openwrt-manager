@@ -343,7 +343,7 @@ struct ProcessesView: View {
         guard let client = store.readClient else { state = .failed("未连接路由器。"); return }
         state = .loading
         do { state = .loaded(try await client.processes()) }
-        catch { state = .failed(FriendlyError.message(error)) }
+        catch { state = LoadState<[ProcessInfo]>.failed(FriendlyError.message(error)) }
     }
 }
 
