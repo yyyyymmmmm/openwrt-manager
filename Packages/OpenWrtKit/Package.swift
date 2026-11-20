@@ -1,4 +1,4 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.2
 import PackageDescription
 
 let package = Package(
@@ -9,6 +9,14 @@ let package = Package(
     ],
     targets: [
         .target(name: "OpenWrtKit"),
-        .testTarget(name: "OpenWrtKitTests", dependencies: ["OpenWrtKit"])
-    ]
+        .testTarget(
+            name: "OpenWrtKitTests",
+            dependencies: ["OpenWrtKit"],
+            resources: [
+                .copy("Fixtures/snapshot-192.168.31.167-2026-11-20.json"),
+                .copy("Fixtures/snapshot-192.168.31.1-2026-11-20.json")
+            ]
+        )
+    ],
+    swiftLanguageModes: [.v5]
 )

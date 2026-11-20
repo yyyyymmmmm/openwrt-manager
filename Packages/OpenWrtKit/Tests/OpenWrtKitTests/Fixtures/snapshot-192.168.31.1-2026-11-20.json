@@ -1,0 +1,691 @@
+{
+  "device": {
+    "id": "main-192.168.31.1",
+    "address": "192.168.31.1",
+    "role": "main"
+  },
+  "collected_at": "2026-11-20T23:00:10.207214+08:00",
+  "firmware": {
+    "DISTRIB_ID": "OpenWrt",
+    "DISTRIB_RELEASE": "24.10.8",
+    "DISTRIB_REVISION": "r29233-443ec4032a",
+    "DISTRIB_TARGET": "mediatek/filogic",
+    "DISTRIB_ARCH": "aarch64_cortex-a53",
+    "DISTRIB_DESCRIPTION": "OpenWrt 24.10.8 r29233-443ec4032a",
+    "DISTRIB_TAINTS": ""
+  },
+  "board": {
+    "kernel": "6.6.144",
+    "hostname": "OpenWrt",
+    "system": "ARMv8 Processor rev 4",
+    "model": "Xiaomi Mi Router AX3000T",
+    "board_name": "xiaomi,mi-router-ax3000t",
+    "rootfs_type": "squashfs",
+    "release": {
+      "distribution": "OpenWrt",
+      "version": "24.10.8",
+      "revision": "r29233-443ec4032a",
+      "target": "mediatek/filogic",
+      "description": "OpenWrt 24.10.8 r29233-443ec4032a",
+      "builddate": "1784877710"
+    }
+  },
+  "menu_files": [
+    "luci-app-argon-config.json",
+    "luci-app-firewall.json",
+    "luci-app-package-manager.json",
+    "luci-base.json",
+    "luci-mod-network.json",
+    "luci-mod-status.json",
+    "luci-mod-system.json"
+  ],
+  "menu_paths": [
+    "admin",
+    "admin/logout",
+    "admin/menu",
+    "admin/network",
+    "admin/network/dhcp",
+    "admin/network/diagnostics",
+    "admin/network/firewall",
+    "admin/network/firewall/custom",
+    "admin/network/firewall/forwards",
+    "admin/network/firewall/ipsets",
+    "admin/network/firewall/rules",
+    "admin/network/firewall/snats",
+    "admin/network/firewall/zones",
+    "admin/network/network",
+    "admin/network/remote_addr/*",
+    "admin/network/routes",
+    "admin/network/switch",
+    "admin/network/wireless",
+    "admin/services",
+    "admin/status",
+    "admin/status/channel_analysis",
+    "admin/status/iptables",
+    "admin/status/logs",
+    "admin/status/logs/dmesg",
+    "admin/status/logs/syslog",
+    "admin/status/nftables",
+    "admin/status/nftables/iptables",
+    "admin/status/overview",
+    "admin/status/processes",
+    "admin/status/realtime",
+    "admin/status/realtime/bandwidth",
+    "admin/status/realtime/connections",
+    "admin/status/realtime/load",
+    "admin/status/realtime/wireless",
+    "admin/status/routes",
+    "admin/system",
+    "admin/system/admin",
+    "admin/system/admin/dropbear",
+    "admin/system/admin/password",
+    "admin/system/admin/repokeys",
+    "admin/system/admin/sshkeys",
+    "admin/system/admin/uhttpd",
+    "admin/system/argon-config",
+    "admin/system/crontab",
+    "admin/system/flash",
+    "admin/system/leds",
+    "admin/system/mounts",
+    "admin/system/package-manager",
+    "admin/system/reboot",
+    "admin/system/startup",
+    "admin/system/system",
+    "admin/translations/*",
+    "admin/ubus/*",
+    "admin/uci",
+    "admin/uci/apply_rollback",
+    "admin/uci/apply_unchecked",
+    "admin/uci/confirm",
+    "admin/uci/revert",
+    "admin/vpn"
+  ],
+  "menu_tree": {
+    "admin": {
+      "title": "Administration",
+      "order": 10,
+      "file": "luci-base.json"
+    },
+    "admin/logout": {
+      "title": "Log out",
+      "order": 999,
+      "file": "luci-base.json"
+    },
+    "admin/menu": {
+      "title": null,
+      "order": null,
+      "file": "luci-base.json"
+    },
+    "admin/network": {
+      "title": "Network",
+      "order": 50,
+      "file": "luci-base.json"
+    },
+    "admin/network/dhcp": {
+      "title": "DHCP and DNS",
+      "order": 40,
+      "file": "luci-mod-network.json"
+    },
+    "admin/network/diagnostics": {
+      "title": "Diagnostics",
+      "order": 50,
+      "file": "luci-mod-network.json"
+    },
+    "admin/network/firewall": {
+      "title": "Firewall",
+      "order": 60,
+      "file": "luci-app-firewall.json"
+    },
+    "admin/network/firewall/custom": {
+      "title": "Custom Rules",
+      "order": 50,
+      "file": "luci-app-firewall.json"
+    },
+    "admin/network/firewall/forwards": {
+      "title": "Port Forwards",
+      "order": 20,
+      "file": "luci-app-firewall.json"
+    },
+    "admin/network/firewall/ipsets": {
+      "title": "IP Sets",
+      "order": 45,
+      "file": "luci-app-firewall.json"
+    },
+    "admin/network/firewall/rules": {
+      "title": "Traffic Rules",
+      "order": 30,
+      "file": "luci-app-firewall.json"
+    },
+    "admin/network/firewall/snats": {
+      "title": "NAT Rules",
+      "order": 40,
+      "file": "luci-app-firewall.json"
+    },
+    "admin/network/firewall/zones": {
+      "title": "General Settings",
+      "order": 10,
+      "file": "luci-app-firewall.json"
+    },
+    "admin/network/network": {
+      "title": "Interfaces",
+      "order": 10,
+      "file": "luci-mod-network.json"
+    },
+    "admin/network/remote_addr/*": {
+      "title": null,
+      "order": null,
+      "file": "luci-mod-network.json"
+    },
+    "admin/network/routes": {
+      "title": "Routing",
+      "order": 30,
+      "file": "luci-mod-network.json"
+    },
+    "admin/network/switch": {
+      "title": "Switch",
+      "order": 20,
+      "file": "luci-mod-network.json"
+    },
+    "admin/network/wireless": {
+      "title": "Wireless",
+      "order": 15,
+      "file": "luci-mod-network.json"
+    },
+    "admin/services": {
+      "title": "Services",
+      "order": 40,
+      "file": "luci-base.json"
+    },
+    "admin/status": {
+      "title": "Status",
+      "order": 10,
+      "file": "luci-base.json"
+    },
+    "admin/status/channel_analysis": {
+      "title": "Channel Analysis",
+      "order": 7,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/iptables": {
+      "title": "Firewall",
+      "order": 3,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/logs": {
+      "title": "System Log",
+      "order": 4,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/logs/dmesg": {
+      "title": "Kernel Log",
+      "order": 2,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/logs/syslog": {
+      "title": "System Log",
+      "order": 1,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/nftables": {
+      "title": "Firewall",
+      "order": 3,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/nftables/iptables": {
+      "title": null,
+      "order": null,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/overview": {
+      "title": "Overview",
+      "order": 1,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/processes": {
+      "title": "Processes",
+      "order": 6,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/realtime": {
+      "title": "Realtime Graphs",
+      "order": 7,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/realtime/bandwidth": {
+      "title": "Bandwidth",
+      "order": 2,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/realtime/connections": {
+      "title": "Connections",
+      "order": 4,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/realtime/load": {
+      "title": "Load",
+      "order": 1,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/realtime/wireless": {
+      "title": "Wireless",
+      "order": 3,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/routes": {
+      "title": "Routing",
+      "order": 2,
+      "file": "luci-mod-status.json"
+    },
+    "admin/system": {
+      "title": "System",
+      "order": 20,
+      "file": "luci-base.json"
+    },
+    "admin/system/admin": {
+      "title": "Administration",
+      "order": 2,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/admin/dropbear": {
+      "title": "SSH Access",
+      "order": 2,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/admin/password": {
+      "title": "Router Password",
+      "order": 1,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/admin/repokeys": {
+      "title": "Repo Public Keys",
+      "order": 5,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/admin/sshkeys": {
+      "title": "SSH-Keys",
+      "order": 3,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/admin/uhttpd": {
+      "title": "HTTP(S) Access",
+      "order": 4,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/argon-config": {
+      "title": "Argon Config",
+      "order": 90,
+      "file": "luci-app-argon-config.json"
+    },
+    "admin/system/crontab": {
+      "title": "Scheduled Tasks",
+      "order": 46,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/flash": {
+      "title": "Backup / Flash Firmware",
+      "order": 70,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/leds": {
+      "title": "LED Configuration",
+      "order": 60,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/mounts": {
+      "title": "Mount Points",
+      "order": 50,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/package-manager": {
+      "title": "Software",
+      "order": 30,
+      "file": "luci-app-package-manager.json"
+    },
+    "admin/system/reboot": {
+      "title": "Reboot",
+      "order": 90,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/startup": {
+      "title": "Startup",
+      "order": 45,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/system": {
+      "title": "System",
+      "order": 1,
+      "file": "luci-mod-system.json"
+    },
+    "admin/translations/*": {
+      "title": null,
+      "order": null,
+      "file": "luci-base.json"
+    },
+    "admin/ubus/*": {
+      "title": null,
+      "order": null,
+      "file": "luci-base.json"
+    },
+    "admin/uci": {
+      "title": null,
+      "order": null,
+      "file": "luci-base.json"
+    },
+    "admin/uci/apply_rollback": {
+      "title": null,
+      "order": null,
+      "file": "luci-base.json"
+    },
+    "admin/uci/apply_unchecked": {
+      "title": null,
+      "order": null,
+      "file": "luci-base.json"
+    },
+    "admin/uci/confirm": {
+      "title": null,
+      "order": null,
+      "file": "luci-base.json"
+    },
+    "admin/uci/revert": {
+      "title": null,
+      "order": null,
+      "file": "luci-base.json"
+    },
+    "admin/vpn": {
+      "title": "VPN",
+      "order": 70,
+      "file": "luci-base.json"
+    }
+  },
+  "luci_packages": [
+    "luci",
+    "luci-app-argon-config",
+    "luci-app-firewall",
+    "luci-app-package-manager",
+    "luci-base",
+    "luci-i18n-argon-config-zh-cn",
+    "luci-i18n-base-zh-cn",
+    "luci-i18n-firewall-zh-cn",
+    "luci-light",
+    "luci-mod-admin-full",
+    "luci-mod-network",
+    "luci-mod-status",
+    "luci-mod-system",
+    "luci-proto-ipv6",
+    "luci-proto-ppp",
+    "luci-ssl",
+    "luci-theme-argon",
+    "luci-theme-bootstrap"
+  ],
+  "luci_apps": [
+    "luci-app-argon-config",
+    "luci-app-firewall",
+    "luci-app-package-manager"
+  ],
+  "services": [
+    {
+      "name": "boot",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "bootcount",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "cron",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "dnsmasq",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "done",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "dropbear",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "firewall",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "gpio_switch",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "keepalived",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "led",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "log",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "network",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "odhcpd",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "packet_steering",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "rpcd",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "sysctl",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "sysfixtime",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "sysntpd",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "system",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "ubihealthd",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "ubus",
+      "enabled": false,
+      "running": true
+    },
+    {
+      "name": "ucitrack",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "uhttpd",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "urandom_seed",
+      "enabled": true,
+      "running": false
+    },
+    {
+      "name": "urngd",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "wpad",
+      "enabled": true,
+      "running": true
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "lan",
+      "up": true,
+      "available": true,
+      "pending": false,
+      "proto": "static",
+      "device": "br-lan",
+      "l3_device": "br-lan",
+      "ipv4": [
+        "192.168.31.1"
+      ],
+      "ipv6": [],
+      "routes": [],
+      "dns": []
+    },
+    {
+      "name": "loopback",
+      "up": true,
+      "available": true,
+      "pending": false,
+      "proto": "static",
+      "device": "lo",
+      "l3_device": "lo",
+      "ipv4": [
+        "127.0.0.1"
+      ],
+      "ipv6": [],
+      "routes": [],
+      "dns": []
+    },
+    {
+      "name": "wan",
+      "up": true,
+      "available": true,
+      "pending": false,
+      "proto": "dhcp",
+      "device": "wan",
+      "l3_device": "wan",
+      "ipv4": [
+        "192.168.1.2"
+      ],
+      "ipv6": [],
+      "routes": [
+        {
+          "target": "0.0.0.0",
+          "mask": 0,
+          "nexthop": "192.168.1.1",
+          "source": "192.168.1.2/32"
+        }
+      ],
+      "dns": [
+        "192.168.1.1"
+      ]
+    },
+    {
+      "name": "wan6",
+      "up": true,
+      "available": true,
+      "pending": false,
+      "proto": "dhcpv6",
+      "device": "wan",
+      "l3_device": "wan",
+      "ipv4": [],
+      "ipv6": [
+        "2409:8a70:1856:2bb0::2",
+        "2409:8a70:1856:2bb0:46f7:70ff:fe79:43a8"
+      ],
+      "routes": [
+        {
+          "target": "2409:8a70:1856:2bb0::",
+          "mask": 64,
+          "nexthop": "::",
+          "source": "::/0"
+        },
+        {
+          "target": "2409:8a70:1856:2bb0::",
+          "mask": 64,
+          "nexthop": "fe80::1",
+          "source": "::/0"
+        },
+        {
+          "target": "::",
+          "mask": 0,
+          "nexthop": "fe80::1",
+          "source": "2409:8a70:1856:2bb0:46f7:70ff:fe79:43a8/64"
+        },
+        {
+          "target": "::",
+          "mask": 0,
+          "nexthop": "fe80::1",
+          "source": "2409:8a70:1856:2bb1::/64"
+        },
+        {
+          "target": "::",
+          "mask": 0,
+          "nexthop": "fe80::1",
+          "source": "2409:8a70:1856:2bb0::2/128"
+        }
+      ],
+      "dns": [
+        "fe80::1"
+      ]
+    }
+  ],
+  "default_routes_raw": "default via 192.168.1.1 dev wan  src 192.168.1.2 \n---V6---\ndefault from 2409:8a70:1856:2bb0::2 via fe80::1 dev wan  metric 640 \ndefault from 2409:8a70:1856:2bb0::/64 via fe80::1 dev wan  metric 640 \ndefault from 2409:8a70:1856:2bb1::/64 via fe80::1 dev wan  metric 640",
+  "upstream": {
+    "interface": "wan",
+    "l3_device": "wan",
+    "device": "wan",
+    "nexthop": "192.168.1.1",
+    "basis": "ubus network.interface dump default route"
+  },
+  "wireless": {
+    "present": true,
+    "radios": [
+      {
+        "name": "radio0",
+        "up": true,
+        "disabled": false,
+        "band": "2g"
+      },
+      {
+        "name": "radio1",
+        "up": true,
+        "disabled": false,
+        "band": "5g"
+      }
+    ],
+    "phys": [
+      "phy0",
+      "phy1"
+    ]
+  }
+}
