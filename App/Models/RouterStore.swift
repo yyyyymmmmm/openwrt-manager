@@ -43,6 +43,7 @@ final class RouterStore {
     @ObservationIgnored private var configurationClient: RouterConfigurationClient?
     @ObservationIgnored private var realtimeEngine: RealtimeEngine?
     @ObservationIgnored private var pollTask: Task<Void, Never>?
+    @ObservationIgnored private var liveCredentials: LiveCredentialBox?
     @ObservationIgnored private let credentials = CredentialStore()
     @ObservationIgnored private let defaults: UserDefaults
     private let profilesKey = "router-profiles.v1"
@@ -106,6 +107,7 @@ final class RouterStore {
         // this connection only; the Keychain copy (when the user chose to
         // remember it) is the fallback.
         let credentialBox = LiveCredentialBox(username: saved.username, password: password)
+        liveCredentials = credentialBox
         let manager = SessionManager(client: client, credentialProvider: credentialBox)
         sessionManager = manager
         let newReader = RouterReader(caller: manager)
@@ -274,7 +276,7 @@ final class RouterStore {
         let oldReader = reader
         let oldTransport = transport
         reader = nil; transport = nil; configurationClient = nil
-        sessionManager = nil; readClient = nil
+        sessionManager = nil; readClient = nil; liveCredentials = nil
         activeProfile = nil; connectionID = UUID()
         clearData()
         if let oldReader { Task { await oldReader.logout(); oldTransport?.close() } }
@@ -453,4 +455,30 @@ private final class LiveCredentialBox: SessionCredentialProvider, @unchecked Sen
         credentials = RouterCredentials(username: username, password: password)
     }
     func routerCredentials() async -> RouterCredentials? { credentials }
+}
+
+
+extension RouterStore {
+    /// ubus file plane for the native file manager (phase 3).
+    var fileClient: FileClient? {
+        sessionManager.map { FileClient(caller: $0) }
+    }
+
+    /// One fresh login attempt against the active router — the
+    /// reconnection probe for the upgrade flow. Builds a throwaway
+    /// transport so the (presumed dead) live session is untouched.
+    func probeRouterReachable() async -> Bool {
+        guard let profile = activeProfile, let liveCredentials,
+              let credentials = await liveCredentials.routerCredentials(),
+              let address = try? URLNormalizer.normalize(profile.address) else { return false }
+        let transport = RouterTransport(address: address, fingerprint: nil)
+        defer { transport.close() }
+        let client = UbusClient(address: address, session: transport.session)
+        do {
+            _ = try await client.login(username: credentials.username, password: credentials.password)
+            return true
+        } catch {
+            return false
+        }
+    }
 }

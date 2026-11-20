@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 import OpenWrtKit
 
 /// System tab (spec 3.2): low-frequency maintenance pages, all read-only
@@ -253,9 +254,10 @@ struct OnlineUpgradeView: View {
                 }
             }
             Section {
-                Text("在线升级为高风险操作：本阶段仅只读展示。升级入口将在具备自动备份、镜像哈希校验与自动重连验证后开放。")
+                Text("在线升级为高风险操作：下方入口严格执行加强事务——自动备份 → 镜像哈希校验 → 镜像合法性校验 → 二次确认 → 升级 → 自动重连验证，缺一不可。")
                     .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
             }
+            FirmwareUpgradeSection()
         }
         .navigationTitle("在线升级")
         .navigationBarTitleDisplayMode(.inline)
@@ -362,6 +364,132 @@ struct RebootInfoView: View {
                 self.error = FriendlyError.message(error)
                 stage = 0
             }
+        }
+    }
+}
+
+
+/// The strengthened upgrade flow (spec section 6), driven by
+/// UpgradeFlow's two halves: prepare() runs backup/staging/hash/image
+/// validation; only after the user confirms a second time does finish()
+/// flash and verify reconnection. The button cannot skip steps because
+/// finish() requires prepare()'s output plus the explicit flag.
+private struct FirmwareUpgradeSection: View {
+    @Environment(RouterStore.self) private var store
+    @State private var pickerPresented = false
+    @State private var imageData: Data?
+    @State private var imageName: String?
+    @State private var step: UpgradeFlow.Step?
+    @State private var prepared: (backupPath: String, digest: String)?
+    @State private var working = false
+    @State private var secondConfirmation = false
+    @State private var outcome: String?
+
+    var body: some View {
+        Section("固件升级（加强事务）") {
+            if let imageName {
+                LabeledContent("镜像", value: imageName)
+                if let imageData {
+                    LabeledContent("本地 SHA-256", value: SHA256Hasher.hexDigest(imageData))
+                        .font(AppTypography.metadata)
+                }
+            }
+            Button {
+                pickerPresented = true
+            } label: {
+                Label("选择固件镜像", systemImage: "doc.badge.plus")
+            }
+            .disabled(working || prepared != nil)
+            if let step {
+                Label(stepText(step), systemImage: step == .succeeded ? "checkmark.circle" : "arrow.triangle.2.circlepath")
+                    .font(AppTypography.secondary)
+                    .foregroundStyle(step == .succeeded ? AppPalette.green : AppPalette.muted)
+            }
+            if prepared == nil {
+                Button("开始：备份并校验镜像") { Task { await prepare() } }
+                    .disabled(imageData == nil || working)
+            } else if !secondConfirmation {
+                Text("备份与校验已完成。再次确认后将真正执行升级——升级期间全屋断网，路由器自动重启。")
+                    .font(AppTypography.secondary).foregroundStyle(AppPalette.orange)
+                Button("二次确认：执行升级", role: .destructive) {
+                    secondConfirmation = true
+                    Task { await finish() }
+                }
+                .disabled(working)
+            }
+            if let outcome {
+                Text(outcome).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .fileImporter(isPresented: $pickerPresented,
+                      allowedContentTypes: [.data]) { result in
+            if case .success(let url) = result,
+               url.startAccessingSecurityScopedResource(),
+               let data = try? Data(contentsOf: url) {
+                imageData = data
+                imageName = url.lastPathComponent
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+    }
+
+    private func operations() -> UpgradeFlow.Operations? {
+        guard let files = store.fileClient else { return nil }
+        var operations = UpgradeFlow.standardOperations(files: files)
+        operations.probeReconnect = {
+            try? await Task.sleep(for: .seconds(10))
+            return await store.probeRouterReachable()
+        }
+        return operations
+    }
+
+    private func prepare() async {
+        guard let imageData, let operations = operations() else { return }
+        working = true
+        defer { working = false }
+        do {
+            let result = try await UpgradeFlow.prepare(image: imageData, operations: operations) { newStep in
+                Task { @MainActor in step = newStep }
+            }
+            prepared = (result.backupPath, result.imageSHA256)
+            outcome = "备份已保存至 \(result.backupPath)；镜像哈希与路由器端一致，镜像合法性校验通过。"
+        } catch {
+            step = .failed(FriendlyError.message(error))
+            outcome = "已中止：\(FriendlyError.message(error))。路由器未做任何更改。"
+        }
+    }
+
+    private func finish() async {
+        guard let operations = operations() else { return }
+        working = true
+        defer { working = false }
+        do {
+            let reconnected = try await UpgradeFlow.finish(
+                secondConfirmation: secondConfirmation, operations: operations) { newStep in
+                Task { @MainActor in step = newStep }
+            }
+            outcome = reconnected
+                ? "升级完成，路由器已重新连接并通过验证。"
+                : "升级已执行，但自动重连验证未在预期时间内通过，请稍后手动刷新核对。"
+            if reconnected { await store.refresh() }
+        } catch {
+            step = .failed(FriendlyError.message(error))
+            outcome = FriendlyError.message(error)
+        }
+    }
+
+    private func stepText(_ step: UpgradeFlow.Step) -> String {
+        switch step {
+        case .backup: return "正在自动备份当前配置…"
+        case .staging: return "正在上传镜像到路由器…"
+        case .hashVerification: return "正在校验镜像哈希…"
+        case .imageValidation: return "正在校验镜像合法性…"
+        case .awaitingSecondConfirmation: return "等待二次确认"
+        case .upgrading: return "正在执行升级，路由器将重启…"
+        case .reconnectVerification: return "正在验证重新连接…"
+        case .succeeded: return "升级完成并已重连"
+        case .failed(let message): return "失败：\(message)"
         }
     }
 }

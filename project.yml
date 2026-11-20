@@ -22,6 +22,8 @@ targets:
         buildPhase: resources
     dependencies:
       - package: OpenWrtKit
+      - package: OpenWrtKit
+        product: OpenWrtSSH
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.openwrtmanager.ios

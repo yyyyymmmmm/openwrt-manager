@@ -148,7 +148,7 @@ struct ConfigEditorView: View {
                 ForEach(draft.sections) { section in
                     Section {
                         ForEach(section.values.keys.sorted(), id: \.self) { key in
-                            fieldEditor(sectionID: section.id, key: key,
+                            fieldEditor(sectionID: section.id, sectionType: section.type, key: key,
                                         value: section.values[key] ?? .null)
                         }
                         .onDelete { offsets in
@@ -198,7 +198,54 @@ struct ConfigEditorView: View {
     }
 
     @ViewBuilder
-    private func fieldEditor(sectionID: String, key: String, value: JSONValue) -> some View {
+    private func fieldEditor(sectionID: String, sectionType: String, key: String, value: JSONValue) -> some View {
+        // Phase-3 field catalog: known options render with their human
+        // label and proper control (toggle / enum picker) even when the
+        // router stores them as plain strings.
+        if case .string(let raw) = value,
+           let descriptor = FieldCatalog.descriptor(config: configName, sectionType: sectionType, option: key) {
+            catalogField(sectionID: sectionID, key: key, raw: raw, descriptor: descriptor)
+        } else {
+            rawFieldEditor(sectionID: sectionID, key: key, value: value)
+        }
+    }
+
+    @ViewBuilder
+    private func catalogField(sectionID: String, key: String, raw: String, descriptor: FieldDescriptor) -> some View {
+        switch descriptor.kind {
+        case .boolean where ["0", "1", "true", "false", "on", "off", "yes", "no"].contains(raw.lowercased()):
+            Toggle(descriptor.label, isOn: Binding(
+                get: { ["1", "true", "on", "yes"].contains(raw.lowercased()) },
+                set: { setValue(sectionID: sectionID, key: key, value: .string($0 ? "1" : "0")) }))
+        case .enumeration(let options) where options.contains(raw):
+            HStack {
+                Text(descriptor.label).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                Spacer()
+                Picker(descriptor.label, selection: Binding(
+                    get: { raw },
+                    set: { setValue(sectionID: sectionID, key: key, value: .string($0)) })) {
+                    ForEach(options, id: \.self) { option in
+                        Text(option).tag(option)
+                    }
+                }
+                .labelsHidden()
+            }
+        default:
+            HStack {
+                Text(descriptor.label).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                Spacer()
+                TextField(descriptor.label, text: Binding(
+                    get: { raw },
+                    set: { setValue(sectionID: sectionID, key: key, value: .string($0)) }))
+                    .multilineTextAlignment(.trailing)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func rawFieldEditor(sectionID: String, key: String, value: JSONValue) -> some View {
         switch value {
         case .bool(let flag):
             Toggle(key, isOn: Binding(

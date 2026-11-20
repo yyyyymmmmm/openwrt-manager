@@ -74,6 +74,10 @@ struct PageDestination: View {
             BackupRestoreView()
         case .rebootInfo:
             RebootInfoView()
+        case .terminal:
+            TerminalView()
+        case .fileManager:
+            FileManagerView()
         case .uci:
             UCIConfigView(title: page.title, configNames: page.configNames,
                           isGenericFallback: page.isGenericFallback)
