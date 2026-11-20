@@ -197,6 +197,35 @@ public actor RouterConfigurationClient {
         }
     }
 
+    /// The full L4 transaction (spec section 1): the plan was built from a
+    /// pre-change snapshot and previewed by the user; this stages and
+    /// applies it inside rpcd's rollback window, reloads the affected
+    /// services, re-reads the configuration and verifies it matches the
+    /// intended result, and only then confirms. Any failure before the
+    /// confirm rolls the router back to the pre-change state. A failed
+    /// confirm itself leaves the transaction pending (state unknown —
+    /// the caller must resolve it explicitly, never silently).
+    public func execute(plan: ConfigurationPlan, reloadServices: [String] = [],
+                        serviceAction: @escaping @Sendable (String, ServiceAction) async throws -> Void = { _, _ in })
+        async throws -> TransactionReceipt {
+        let pending = try await apply(plan)
+        guard pending.acknowledged else { throw TransactionError.unacknowledged }
+        do {
+            for service in reloadServices {
+                do { try await serviceAction(service, .restart) }
+                catch { throw TransactionError.reloadFailed(service) }
+            }
+            let reread = try await read(plan.original.name)
+            guard reread == plan.edited else { throw TransactionError.verificationFailed(plan.original.name) }
+        } catch {
+            try? await rollback()
+            throw error
+        }
+        try await confirm()
+        return TransactionReceipt(config: plan.original.name, editCount: plan.edits.count,
+                                  reloadedServices: reloadServices, verifiedAt: Date())
+    }
+
     public func confirm() async throws {
         guard !busy else { throw ConfigurationError.busy }
         guard let pending, pending.deadline > Date() else { throw ConfigurationError.noPending }

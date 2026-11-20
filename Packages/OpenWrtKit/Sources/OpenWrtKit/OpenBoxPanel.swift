@@ -126,6 +126,19 @@ public struct OpenBoxPanelClient: Sendable {
         return try JSONDecoder().decode(JSONValue.self, from: data)
     }
 
+    /// Switches a selector group to another node (Clash-API PUT through
+    /// the panel proxy). This is a write: callers must confirm with the
+    /// user first and re-read the group afterwards to verify.
+    public func selectProxy(group: String, node: String) async throws {
+        let encoded = group.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? group
+        var request = URLRequest(url: baseURL.appendingPathComponent("api/controller/proxies/\(encoded)"))
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(["name": node])
+        let (_, response) = try await session.data(for: request)
+        try check(response)
+    }
+
     public func serviceStatus() async throws -> OpenBoxServiceStatus {
         OpenBoxParser.serviceStatus(try await get("api/openbox/service/status"))
     }
