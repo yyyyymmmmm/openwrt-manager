@@ -1,0 +1,54 @@
+# codemagic.yaml — Zirox-openwrt iOS native build (unsigned IPA)
+# 用途：0 期 macOS 终验补跑。GitHub Actions 自 2026-11-20 起被账户账单拦截、
+# 作业未启动，本工作流在 Codemagic（既有定版第二通道）上镜像
+# .github/workflows/ios.yml 的实质步骤做终验。
+# 等价范围：XcodeGen 生成工程、OpenWrtKit swift test、未签名 Release 构建
+# 与 IPA 打包、既有审计脚本（源码审计 + IPA 审计）。
+# 非等价点：模拟器 UI 测试不在本工作流内（终验范围按任务口径）；
+# Codemagic 步骤遇错即停——测试红则不出包，判读时注意。
+workflows:
+  zirox-ios:
+    name: Zirox-openwrt iOS (native, unsigned IPA, macOS final check)
+    instance_type: mac_mini_m2        # 免费额度仅 M2；不开 billing
+    max_build_duration: 60
+    environment:
+      xcode: 26.6                     # 对位 GitHub 版 Xcode 26；以 Codemagic 当期镜像为准
+    scripts:
+      - name: Show Xcode
+        script: |
+          xcodebuild -version
+          xcodebuild -showsdks
+      - name: Install XcodeGen
+        script: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+      - name: Audit production sources
+        script: |
+          python3 -m unittest discover -s scripts -p 'test_*.py'
+          python3 scripts/audit_release.py
+      - name: Test OpenWrtKit
+        script: swift test --package-path Packages/OpenWrtKit
+      - name: Generate Xcode project
+        script: xcodegen generate
+      - name: Build unsigned iPhone app for personal signing
+        script: |
+          set -euo pipefail
+          mkdir -p artifacts build
+          xcodebuild build \
+            -project OpenWrtManager.xcodeproj \
+            -scheme OpenWrtManager \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/device-build \
+            CODE_SIGNING_ALLOWED=NO
+          test -f "build/device-build/Build/Products/Release-iphoneos/OpenWrtManager.app/PrivacyInfo.xcprivacy"
+          rm -rf build/ipa && mkdir -p build/ipa/Payload
+          ditto "build/device-build/Build/Products/Release-iphoneos/OpenWrtManager.app" "build/ipa/Payload/OpenWrtManager.app"
+          cd build/ipa
+          zip -qr "$CM_BUILD_DIR/artifacts/Zirox-openwrt-unsigned.ipa" Payload
+      - name: Audit unsigned release bundle
+        script: python3 scripts/audit_release.py --ipa artifacts/Zirox-openwrt-unsigned.ipa
+    artifacts:
+      - artifacts/Zirox-openwrt-unsigned.ipa
