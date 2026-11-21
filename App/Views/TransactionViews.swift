@@ -17,6 +17,11 @@ enum ConfigReloadMap {
         case "ddns": return ["ddns"]
         case "appfilter": return ["appfilter"]
         case "vlmcsd": return ["vlmcsd"]
+        case "frpc": return ["frpc"]
+        case "natmap": return ["natmap"]
+        case "luci_socat": return ["socat"]
+        case "zerotier": return ["zerotier"]
+        case "webdav": return ["webdav"]
         default: return []
         }
     }

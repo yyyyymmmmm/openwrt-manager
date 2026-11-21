@@ -885,6 +885,23 @@
         }
       }
     },
+    "FRP 客户端": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FRP 客户端"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FRP Client"
+          }
+        }
+      }
+    },
     "HTTP · 当前连接未加密": {
       "extractionState": "manual",
       "localizations": {
@@ -1051,6 +1068,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "NAT Rules"
+          }
+        }
+      }
+    },
+    "NATMap 借助 STUN 服务器打洞，把内网端口映射到公网地址上，并周期性访问保活地址维持映射不失效。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NATMap 借助 STUN 服务器打洞，把内网端口映射到公网地址上，并周期性访问保活地址维持映射不失效。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NATMap uses a STUN server to punch a hole and map an internal port to a public address, and periodically visits the keep-alive address so the mapping does not expire."
           }
         }
       }
@@ -1259,6 +1293,40 @@
         }
       }
     },
+    "STUN 服务器": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "STUN 服务器"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "STUN Server"
+          }
+        }
+      }
+    },
+    "Socat 端口转发": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Socat 端口转发"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Socat Port Forwarding"
+          }
+        }
+      }
+    },
     "UPnP IGD 和 PCP": {
       "extractionState": "manual",
       "localizations": {
@@ -1357,6 +1425,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "WAN Down / Recovered"
+          }
+        }
+      }
+    },
+    "WebDAV 文件服务": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebDAV 文件服务"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebDAV File Service"
+          }
+        }
+      }
+    },
+    "WebDAV 服务不向路由器汇报运行状态（没有状态通道），这里只能确认下面的配置；服务是否真在运行，可到概览的进程页核对。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebDAV 服务不向路由器汇报运行状态（没有状态通道），这里只能确认下面的配置；服务是否真在运行，可到概览的进程页核对。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The WebDAV service does not report its running state to the router (there is no status channel), so this page can only confirm the configuration below. To check whether it is actually running, see the Processes page in Overview."
           }
         }
       }
@@ -1799,6 +1901,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "This is the SSH host fingerprint the router presented for this connection. Compare it with the fingerprint shown locally on the router or in your records before trusting it. Once trusted, later connections are verified automatically; if the fingerprint ever changes, the connection is blocked and you are told."
+          }
+        }
+      }
+    },
+    "不允许": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不允许"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not allowed"
           }
         }
       }
@@ -2347,6 +2466,23 @@
         }
       }
     },
+    "保存后写入路由器配置并重启 ZeroTier 服务生效。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存后写入路由器配置并重启 ZeroTier 服务生效。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saving writes the router configuration and restarts the ZeroTier service to take effect."
+          }
+        }
+      }
+    },
     "保存后写入路由器配置并重启 vlmcsd 服务生效。": {
       "extractionState": "manual",
       "localizations": {
@@ -2496,6 +2632,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Stay connected for a while and curves will accumulate here. Periods when the app was closed and background sampling was not scheduled by the system have no data."
+          }
+        }
+      }
+    },
+    "保活地址": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保活地址"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep-Alive Address"
           }
         }
       }
@@ -2670,6 +2823,40 @@
         }
       }
     },
+    "允许": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "允许"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allowed"
+          }
+        }
+      }
+    },
+    "允许外网访问": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "允许外网访问"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow WAN Access"
+          }
+        }
+      }
+    },
     "允许本地网络访问后重试。访客 Wi-Fi、客户端隔离、VPN 或防火墙可能阻止访问。扫描只检查当前 Wi-Fi 网段的 Web 端口，不保证找到所有路由器。": {
       "extractionState": "manual",
       "localizations": {
@@ -2789,6 +2976,23 @@
         }
       }
     },
+    "全局路由": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全局路由"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Global Routes"
+          }
+        }
+      }
+    },
     "全局（不针对某台路由器）": {
       "extractionState": "manual",
       "localizations": {
@@ -2887,6 +3091,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "全部路由器"
+          }
+        }
+      }
+    },
+    "共享目录": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共享目录"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shared Directory"
+          }
+        }
+      }
+    },
+    "共享设置": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共享设置"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sharing Settings"
           }
         }
       }
@@ -3656,6 +3894,23 @@
         }
       }
     },
+    "加入网络": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加入网络"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Join Network"
+          }
+        }
+      }
+    },
     "加大": {
       "extractionState": "manual",
       "localizations": {
@@ -3839,6 +4094,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Protocol"
+          }
+        }
+      }
+    },
+    "协议 %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "协议 %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protocol %@"
           }
         }
       }
@@ -4506,6 +4778,23 @@
         }
       }
     },
+    "向左滑动可离开网络（经确认后写入配置）。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "向左滑动可离开网络（经确认后写入配置）。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Swipe left to leave a network (written to the configuration after confirmation)."
+          }
+        }
+      }
+    },
     "否": {
       "extractionState": "manual",
       "localizations": {
@@ -4591,6 +4880,40 @@
         }
       }
     },
+    "启用 WebDAV": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启用 WebDAV"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enable WebDAV"
+          }
+        }
+      }
+    },
+    "启用 ZeroTier": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启用 ZeroTier"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enable ZeroTier"
+          }
+        }
+      }
+    },
     "启用应用过滤": {
       "extractionState": "manual",
       "localizations": {
@@ -4604,6 +4927,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "Enable App Filtering"
+          }
+        }
+      }
+    },
+    "启用映射": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启用映射"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enable mapping"
+          }
+        }
+      }
+    },
+    "启用此规则": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启用此规则"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enable this rule"
+          }
+        }
+      }
+    },
+    "启用此隧道": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启用此隧道"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enable this tunnel"
           }
         }
       }
@@ -4914,6 +5288,23 @@
         }
       }
     },
+    "在下方输入网络 ID 即可加入一个 ZeroTier 网络。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在下方输入网络 ID 即可加入一个 ZeroTier 网络。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter a network ID below to join a ZeroTier network."
+          }
+        }
+      }
+    },
     "在已发现的管理页面中查找": {
       "extractionState": "manual",
       "localizations": {
@@ -5016,6 +5407,23 @@
         }
       }
     },
+    "地址族": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地址族"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Address Family"
+          }
+        }
+      }
+    },
     "地址池": {
       "extractionState": "manual",
       "localizations": {
@@ -5063,6 +5471,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Domain"
+          }
+        }
+      }
+    },
+    "域名 %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "域名 %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Domain %@"
           }
         }
       }
@@ -5730,6 +6155,40 @@
         }
       }
     },
+    "尚未加入网络": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未加入网络"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Networks Joined"
+          }
+        }
+      }
+    },
+    "尚未填写服务器地址，客户端连不上 FRP 服务端。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未填写服务器地址，客户端连不上 FRP 服务端。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No server address is set yet, so the client cannot reach the FRP server."
+          }
+        }
+      }
+    },
     "尚未连接路由器。": {
       "extractionState": "manual",
       "localizations": {
@@ -6087,6 +6546,23 @@
         }
       }
     },
+    "已加入的网络": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已加入的网络"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Joined Networks"
+          }
+        }
+      }
+    },
     "已发送重启指令": {
       "extractionState": "manual",
       "localizations": {
@@ -6440,6 +6916,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Disabled"
+          }
+        }
+      }
+    },
+    "已经加入了这个网络。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已经加入了这个网络。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This network has already been joined."
           }
         }
       }
@@ -7664,6 +8157,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Open System Settings"
+          }
+        }
+      }
+    },
+    "托管地址": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "托管地址"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Managed Addresses"
           }
         }
       }
@@ -9045,6 +9555,23 @@
         }
       }
     },
+    "映射端口": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "映射端口"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mapped Port"
+          }
+        }
+      }
+    },
     "是": {
       "extractionState": "manual",
       "localizations": {
@@ -9317,6 +9844,23 @@
         }
       }
     },
+    "暂无映射配置": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无映射配置"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Mapping Configuration"
+          }
+        }
+      }
+    },
     "暂无服务": {
       "extractionState": "manual",
       "localizations": {
@@ -9555,6 +10099,23 @@
         }
       }
     },
+    "暂无转发规则": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无转发规则"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Forwarding Rules"
+          }
+        }
+      }
+    },
     "暂无速率数据": {
       "extractionState": "manual",
       "localizations": {
@@ -9568,6 +10129,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "No Rate Data Yet"
+          }
+        }
+      }
+    },
+    "暂无隧道": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无隧道"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Tunnels"
           }
         }
       }
@@ -9810,6 +10388,40 @@
         }
       }
     },
+    "服务器地址": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器地址"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server Address"
+          }
+        }
+      }
+    },
+    "服务开关": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务开关"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Service Switch"
+          }
+        }
+      }
+    },
     "服务操作后状态未达预期": {
       "extractionState": "manual",
       "localizations": {
@@ -9912,6 +10524,23 @@
         }
       }
     },
+    "未在配置中识别到启用开关的位置，开关为只读。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未在配置中识别到启用开关的位置，开关为只读。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The enable switch was not found in the configuration, so it is read-only."
+          }
+        }
+      }
+    },
     "未在配置中识别到总开关的位置，开关为只读。": {
       "extractionState": "manual",
       "localizations": {
@@ -9959,6 +10588,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "No wireless device configuration found; Wi-Fi cannot be toggled."
+          }
+        }
+      }
+    },
+    "未找到服务器配置节。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未找到服务器配置节。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No server configuration section was found."
           }
         }
       }
@@ -10082,6 +10728,23 @@
         }
       }
     },
+    "未设置": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未设置"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not set"
+          }
+        }
+      }
+    },
     "未识别到分类规则的配置存储位置，规则为只读（上方开关状态来自路由器实时规则）。": {
       "extractionState": "manual",
       "localizations": {
@@ -10146,6 +10809,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Not connected to a router."
+          }
+        }
+      }
+    },
+    "本地 %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本地 %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local %@"
           }
         }
       }
@@ -11272,6 +11952,23 @@
         }
       }
     },
+    "正在读取 FRP 配置…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在读取 FRP 配置…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading FRP configuration…"
+          }
+        }
+      }
+    },
     "正在读取 KMS 配置…": {
       "extractionState": "manual",
       "localizations": {
@@ -11306,6 +12003,23 @@
         }
       }
     },
+    "正在读取 NATMap 配置…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在读取 NATMap 配置…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading NATMap configuration…"
+          }
+        }
+      }
+    },
     "正在读取 Open-Box…": {
       "extractionState": "manual",
       "localizations": {
@@ -11323,6 +12037,40 @@
         }
       }
     },
+    "正在读取 Socat 配置…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在读取 Socat 配置…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading Socat configuration…"
+          }
+        }
+      }
+    },
+    "正在读取 WebDAV 配置…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在读取 WebDAV 配置…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading WebDAV configuration…"
+          }
+        }
+      }
+    },
     "正在读取 WireGuard…": {
       "extractionState": "manual",
       "localizations": {
@@ -11336,6 +12084,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Loading WireGuard…"
+          }
+        }
+      }
+    },
+    "正在读取 ZeroTier 配置…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在读取 ZeroTier 配置…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading ZeroTier configuration…"
           }
         }
       }
@@ -11850,6 +12615,57 @@
         }
       }
     },
+    "此固件未向 App 会话开放 frpc 配置的读取（rpcd 未授权或配置不存在）。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此固件未向 App 会话开放 frpc 配置的读取（rpcd 未授权或配置不存在）。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This firmware does not grant the app session read access to the frpc configuration (rpcd not authorized, or the configuration does not exist)."
+          }
+        }
+      }
+    },
+    "此固件未向 App 会话开放 luci_socat 配置的读取（rpcd 未授权或配置不存在）。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此固件未向 App 会话开放 luci_socat 配置的读取（rpcd 未授权或配置不存在）。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This firmware does not grant the app session read access to the luci_socat configuration (rpcd not authorized, or the configuration does not exist)."
+          }
+        }
+      }
+    },
+    "此固件未向 App 会话开放 natmap 配置的读取（rpcd 未授权或配置不存在）。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此固件未向 App 会话开放 natmap 配置的读取（rpcd 未授权或配置不存在）。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This firmware does not grant the app session read access to the natmap configuration (rpcd not authorized, or the configuration does not exist)."
+          }
+        }
+      }
+    },
     "此固件未向 App 会话开放 vlmcsd 配置的读取（rpcd 未授权或配置不存在）。": {
       "extractionState": "manual",
       "localizations": {
@@ -11863,6 +12679,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "This firmware does not grant the app session read access to the vlmcsd configuration (not authorised by rpcd, or the configuration does not exist)."
+          }
+        }
+      }
+    },
+    "此固件未向 App 会话开放 webdav 配置的读取（rpcd 未授权或配置不存在）。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此固件未向 App 会话开放 webdav 配置的读取（rpcd 未授权或配置不存在）。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This firmware does not grant the app session read access to the webdav configuration (rpcd not authorized, or the configuration does not exist)."
+          }
+        }
+      }
+    },
+    "此固件未向 App 会话开放 zerotier 配置的读取（rpcd 未授权或配置不存在）。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此固件未向 App 会话开放 zerotier 配置的读取（rpcd 未授权或配置不存在）。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This firmware does not grant the app session read access to the zerotier configuration (rpcd not authorized, or the configuration does not exist)."
           }
         }
       }
@@ -12560,6 +13410,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sign In to Panel & Retry"
+          }
+        }
+      }
+    },
+    "监听端口": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "监听端口"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listen Port"
+          }
+        }
+      }
+    },
+    "监听端口 %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "监听端口 %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listen port %@"
           }
         }
       }
@@ -13703,6 +14587,40 @@
         }
       }
     },
+    "网络 ID 应为 16 位十六进制字符。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "网络 ID 应为 16 位十六进制字符。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A network ID must be 16 hexadecimal characters."
+          }
+        }
+      }
+    },
+    "网络 ID（16 位十六进制）": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "网络 ID（16 位十六进制）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Network ID (16 hex digits)"
+          }
+        }
+      }
+    },
     "网络不可用。请连接路由器所在的 Wi-Fi，并在设置中允许本地网络访问。": {
       "extractionState": "manual",
       "localizations": {
@@ -14536,6 +15454,23 @@
         }
       }
     },
+    "访问令牌": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "访问令牌"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Access Token"
+          }
+        }
+      }
+    },
     "访问统计": {
       "extractionState": "manual",
       "localizations": {
@@ -14757,6 +15692,23 @@
         }
       }
     },
+    "账号": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "账号"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account"
+          }
+        }
+      }
+    },
     "跟随系统": {
       "extractionState": "manual",
       "localizations": {
@@ -14872,6 +15824,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Speed-Test Components on the Router"
+          }
+        }
+      }
+    },
+    "路由器上还没有 NATMap 配置节，可在编辑配置中新增。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路由器上还没有 NATMap 配置节，可在编辑配置中新增。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The router has no NATMap configuration section yet. Add one in Edit Configuration."
           }
         }
       }
@@ -15522,6 +16491,40 @@
         }
       }
     },
+    "转发到 %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "转发到 %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forward to %@"
+          }
+        }
+      }
+    },
+    "转发规则": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "转发规则"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forwarding Rules"
+          }
+        }
+      }
+    },
     "轮询引擎正在采集，稍后将显示曲线。": {
       "extractionState": "manual",
       "localizations": {
@@ -15743,6 +16746,23 @@
         }
       }
     },
+    "运行状态无法判定": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运行状态无法判定"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Running State Cannot Be Determined"
+          }
+        }
+      }
+    },
     "运行进程": {
       "extractionState": "manual",
       "localizations": {
@@ -15807,6 +16827,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Last 7 Days"
+          }
+        }
+      }
+    },
+    "还没有配置任何端口转发规则，可在编辑配置中新增。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还没有配置任何端口转发规则，可在编辑配置中新增。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No port forwarding rules are configured yet. Add one in Edit Configuration."
+          }
+        }
+      }
+    },
+    "还没有配置任何隧道，可在编辑配置中新增。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还没有配置任何隧道，可在编辑配置中新增。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No tunnels are configured yet. Add one in Edit Configuration."
           }
         }
       }
@@ -15913,6 +16967,23 @@
         }
       }
     },
+    "这里只显示路由器配置中加入的网络。节点的实时在线状态要靠路由器上的 ZeroTier 工具输出，路由器没有向 App 开放这条通道，所以这里不显示在线状态。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这里只显示路由器配置中加入的网络。节点的实时在线状态要靠路由器上的 ZeroTier 工具输出，路由器没有向 App 开放这条通道，所以这里不显示在线状态。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This page only shows the networks recorded in the router configuration. Live node status comes from the ZeroTier tool on the router, and the router does not expose that channel to the app, so online status is not shown here."
+          }
+        }
+      }
+    },
     "进程": {
       "extractionState": "manual",
       "localizations": {
@@ -15926,6 +16997,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Processes"
+          }
+        }
+      }
+    },
+    "远端端口 %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "远端端口 %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote port %@"
           }
         }
       }
@@ -16780,6 +17868,23 @@
         }
       }
     },
+    "配置里没有找到 WebDAV 的设置节。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配置里没有找到 WebDAV 的设置节。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No WebDAV settings section was found in the configuration."
+          }
+        }
+      }
+    },
     "配置页面直接编辑路由器返回的 UCI 字段。应用修改前可预览；应用后需在 90 秒内验证连接并确认保留。修改网络或管理访问可能导致连接中断。": {
       "extractionState": "manual",
       "localizations": {
@@ -17324,6 +18429,23 @@
         }
       }
     },
+    "隧道": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隧道"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tunnels"
+          }
+        }
+      }
+    },
     "需要本地网络权限": {
       "extractionState": "manual",
       "localizations": {
@@ -17779,6 +18901,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Default Program"
+          }
+        }
+      }
+    },
+    "默认路由": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "默认路由"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default Route"
           }
         }
       }

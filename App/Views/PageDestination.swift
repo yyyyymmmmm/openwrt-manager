@@ -59,6 +59,11 @@ struct PageDestination: View {
             case "appfilter": AppFilterView()
             case "wol": WolView()
             case "vlmcsd": VLMCSDView()
+            case "frpc": FrpcView()
+            case "natmap": NatmapView()
+            case "socat": SocatView()
+            case "zerotier": ZeroTierView()
+            case "webdav": WebdavView()
             default: GenericServiceView(page: page)
             }
         case .serviceGeneric:
