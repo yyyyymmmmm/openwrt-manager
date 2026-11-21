@@ -81,6 +81,8 @@ struct PageDestination: View {
             OnlineUpgradeView()
         case .backupRestore:
             BackupRestoreView()
+        case .adminSecurity:
+            AdminSecurityView(page: page)
         case .rebootInfo:
             RebootInfoView()
         case .terminal:

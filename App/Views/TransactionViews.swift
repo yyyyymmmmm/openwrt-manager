@@ -159,6 +159,11 @@ struct ConfigEditorView: View {
     @State private var error: String?
     @State private var plan: PlanPresentation?
     @State private var planError: String?
+    /// Section currently receiving a brand-new option (audit F10).
+    @State private var addingOptionTo: String?
+    @State private var newOptionKey = ""
+    @State private var newOptionValue = ""
+    @State private var newOptionError: String?
 
     var body: some View {
         List {
@@ -176,6 +181,14 @@ struct ConfigEditorView: View {
                                 let key = section.values.keys.sorted()[offset]
                                 removeOption(sectionID: section.id, key: key)
                             }
+                        }
+                        Button {
+                            newOptionKey = ""
+                            newOptionValue = ""
+                            newOptionError = nil
+                            addingOptionTo = section.id
+                        } label: {
+                            Label("新增选项", systemImage: "plus.circle")
                         }
                         Button(role: .destructive) {
                             removeSection(section.id)
@@ -215,6 +228,60 @@ struct ConfigEditorView: View {
                 dismiss()
             }
         }
+        .sheet(isPresented: Binding(get: { addingOptionTo != nil },
+                                    set: { if !$0 { addingOptionTo = nil } })) {
+            NavigationStack {
+                Form {
+                    Section {
+                        TextField("选项名", text: $newOptionKey)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                        TextField("选项值", text: $newOptionValue)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                        if let newOptionError {
+                            Text(newOptionError)
+                                .font(AppTypography.secondary).foregroundStyle(AppPalette.red)
+                        }
+                    } footer: {
+                        Text("新选项以文本值加入本节草稿，与其他修改一起在保存时走事务确认；保存前不会写到路由器。")
+                    }
+                }
+                .navigationTitle("新增选项")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("取消") { addingOptionTo = nil }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("添加") { commitNewOption() }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
+    }
+
+    /// Adds one option to the draft section (audit F10): the key
+    /// must be a plausible UCI option name and must not collide
+    /// with a key the section already has. The value lands as a
+    /// plain string; list-valued options can be reshaped with the
+    /// section's existing editors afterwards.
+    private func commitNewOption() {
+        guard let sectionID = addingOptionTo,
+              let index = draft?.sections.firstIndex(where: { $0.id == sectionID }) else { return }
+        let key = newOptionKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let allowed = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
+        guard !key.isEmpty, key.allSatisfy({ allowed.contains($0) }) else {
+            newOptionError = "选项名只能含字母、数字和下划线。"
+            return
+        }
+        guard draft?.sections[index].values[key] == nil else {
+            newOptionError = "本节已有同名选项「\(key)」，直接改它的值即可。"
+            return
+        }
+        setValue(sectionID: sectionID, key: key, value: .string(newOptionValue))
+        addingOptionTo = nil
     }
 
     /// Section headers name sections the way a person would

@@ -7,6 +7,9 @@ extension KitL10n {
     /// string passed to KitL10n.text/format and every FieldCatalog
     /// label must have an entry here.
     static let englishTable: [String: String] = [
+        "软件包名「%@」不合法：只能含字母、数字和 - _ . +，且须以字母或数字开头。": "The package name “%@” is invalid: use only letters, digits and - _ . +, starting with a letter or digit.",
+        "没有指定软件包。": "No package was specified.",
+        "此会话不支持软件包安装/卸载操作。": "This session does not support package install/remove operations.",
         "HTTP %lld": "HTTP %lld",
         "Zirox-openwrt 诊断日志": "Zirox-openwrt diagnostics",
         "ubus 错误 %lld": "ubus error %lld",

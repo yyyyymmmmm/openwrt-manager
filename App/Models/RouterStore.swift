@@ -556,13 +556,25 @@ final class RouterStore {
 
 /// In-memory credentials for the SessionManager's automatic re-login.
 /// The password lives only for the duration of the connection; nothing is
-/// written anywhere by this type.
+/// written anywhere by this type. The password is replaceable under a
+/// lock for exactly one event: the user changed the router password
+/// from inside the app (package J) — the box must then hand the NEW
+/// password to the next silent re-login, or the app would lock itself
+/// out with the old one.
 private final class LiveCredentialBox: SessionCredentialProvider, @unchecked Sendable {
-    private let credentials: RouterCredentials
+    private let lock = NSLock()
+    private var credentials: RouterCredentials
     init(username: String, password: String) {
         credentials = RouterCredentials(username: username, password: password)
     }
-    func routerCredentials() async -> RouterCredentials? { credentials }
+    func routerCredentials() async -> RouterCredentials? {
+        lock.lock(); defer { lock.unlock() }
+        return credentials
+    }
+    func updatePassword(_ password: String) {
+        lock.lock(); defer { lock.unlock() }
+        credentials = RouterCredentials(username: credentials.username, password: password)
+    }
 }
 
 
@@ -576,6 +588,53 @@ extension RouterStore {
     /// Wake-on-LAN reads/actions on the live session.
     var dedicatedClient: DedicatedServiceClient? {
         sessionManager.map { DedicatedServiceClient(caller: $0) }
+    }
+
+    /// Admin security plane (package J): password change through
+    /// luci.setPassword and UPnP live mappings on the live session.
+    var adminSecurityClient: AdminSecurityClient? {
+        sessionManager.map { AdminSecurityClient(caller: $0) }
+    }
+
+    /// Package action plane (package J): install / remove / upgrade
+    /// through the router's package-manager helper.
+    var packageActionClient: PackageActionClient? {
+        sessionManager.map { PackageActionClient(caller: $0) }
+    }
+
+    /// Verifies a candidate password with one fresh login on a
+    /// throwaway transport (the live session is untouched). Used by
+    /// the password-change flow: the router-side change is only
+    /// adopted locally after the NEW password demonstrably logs in.
+    func verifyLoginWithPassword(_ password: String) async -> Bool {
+        guard let profile = activeProfile,
+              let address = try? URLNormalizer.normalize(profile.address) else { return false }
+        let transport = RouterTransport(address: address, fingerprint: nil)
+        defer { transport.close() }
+        let client = UbusClient(address: address, session: transport.session)
+        do {
+            _ = try await client.login(username: profile.username, password: password)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    /// Adopts a router password that was changed on the router and
+    /// verified by a fresh login: the in-memory box now hands the
+    /// new password to silent re-logins, and the Keychain copy is
+    /// updated too — but only when the user had chosen to remember
+    /// the password (an unremembered password stays unremembered).
+    /// Without this step the app would lock itself out at the next
+    /// session renewal.
+    func adoptNewPassword(_ password: String) throws {
+        guard let profile = activeProfile else { return }
+        liveCredentials?.updatePassword(password)
+        if let stored = try credentials.read(id: profile.id), stored.password != nil {
+            try credentials.save(StoredCredential(password: password,
+                                                  certificateFingerprint: stored.certificateFingerprint),
+                                 id: profile.id)
+        }
     }
 
     /// One fresh login attempt against the active router — the

@@ -18955,6 +18955,1502 @@
           }
         }
       }
+    },
+    "SSH 与网页服务配置": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH 与网页服务配置"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH & Web Service Settings"
+          }
+        }
+      }
+    },
+    "SSH 密钥": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH 密钥"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH Keys"
+          }
+        }
+      }
+    },
+    "SSH 授权密钥": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH 授权密钥"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH Authorized Keys"
+          }
+        }
+      }
+    },
+    "UPnP 服务在运行，但现在没有任何设备通过它打开端口。有设备申请时，映射会出现在这里。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UPnP 服务在运行，但现在没有任何设备通过它打开端口。有设备申请时，映射会出现在这里。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The UPnP service is running, but no device is holding a port open through it right now. Mappings appear here as devices request them."
+          }
+        }
+      }
+    },
+    "UPnP 配置": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UPnP 配置"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UPnP Settings"
+          }
+        }
+      }
+    },
+    "dropbear（SSH）与 uhttpd（网页服务）的详细配置仍在上方入口里；本页只把改密与 SSH 密钥这两件高频事做成专用流程。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dropbear（SSH）与 uhttpd（网页服务）的详细配置仍在上方入口里；本页只把改密与 SSH 密钥这两件高频事做成专用流程。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detailed dropbear (SSH) and uhttpd (web service) settings remain under the entry above; this page turns the two frequent jobs — password change and SSH keys — into dedicated flows."
+          }
+        }
+      }
+    },
+    "两次输入不一致。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "两次输入不一致。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The two entries do not match."
+          }
+        }
+      }
+    },
+    "从软件源重新拉取可用软件包列表，不安装或卸载任何东西。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从软件源重新拉取可用软件包列表，不安装或卸载任何东西。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Re-fetches the available package lists from the feeds. Nothing is installed or removed."
+          }
+        }
+      }
+    },
+    "保存在路由器的 /etc/dropbear/authorized_keys，写入后回读验证；新 SSH 连接即生效，无需重启。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存在路由器的 /etc/dropbear/authorized_keys，写入后回读验证；新 SSH 连接即生效，无需重启。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stored in the router's /etc/dropbear/authorized_keys and verified by read-back after writing; new SSH connections pick it up immediately, no restart needed."
+          }
+        }
+      }
+    },
+    "修改密码": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修改密码"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change Password"
+          }
+        }
+      }
+    },
+    "修改路由器登录密码": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修改路由器登录密码"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Router login password changed"
+          }
+        }
+      }
+    },
+    "修改路由器登录密码（待核对）": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修改路由器登录密码（待核对）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Router login password changed (unverified)"
+          }
+        }
+      }
+    },
+    "全部更新（%lld）": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部更新（%lld）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update All (%lld)"
+          }
+        }
+      }
+    },
+    "再次输入新密码": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再次输入新密码"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Re-enter the new password"
+          }
+        }
+      }
+    },
+    "写入后回读不一致，请刷新页面核对路由器上的实际内容。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "写入后回读不一致，请刷新页面核对路由器上的实际内容。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The read-back after writing did not match. Refresh the page and check what is actually on the router."
+          }
+        }
+      }
+    },
+    "写入失败：%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "写入失败：%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Write failed: %@"
+          }
+        }
+      }
+    },
+    "删除 SSH 授权密钥": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除 SSH 授权密钥"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH authorized key removed"
+          }
+        }
+      }
+    },
+    "删除后，持有对应私钥的设备将无法再通过密钥登录这台路由器的 SSH。密码登录不受影响。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除后，持有对应私钥的设备将无法再通过密钥登录这台路由器的 SSH。密码登录不受影响。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After removal, devices holding the matching private key can no longer sign in to this router's SSH with it. Password sign-in is unaffected."
+          }
+        }
+      }
+    },
+    "删除密钥": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除密钥"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove Key"
+          }
+        }
+      }
+    },
+    "刷新软件源": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刷新软件源"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh Feeds"
+          }
+        }
+      }
+    },
+    "包名不合法：只能含字母、数字和 - _ . +，且须以字母或数字开头。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "包名不合法：只能含字母、数字和 - _ . +，且须以字母或数字开头。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invalid package name: use only letters, digits and - _ . +, starting with a letter or digit."
+          }
+        }
+      }
+    },
+    "卸载": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卸载"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove"
+          }
+        }
+      }
+    },
+    "卸载后依赖它的功能会立即失效；若其他软件包依赖它，路由器会拒绝并说明。完成后回读验证。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卸载后依赖它的功能会立即失效；若其他软件包依赖它，路由器会拒绝并说明。完成后回读验证。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Features depending on it stop working immediately; if other packages depend on it, the router refuses and explains. The result is verified by read-back."
+          }
+        }
+      }
+    },
+    "卸载软件包": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卸载软件包"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove package"
+          }
+        }
+      }
+    },
+    "命令已执行，但回读的软件包列表与预期不一致，请核对。%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "命令已执行，但回读的软件包列表与预期不一致，请核对。%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The command ran, but the package list read back does not match the expected result — please check. %@"
+          }
+        }
+      }
+    },
+    "外部端口 %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "外部端口 %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "External port %@"
+          }
+        }
+      }
+    },
+    "外部端口 %@（%@）": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "外部端口 %@（%@）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "External port %@ (%@)"
+          }
+        }
+      }
+    },
+    "安装": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安装"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install"
+          }
+        }
+      }
+    },
+    "安装与卸载走路由器自己的包管理通道（与电脑版软件包页相同），执行后回读列表验证；更新软件包在「在线升级」页逐个或全部进行。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安装与卸载走路由器自己的包管理通道（与电脑版软件包页相同），执行后回读列表验证；更新软件包在「在线升级」页逐个或全部进行。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installs and removals go through the router's own package-manager channel (the same as the web UI's software page) and are verified by read-back; updates run per-package or in bulk on the Online Upgrade page."
+          }
+        }
+      }
+    },
+    "安装软件包": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安装软件包"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install package"
+          }
+        }
+      }
+    },
+    "密码不足 8 位，偏弱：建议用更长、只用于这台路由器的密码。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密码不足 8 位，偏弱：建议用更长、只用于这台路由器的密码。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Under 8 characters — weak. Prefer a longer password used only for this router."
+          }
+        }
+      }
+    },
+    "密码会立即在路由器上生效：其他设备与浏览器要用新密码重新登录。本机已保存的这台路由器密码会同步更新，不会把你锁在门外。当前连接不会中断。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密码会立即在路由器上生效：其他设备与浏览器要用新密码重新登录。本机已保存的这台路由器密码会同步更新，不会把你锁在门外。当前连接不会中断。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The password takes effect on the router immediately: other devices and browsers must sign in again with the new one. The password saved on this device is updated in step, so you are not locked out. The current connection stays up."
+          }
+        }
+      }
+    },
+    "密码已修改，并已用新密码验证登录成功；本机凭据已同步更新。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密码已修改，并已用新密码验证登录成功；本机凭据已同步更新。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Password changed and verified by signing in with it; the credentials saved on this device are updated."
+          }
+        }
+      }
+    },
+    "密码已在路由器上生效，但更新本机钥匙串失败：下次连接时请手动输入新密码。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密码已在路由器上生效，但更新本机钥匙串失败：下次连接时请手动输入新密码。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The password is live on the router, but updating this device's Keychain failed: type the new password manually at the next connection."
+          }
+        }
+      }
+    },
+    "密钥已删除并回读验证。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密钥已删除并回读验证。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Key removed and verified by read-back."
+          }
+        }
+      }
+    },
+    "密钥已添加并回读验证。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密钥已添加并回读验证。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Key added and verified by read-back."
+          }
+        }
+      }
+    },
+    "已完成并回读确认。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已完成并回读确认。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done and confirmed by read-back."
+          }
+        }
+      }
+    },
+    "已通过路由器正规通道改密，并用新密码验证登录成功；本机凭据已同步更新。密码本体不入记录。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已通过路由器正规通道改密，并用新密码验证登录成功；本机凭据已同步更新。密码本体不入记录。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changed through the router's own channel and verified by signing in with the new password; local credentials updated in step. The password itself is never recorded."
+          }
+        }
+      }
+    },
+    "当前没有活动映射": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前没有活动映射"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No active mappings"
+          }
+        }
+      }
+    },
+    "新增选项": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新增选项"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add Option"
+          }
+        }
+      }
+    },
+    "新密码": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新密码"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New password"
+          }
+        }
+      }
+    },
+    "新选项以文本值加入本节草稿，与其他修改一起在保存时走事务确认；保存前不会写到路由器。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新选项以文本值加入本节草稿，与其他修改一起在保存时走事务确认；保存前不会写到路由器。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The new option joins this section's draft as a text value and goes through the same transaction confirmation on save as every other edit; nothing reaches the router before that."
+          }
+        }
+      }
+    },
+    "无活动映射通道": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无活动映射通道"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No live-mapping channel"
+          }
+        }
+      }
+    },
+    "暂无授权密钥": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无授权密钥"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No authorized keys"
+          }
+        }
+      }
+    },
+    "更新": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update"
+          }
+        }
+      }
+    },
+    "更新期间相关服务可能短暂重启。完成后重新检查可更新列表验证。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新期间相关服务可能短暂重启。完成后重新检查可更新列表验证。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Related services may restart briefly during the update. The upgradable list is re-checked afterwards to verify."
+          }
+        }
+      }
+    },
+    "更新软件包": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新软件包"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update package"
+          }
+        }
+      }
+    },
+    "本节已有同名选项「%@」，直接改它的值即可。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本节已有同名选项「%@」，直接改它的值即可。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This section already has an option named “%@” — just edit its value."
+          }
+        }
+      }
+    },
+    "正在修改并用新密码验证登录…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在修改并用新密码验证登录…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changing and verifying with the new password…"
+          }
+        }
+      }
+    },
+    "正在写入并回读验证…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在写入并回读验证…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Writing and verifying by read-back…"
+          }
+        }
+      }
+    },
+    "正在执行，包管理操作可能需要一两分钟…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在执行，包管理操作可能需要一两分钟…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Working — package operations can take a minute or two…"
+          }
+        }
+      }
+    },
+    "正在更新，服务可能短暂重启…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在更新，服务可能短暂重启…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updating — services may restart briefly…"
+          }
+        }
+      }
+    },
+    "正在读取 SSH 授权密钥…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在读取 SSH 授权密钥…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading SSH authorized keys…"
+          }
+        }
+      }
+    },
+    "正在读取活动映射…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在读取活动映射…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading active mappings…"
+          }
+        }
+      }
+    },
+    "活动映射由内网设备自动申请、到期自动回收，不需要手动维护；要限制或关闭 UPnP，去配置里调整。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "活动映射由内网设备自动申请、到期自动回收，不需要手动维护；要限制或关闭 UPnP，去配置里调整。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mappings are requested automatically by LAN devices and expire on their own — no manual upkeep. To restrict or disable UPnP, adjust its settings."
+          }
+        }
+      }
+    },
+    "活动端口映射": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "活动端口映射"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active Port Mappings"
+          }
+        }
+      }
+    },
+    "添加 SSH 授权密钥": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加 SSH 授权密钥"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH authorized key added"
+          }
+        }
+      }
+    },
+    "添加": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add"
+          }
+        }
+      }
+    },
+    "添加密钥": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加密钥"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add Key"
+          }
+        }
+      }
+    },
+    "确认修改路由器登录密码？": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确认修改路由器登录密码？"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change the router login password?"
+          }
+        }
+      }
+    },
+    "确认删除这把 SSH 密钥？": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确认删除这把 SSH 密钥？"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove this SSH key?"
+          }
+        }
+      }
+    },
+    "确认刷新软件源？": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确认刷新软件源？"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh the package feeds?"
+          }
+        }
+      }
+    },
+    "确认卸载「%@」？": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确认卸载「%@」？"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove “%@”?"
+          }
+        }
+      }
+    },
+    "确认安装「%@」？": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确认安装「%@」？"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install “%@”?"
+          }
+        }
+      }
+    },
+    "确认更新「%@」？": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确认更新「%@」？"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update “%@”?"
+          }
+        }
+      }
+    },
+    "确认更新全部可更新软件包？": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确认更新全部可更新软件包？"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update all upgradable packages?"
+          }
+        }
+      }
+    },
+    "粘贴公钥（以 ssh-ed25519 / ssh-rsa 等开头）": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "粘贴公钥（以 ssh-ed25519 / ssh-rsa 等开头）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste a public key (starts with ssh-ed25519 / ssh-rsa …)"
+          }
+        }
+      }
+    },
+    "粘贴的内容不是合法的公钥行：应以 ssh-ed25519、ssh-rsa 等类型开头，后跟 Base64 密钥体。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "粘贴的内容不是合法的公钥行：应以 ssh-ed25519、ssh-rsa 等类型开头，后跟 Base64 密钥体。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The pasted text is not a valid public-key line: it should start with a type such as ssh-ed25519 or ssh-rsa, followed by the Base64 key body."
+          }
+        }
+      }
+    },
+    "经路由器自己的包管理通道安装；其依赖会一并装上。完成后回读已安装列表验证。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "经路由器自己的包管理通道安装；其依赖会一并装上。完成后回读已安装列表验证。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installed through the router's own package-manager channel, dependencies included. The installed list is read back afterwards to verify."
+          }
+        }
+      }
+    },
+    "走路由器自己的正规改密通道（与电脑版管理页相同）。改完会先用新密码试登录一次，确认生效才更新本机保存的密码。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "走路由器自己的正规改密通道（与电脑版管理页相同）。改完会先用新密码试登录一次，确认生效才更新本机保存的密码。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uses the router's own password-change channel (the same as the web admin page). Afterwards the new password is proven with a test sign-in before the saved password on this device is updated."
+          }
+        }
+      }
+    },
+    "路由器已接受改密请求，但用新密码试登录没有通过。本机保存的密码未更新——请断开后用新密码重新连接核对；若新密码也不行，再用旧密码试一次。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路由器已接受改密请求，但用新密码试登录没有通过。本机保存的密码未更新——请断开后用新密码重新连接核对；若新密码也不行，再用旧密码试一次。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The router accepted the change, but signing in with the new password did not succeed. The password saved on this device was NOT updated — disconnect and reconnect with the new password to check; if that fails too, try the old password."
+          }
+        }
+      }
+    },
+    "路由器已接受改密，但新密码试登录未通过，本机凭据未更新。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路由器已接受改密，但新密码试登录未通过，本机凭据未更新。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The router accepted the change, but the new password did not sign in; local credentials were not updated."
+          }
+        }
+      }
+    },
+    "路由器拒绝了改密：%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路由器拒绝了改密：%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The router refused the password change: %@"
+          }
+        }
+      }
+    },
+    "路由器登录密码": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路由器登录密码"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Router Login Password"
+          }
+        }
+      }
+    },
+    "路由器返回失败（代码 %lld）。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路由器返回失败（代码 %lld）。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The router reported failure (code %lld)."
+          }
+        }
+      }
+    },
+    "转发到 %@:%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "转发到 %@:%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forwards to %@:%@"
+          }
+        }
+      }
+    },
+    "软件包操作失败%@%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "软件包操作失败%@%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Package operation failed%@%@"
+          }
+        }
+      }
+    },
+    "软件包操作完成%@%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "软件包操作完成%@%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Package operation completed%@%@"
+          }
+        }
+      }
+    },
+    "软件包操作待核对%@%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "软件包操作待核对%@%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Package operation needs checking%@%@"
+          }
+        }
+      }
+    },
+    "输入要安装的软件包名": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入要安装的软件包名"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Package name to install"
+          }
+        }
+      }
+    },
+    "输出：%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输出：%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Output: %@"
+          }
+        }
+      }
+    },
+    "还没有任何公钥被授权免密登录这台路由器的 SSH。在下方粘贴公钥即可添加。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还没有任何公钥被授权免密登录这台路由器的 SSH。在下方粘贴公钥即可添加。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No public key is authorized for passwordless SSH sign-in to this router yet. Paste one below to add it."
+          }
+        }
+      }
+    },
+    "这台路由器没有返回 UPnP 活动映射（未安装或未启用 UPnP 服务时如此）。下方配置仍可查看与修改。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这台路由器没有返回 UPnP 活动映射（未安装或未启用 UPnP 服务时如此）。下方配置仍可查看与修改。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This router returned no UPnP mappings (expected when UPnP is not installed or not enabled). The settings below remain available."
+          }
+        }
+      }
+    },
+    "这把密钥已经在授权列表里了。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这把密钥已经在授权列表里了。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This key is already in the authorized list."
+          }
+        }
+      }
+    },
+    "选项值": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选项值"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Option value"
+          }
+        }
+      }
+    },
+    "选项名": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选项名"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Option name"
+          }
+        }
+      }
+    },
+    "选项名只能含字母、数字和下划线。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选项名只能含字母、数字和下划线。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Option names may contain only letters, digits and underscores."
+          }
+        }
+      }
+    },
+    "：": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "："
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ": "
+          }
+        }
+      }
     }
   },
   "version": "1.0"

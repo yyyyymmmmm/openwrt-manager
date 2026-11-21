@@ -531,9 +531,100 @@ struct FirewallConfigView: View {
 
 // MARK: - UPnP
 
+/// UPnP page (audit F5): the live port-mapping table is the page's
+/// reason to exist — LuCI leads with it — so it leads here too,
+/// read from miniupnpd's rpcd object (luci.upnp get_status). The
+/// upnpd configuration moves one level down, still fully editable.
+/// A router without the luci.upnp object (UPnP not installed) gets
+/// an honest "no live channel" note instead of an empty table.
 struct UPnPView: View {
+    @Environment(RouterStore.self) private var store
+    @State private var state: LoadState<[UPnPMapping]> = .loading
+    @State private var channelUnavailable = false
+
     var body: some View {
-        UCIConfigView(title: "UPnP IGD 和 PCP", configNames: ["upnpd"])
+        List {
+            Section {
+                switch state {
+                case .loading:
+                    ProgressView("正在读取活动映射…")
+                case .failed(let message):
+                    ErrorStateView(message: message) { Task { await load() } }
+                case .loaded(let mappings):
+                    if channelUnavailable {
+                        EmptyStateView(title: "无活动映射通道", message: "这台路由器没有返回 UPnP 活动映射（未安装或未启用 UPnP 服务时如此）。下方配置仍可查看与修改。", symbol: "questionmark.circle")
+                    } else if mappings.isEmpty {
+                        EmptyStateView(title: "当前没有活动映射", message: "UPnP 服务在运行，但现在没有任何设备通过它打开端口。有设备申请时，映射会出现在这里。", symbol: "arrow.left.arrow.right.square")
+                    } else {
+                        ForEach(mappings) { mapping in
+                            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                                Text(mappingTitle(mapping)).font(AppTypography.rowTitle)
+                                Text(mappingDetail(mapping))
+                                    .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                                if let description = mapping.mappingDescription, !description.isEmpty {
+                                    Text(description)
+                                        .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                                }
+                            }
+                        }
+                    }
+                }
+            } header: {
+                TermLabel(text: "活动端口映射", term: "UPnP")
+            }
+            if case .loaded(let mappings) = state, !mappings.isEmpty {
+                RawDataSection {
+                    ForEach(mappings) { mapping in
+                        ForEach(mapping.fields.keys.sorted(), id: \.self) { key in
+                            LabeledContent(key, value: mapping.fields[key] ?? "")
+                        }
+                    }
+                }
+            }
+            Section {
+                NavigationLink {
+                    UCIConfigView(title: "UPnP IGD 和 PCP", configNames: ["upnpd"])
+                } label: {
+                    Label("UPnP 配置", systemImage: "gearshape")
+                }
+                Text("活动映射由内网设备自动申请、到期自动回收，不需要手动维护；要限制或关闭 UPnP，去配置里调整。")
+                    .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+            }
+        }
+        .navigationTitle("UPnP IGD 和 PCP")
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await load() }
+        .refreshable { await load() }
+    }
+
+    private func mappingTitle(_ mapping: UPnPMapping) -> String {
+        let external = mapping.externalPort.map(String.init) ?? "?"
+        let proto = mapping.protocolName ?? ""
+        return proto.isEmpty ? L10n.format("外部端口 %@", external)
+                             : L10n.format("外部端口 %@（%@）", external, proto)
+    }
+
+    private func mappingDetail(_ mapping: UPnPMapping) -> String {
+        let address = mapping.internalAddress ?? "?"
+        let port = mapping.internalPort.map(String.init) ?? "?"
+        return L10n.format("转发到 %@:%@", address, port)
+    }
+
+    private func load() async {
+        guard let client = store.adminSecurityClient else {
+            state = .failed("未连接路由器。")
+            return
+        }
+        state = .loading
+        do {
+            state = .loaded(try await client.upnpMappings())
+            channelUnavailable = false
+        } catch {
+            // The object being absent is a router fact, not a read
+            // failure: present it as such and keep the config layer.
+            channelUnavailable = true
+            state = .loaded([])
+        }
     }
 }
 

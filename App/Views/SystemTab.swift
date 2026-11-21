@@ -61,9 +61,89 @@ struct SystemTabScreen: View {
 
 // MARK: - Packages (back in the system tab, per spec 3.2)
 
+/// One pending package action awaiting its confirmation sheet —
+/// shared by the packages page and the online-upgrade page
+/// (package J, audit F7).
+private struct PendingPackageAction: Identifiable {
+    let action: PackageActionKind
+    let packages: [String]
+    var upgradableBefore: Int? = nil
+    var id: String { action.rawValue + "|" + packages.joined(separator: ",") }
+
+    var title: String {
+        switch action {
+        case .update: return L10n.string("确认刷新软件源？")
+        case .install: return L10n.format("确认安装「%@」？", packages.first ?? "")
+        case .remove: return L10n.format("确认卸载「%@」？", packages.first ?? "")
+        case .upgrade:
+            return packages.isEmpty ? L10n.string("确认更新全部可更新软件包？")
+                                    : L10n.format("确认更新「%@」？", packages.first ?? "")
+        }
+    }
+
+    var message: String {
+        switch action {
+        case .update:
+            return L10n.string("从软件源重新拉取可用软件包列表，不安装或卸载任何东西。")
+        case .install:
+            return L10n.string("经路由器自己的包管理通道安装；其依赖会一并装上。完成后回读已安装列表验证。")
+        case .remove:
+            return L10n.string("卸载后依赖它的功能会立即失效；若其他软件包依赖它，路由器会拒绝并说明。完成后回读验证。")
+        case .upgrade:
+            return L10n.string("更新期间相关服务可能短暂重启。完成后重新检查可更新列表验证。")
+        }
+    }
+}
+
+/// The confirmation + execution plumbing both package pages use:
+/// confirm first (package actions are real writes), run through
+/// RouterStore's single gate, then show the verified outcome.
+private struct PackageActionRunner: ViewModifier {
+    @Environment(RouterStore.self) private var store
+    @Binding var pending: PendingPackageAction?
+    @Binding var working: Bool
+    @Binding var feedback: String?
+    @Binding var feedbackFailed: Bool
+    var onFinished: (() async -> Void)? = nil
+
+    func body(content: Content) -> some View {
+        content
+            .confirmationDialog(
+                pending?.title ?? "",
+                isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }),
+                titleVisibility: .visible
+            ) {
+                Button(pending?.action.eventTitle ?? "确认") {
+                    if let pending { Task { await run(pending) } }
+                    pending = nil
+                }
+                Button("取消", role: .cancel) { pending = nil }
+            } message: {
+                Text(pending?.message ?? "")
+            }
+    }
+
+    private func run(_ pending: PendingPackageAction) async {
+        working = true
+        feedback = nil
+        let result = await store.performPackageAction(
+            action: pending.action, packages: pending.packages,
+            upgradableBefore: pending.upgradableBefore)
+        working = false
+        feedback = result.detail
+        feedbackFailed = result.isFailure
+        await onFinished?()
+    }
+}
+
 struct PackagesView: View {
     @Environment(RouterStore.self) private var store
     @State private var query = ""
+    @State private var installName = ""
+    @State private var pending: PendingPackageAction?
+    @State private var working = false
+    @State private var feedback: String?
+    @State private var feedbackFailed = false
 
     private var filtered: [InstalledPackage] {
         let packages = store.inventory.packages
@@ -77,6 +157,38 @@ struct PackagesView: View {
                 Section {
                     SummaryBanner(summary: SummaryEngine.packages(installed: store.inventory.packages.count))
                         .summaryRow()
+                }
+                Section {
+                    HStack {
+                        TextField("输入要安装的软件包名", text: $installName)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                        Button("安装") {
+                            let name = installName.trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard PackageNameValidator.isValid(name) else {
+                                feedback = "包名不合法：只能含字母、数字和 - _ . +，且须以字母或数字开头。"
+                                feedbackFailed = true
+                                return
+                            }
+                            pending = PendingPackageAction(action: .install, packages: [name])
+                        }
+                        .disabled(installName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || working)
+                    }
+                    Button {
+                        pending = PendingPackageAction(action: .update)
+                    } label: {
+                        Label("刷新软件源", systemImage: "arrow.clockwise")
+                    }
+                    .disabled(working)
+                    if working {
+                        HStack { ProgressView(); Text("正在执行，包管理操作可能需要一两分钟…") }
+                    }
+                    if let feedback {
+                        Text(feedback).font(AppTypography.secondary)
+                            .foregroundStyle(feedbackFailed ? AppPalette.red : AppPalette.muted)
+                    }
+                } footer: {
+                    Text("安装与卸载走路由器自己的包管理通道（与电脑版软件包页相同），执行后回读列表验证；更新软件包在「在线升级」页逐个或全部进行。")
                 }
             }
             AppSearchField(prompt: "搜索软件包", text: $query)
@@ -99,12 +211,19 @@ struct PackagesView: View {
                             Spacer()
                             Text(package.version).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                         }
+                        .swipeActions(edge: .trailing) {
+                            Button("卸载", role: .destructive) {
+                                pending = PendingPackageAction(action: .remove, packages: [package.name])
+                            }
+                        }
                     }
                 }
             }
         }
         .navigationTitle("软件包")
         .navigationBarTitleDisplayMode(.inline)
+        .modifier(PackageActionRunner(pending: $pending, working: $working,
+                                      feedback: $feedback, feedbackFailed: $feedbackFailed))
     }
 }
 
@@ -355,6 +474,10 @@ struct OnlineUpgradeView: View {
     /// all — presented as "cannot check", never as "no updates"
     /// (audit F2).
     @State private var state: LoadState<UpgradablePackages?> = .loading
+    @State private var pending: PendingPackageAction?
+    @State private var working = false
+    @State private var feedback: String?
+    @State private var feedbackFailed = false
 
     var body: some View {
         List {
@@ -381,8 +504,32 @@ struct OnlineUpgradeView: View {
                         if check.lines.isEmpty {
                             EmptyStateView(title: "暂无可更新项", message: "已向路由器查询，当前没有可更新的软件包（列表未刷新时以路由器为准）。", symbol: "checkmark.circle")
                         } else {
+                            Button {
+                                pending = PendingPackageAction(action: .upgrade, packages: [],
+                                                               upgradableBefore: check.lines.count)
+                            } label: {
+                                Label("全部更新（\(check.lines.count)）", systemImage: "arrow.up.circle")
+                            }
+                            .disabled(working)
                             ForEach(check.lines, id: \.self) { line in
-                                Text(line).font(AppTypography.secondary)
+                                HStack {
+                                    Text(line).font(AppTypography.secondary)
+                                    Spacer()
+                                    if let name = UpgradableNameExtractor.packageName(
+                                        inLine: line, installed: store.inventory.packages.map(\.name)) {
+                                        Button("更新") {
+                                            pending = PendingPackageAction(action: .upgrade, packages: [name])
+                                        }
+                                        .disabled(working)
+                                    }
+                                }
+                            }
+                            if working {
+                                HStack { ProgressView(); Text("正在更新，服务可能短暂重启…") }
+                            }
+                            if let feedback {
+                                Text(feedback).font(AppTypography.secondary)
+                                    .foregroundStyle(feedbackFailed ? AppPalette.red : AppPalette.muted)
                             }
                         }
                     } else {
@@ -399,6 +546,9 @@ struct OnlineUpgradeView: View {
         .navigationTitle("在线升级")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
+        .modifier(PackageActionRunner(pending: $pending, working: $working,
+                                      feedback: $feedback, feedbackFailed: $feedbackFailed,
+                                      onFinished: { await load() }))
     }
 
     private func load() async {
