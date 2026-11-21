@@ -136,6 +136,23 @@ public actor SessionManager {
         }
     }
 
+    /// Package actions (audit F7): same session discipline as the
+    /// installed list — one permission rejection renews the session
+    /// and retries exactly once. Note the retry re-runs the helper;
+    /// package managers are idempotent for install/remove/upgrade,
+    /// and a permission rejection means the first attempt was
+    /// refused before it could run.
+    public func packageManagerAction(action: PackageActionKind, packages: [String]) async throws -> PackageActionOutcome {
+        let session = try await session()
+        do {
+            return try await client.packageManagerAction(session: session, action: action, packages: packages)
+        } catch OpenWrtKitError.permissionDenied {
+            invalidate(ifMatching: session)
+            let renewed = try await login()
+            return try await client.packageManagerAction(session: renewed, action: action, packages: packages)
+        }
+    }
+
     public func invalidate() {
         current = nil
         luciCookie = nil

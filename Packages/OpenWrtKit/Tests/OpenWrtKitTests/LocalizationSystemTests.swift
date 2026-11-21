@@ -245,8 +245,10 @@ final class LocalizationSystemTests: XCTestCase {
             snapshotName: "snapshot-192.168.31.167-2026-11-20",
             catalogName: "translations-192.168.31.167")
         print("COVERAGE-167 visible second-level: \(coverage.chinese)/\(coverage.total) misses=\(coverage.misses)")
-        XCTAssertEqual(coverage.total, 49)
-        XCTAssertGreaterThanOrEqual(coverage.chinese, 38)
+        // Totals dropped by one with the custom-commands exclusion
+        // (audit F6, package J decision).
+        XCTAssertEqual(coverage.total, 48)
+        XCTAssertGreaterThanOrEqual(coverage.chinese, 37)
     }
 
     func testLiveCatalogCoverageMainRouter() throws {

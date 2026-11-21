@@ -186,6 +186,37 @@ public actor UbusClient {
         // /bin/opkg exec fallback could only ever fail.
     }
 
+    /// Package install / upgrade / remove through the router's own
+    /// package-manager helper — the channel LuCI's software page
+    /// uses (audit F7). Same cgi-exec form as the installed list,
+    /// with the action and the already-validated package names on
+    /// the helper's command line (its defined protocol); the helper
+    /// translates opkg vs apk itself and answers with a JSON
+    /// {code, pkmcmd, stdout, stderr} document. Actions can run for
+    /// minutes (index refresh + payload downloads), so this request
+    /// gets a far longer timeout than a list read.
+    public func packageManagerAction(session auth: UbusSession, action: PackageActionKind,
+                                     packages: [String]) async throws -> PackageActionOutcome {
+        let validated = try packages.map(PackageNameValidator.requireValid)
+        var command = "/usr/libexec/package-manager-call \(action.rawValue)"
+        if !validated.isEmpty { command += " " + validated.joined(separator: " ") }
+        var request = URLRequest(url: address.url.appendingPathComponent("cgi-bin/cgi-exec"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 600
+        applyLanguage(to: &request)
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        var form = URLComponents()
+        form.queryItems = [URLQueryItem(name: "sessionid", value: auth.token),
+                           URLQueryItem(name: "command", value: command),
+                           URLQueryItem(name: "stderr", value: "0")]
+        request.httpBody = form.percentEncodedQuery?.data(using: .utf8)
+        let data = try await checkedData(request)
+        guard let value = try? JSONDecoder().decode(JSONValue.self, from: data) else {
+            throw OpenWrtKitError.malformedResponse
+        }
+        return try PackageActionParser.outcome(value)
+    }
+
     private func checkedData(_ request: URLRequest) async throws -> Data {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, http.url?.host == address.url.host,

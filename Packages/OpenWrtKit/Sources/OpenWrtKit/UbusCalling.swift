@@ -9,6 +9,10 @@ public protocol UbusCalling: Sendable {
     func call(object: String, method: String, parameters: [String: JSONValue]) async throws -> JSONValue
     func menu() async throws -> JSONValue
     func installedPackages() async throws -> [InstalledPackage]
+    /// Package install / upgrade / remove through the router's
+    /// package-manager helper (audit F7). Default: unsupported —
+    /// only session-owning callers implement it.
+    func packageManagerAction(action: PackageActionKind, packages: [String]) async throws -> PackageActionOutcome
     /// The router's LuCI translation catalog for menu titles, when its
     /// effective language is not English. Default: no catalog (callers
     /// keep the source-language titles).
@@ -30,6 +34,10 @@ public protocol UbusCalling: Sendable {
 }
 
 extension UbusCalling {
+    public func packageManagerAction(action: PackageActionKind, packages: [String]) async throws -> PackageActionOutcome {
+        throw OpenWrtKitError.unsupported(KitL10n.text("此会话不支持软件包安装/卸载操作。"))
+    }
+
     public func destroySession() async {}
     public func invalidateSession() async {}
     public func translationsCatalog() async throws -> LuciTranslationCatalog? { nil }
@@ -72,6 +80,10 @@ public struct FixedSessionCaller: UbusCalling {
 
     public func installedPackages() async throws -> [InstalledPackage] {
         try await client.installedPackages(session: session)
+    }
+
+    public func packageManagerAction(action: PackageActionKind, packages: [String]) async throws -> PackageActionOutcome {
+        try await client.packageManagerAction(session: session, action: action, packages: packages)
     }
 
     public func translationsCatalog() async throws -> LuciTranslationCatalog? {

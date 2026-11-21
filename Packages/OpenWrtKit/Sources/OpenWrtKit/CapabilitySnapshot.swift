@@ -437,7 +437,17 @@ public enum DiscoveryRules {
         guard !path.contains("*") else { return false }
         let blockedPrefixes = ["admin/ubus", "admin/translations", "admin/uci",
                                "admin/network/remote_addr",
-                               "admin/system/commands/download", "admin/system/commands/run"]
+                               // Custom commands (audit F6, decided in
+                               // package J): the whole subtree is not
+                               // generated as pages. The feature is a
+                               // second arbitrary-command surface fully
+                               // duplicated by the native terminal
+                               // (which has host-key trust and an
+                               // operation record); the menu node
+                               // itself only ever produced an empty
+                               // dead-end page. Prefix matching covers
+                               // the node and its run/download actions.
+                               "admin/system/commands"]
         if blockedPrefixes.contains(where: { path == $0 || path.hasPrefix($0 + "/") }) { return false }
         if path == "admin/menu" { return false }
         if path == "admin/system/diskman/partition" { return false }

@@ -76,15 +76,17 @@ final class MenuSessionHotfixTests: XCTestCase {
     func testFullMenuYieldsCompletePages() throws {
         let snapshot = CapabilitySnapshot(collected: collected(from: try fixtureMenus("menu-192.168.31.167-full")))
         XCTAssertTrue(snapshot.hasSubstantiveMenu)
-        XCTAssertEqual(snapshot.visibleMenuPaths.filter { $0.split(separator: "/").count == 3 }.count, 46)
+        // 46 before package J excluded custom commands (audit F6).
+        XCTAssertEqual(snapshot.visibleMenuPaths.filter { $0.split(separator: "/").count == 3 }.count, 45)
         XCTAssertEqual(snapshot.services.count, 14)
         let tabs = PageRegistry.tabs(for: snapshot)
         func pages(_ tab: AppTabID) -> Int { tabs.first { $0.tab == tab }?.pages.count ?? -1 }
         XCTAssertEqual(pages(.services), 14)
         XCTAssertEqual(pages(.network), 10)
-        // 13 menu-driven system pages plus the app's native terminal and
-        // file manager (their LuCI counterparts stay excluded).
-        XCTAssertEqual(pages(.system), 15)
+        // 12 menu-driven system pages (13 before custom commands was
+        // excluded, audit F6) plus the app's native terminal and file
+        // manager (their LuCI counterparts stay excluded).
+        XCTAssertEqual(pages(.system), 14)
         XCTAssertEqual(pages(.overview), 6)
     }
 

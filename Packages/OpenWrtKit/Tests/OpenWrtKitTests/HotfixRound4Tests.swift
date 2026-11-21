@@ -130,8 +130,10 @@ final class HotfixRound4Tests: XCTestCase {
             catalogName: "translations-192.168.31.167",
             prefs: ["zh-Hans"])
         XCTAssertEqual(chain.language, "zh-cn")
-        XCTAssertEqual(chain.titles.count, 49)
-        XCTAssertGreaterThanOrEqual(chineseCount(chain.titles), 38,
+        // One title fewer than the pre-J count: custom commands is
+        // no longer a page (audit F6, package J decision).
+        XCTAssertEqual(chain.titles.count, 48)
+        XCTAssertGreaterThanOrEqual(chineseCount(chain.titles), 37,
                                     "titles: \(chain.titles)")
         for expected in ["防火墙", "接口", "软件包", "路由"] {
             XCTAssertTrue(chain.titles.contains(expected), "missing \(expected) in \(chain.titles)")

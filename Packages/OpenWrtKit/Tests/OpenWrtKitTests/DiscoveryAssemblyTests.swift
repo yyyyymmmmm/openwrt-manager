@@ -250,7 +250,9 @@ final class DiscoveryAssemblyTests: XCTestCase {
         // depends gate for these two paths.
         let snapshot = try await discover("snapshot-192.168.31.167-2026-11-20",
                                           unsatisfied: ["admin/network/switch", "admin/system/leds"])
-        XCTAssertEqual(secondLevelCount(snapshot), 47)
+        // 47 menu nodes minus custom commands, excluded by decision
+        // in package J (audit F6): the node is no longer displayable.
+        XCTAssertEqual(secondLevelCount(snapshot), 46)
         XCTAssertFalse(snapshot.wireless.present)
         XCTAssertNil(snapshot.menuNode("admin/network/wireless"))
         XCTAssertEqual(snapshot.upstream?.interfaceName, "lan")

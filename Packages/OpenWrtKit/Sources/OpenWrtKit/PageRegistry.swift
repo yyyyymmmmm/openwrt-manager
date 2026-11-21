@@ -27,7 +27,7 @@ public enum PageKind: Equatable, Sendable {
     // Services
     case serviceDedicated(key: String), serviceGeneric(key: String)
     // System
-    case packages, startup, crontab, mounts, onlineUpgrade, backupRestore, rebootInfo
+    case packages, startup, crontab, mounts, onlineUpgrade, backupRestore, rebootInfo, adminSecurity
     // Phase 3 native long-tail (not menu-discovered; core router planes)
     case terminal, fileManager
     // Generic fallbacks
@@ -217,7 +217,11 @@ public enum PageRegistry {
             case "admin/system/system":
                 pages.append(descriptor(child, tab: .system, kind: .uci, configs: ["system"]))
             case "admin/system/admin":
-                pages.append(descriptor(child, tab: .system, kind: .uci, configs: ["dropbear", "uhttpd"]))
+                // The administration page (audit F4): password change
+                // and SSH authorized keys get their dedicated native
+                // page; the dropbear/uhttpd configuration stays one
+                // tap inside it, so the configs ride along.
+                pages.append(descriptor(child, tab: .system, kind: .adminSecurity, configs: ["dropbear", "uhttpd"]))
             case "admin/system/package-manager":
                 pages.append(descriptor(child, tab: .system, kind: .packages))
             case "admin/system/startup":
