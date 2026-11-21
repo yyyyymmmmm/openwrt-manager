@@ -224,12 +224,20 @@ struct StatusBadge: View {
     let title: String
     var good = false
     var body: some View {
-        Text(L10n.key(title)).font(AppTypography.metadata.weight(.medium))
-            .foregroundStyle(good ? AppPalette.green : AppPalette.muted)
-            .padding(.horizontal, 7).padding(.vertical, 4)
-            .background(good ? AppPalette.greenSoft : AppPalette.canvas,
-                        in: RoundedRectangle(cornerRadius: 7))
-            .fixedSize(horizontal: false, vertical: true)
+        // Package P, same rule as GradeChip: the ground is always
+        // neutral, and the good state reads from a small green dot
+        // plus its label — a status color never fills the badge.
+        HStack(spacing: 5) {
+            if good {
+                Circle().fill(AppPalette.green).frame(width: 7, height: 7)
+                    .accessibilityHidden(true)
+            }
+            Text(L10n.key(title)).font(AppTypography.metadata.weight(.medium))
+        }
+        .foregroundStyle(good ? AppPalette.green : AppPalette.muted)
+        .padding(.horizontal, 7).padding(.vertical, 4)
+        .background(AppPalette.canvas, in: RoundedRectangle(cornerRadius: 7))
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 

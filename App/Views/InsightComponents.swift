@@ -50,7 +50,13 @@ struct SummaryBanner: View {
 
     private var soft: Color {
         switch summary.tone {
-        case .good: return AppPalette.greenSoft
+        // Package P doctrine: a banner is a large-area fill, and
+        // large areas wear the theme or a neutral — never a status
+        // color. The good banner therefore sits on the accent's
+        // soft fill and lets its green check icon carry the state
+        // alone. Warning/bad keep their soft fills: they are rare,
+        // and there the fill itself is the alarm.
+        case .good: return AppPalette.accentSoft
         case .neutral: return AppPalette.accentSoft
         case .warning: return AppPalette.orangeSoft
         case .bad: return AppPalette.redSoft
@@ -80,13 +86,17 @@ extension HealthGrade {
         }
     }
 
-    var soft: Color {
+    /// The meter fill (package P): a bar is a large-area fill, so
+    /// the healthy and fair ranges ride the theme accent instead of
+    /// the grade's status color. Only the genuinely alarming grades
+    /// keep a semantic fill — there the colored bar itself is the
+    /// warning. Unknown keeps the neutral muted.
+    var meterFill: Color {
         switch self {
-        case .excellent, .good: return AppPalette.greenSoft
-        case .fair: return AppPalette.blueSoft
-        case .poor: return AppPalette.orangeSoft
-        case .critical: return AppPalette.redSoft
-        case .unknown: return AppPalette.canvas
+        case .excellent, .good, .fair: return AppPalette.accent
+        case .poor: return AppPalette.orange
+        case .critical: return AppPalette.red
+        case .unknown: return AppPalette.muted
         }
     }
 }
@@ -104,7 +114,10 @@ struct GradeChip: View {
         }
         .foregroundStyle(grade.tint)
         .padding(.horizontal, AppSpacing.sm).padding(.vertical, 3)
-        .background(grade.soft, in: Capsule())
+        // Neutral ground (package P): the chip's semantic color
+        // lives in its dot and its label glyphs only — a capsule
+        // background is a fill, and fills never wear a status color.
+        .background(AppPalette.canvas, in: Capsule())
     }
 }
 
@@ -116,7 +129,7 @@ struct MeterBar: View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
                 Capsule().fill(AppPalette.line)
-                Capsule().fill(grade.tint)
+                Capsule().fill(grade.meterFill)
                     .frame(width: proxy.size.width * CGFloat(min(max(fraction, 0), 1)))
             }
         }

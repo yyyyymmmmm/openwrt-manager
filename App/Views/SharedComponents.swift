@@ -73,7 +73,16 @@ struct FreshnessBadge: View {
         case .missing:
             StatusBadge(title: L10n.string("暂无数据"))
         case .live:
-            StatusBadge(title: cached ? L10n.string("离线缓存") : L10n.string("实时"), good: !cached)
+            // Live is the freshness state that wears the theme
+            // (package P): accent text on the accent's soft fill.
+            // It is deliberately not a StatusBadge — a badge's
+            // ground stays neutral — and cached data is not live,
+            // so the cache keeps the plain badge.
+            if cached {
+                StatusBadge(title: L10n.string("离线缓存"))
+            } else {
+                LiveBadge()
+            }
         case .stale(let age):
             StatusBadge(title: L10n.format("已过期 · %@", Self.ageText(age)))
         }
@@ -83,6 +92,19 @@ struct FreshnessBadge: View {
         if age < 60 { return L10n.format("%lld 秒前", Int(age)) }
         if age < 3600 { return L10n.format("%lld 分钟前", Int(age / 60)) }
         return L10n.format("%lld 小时前", Int(age / 3600))
+    }
+}
+
+/// The live-data capsule, same metrics as StatusBadge but themed:
+/// accent label on the accent ramp's soft fill (package P).
+private struct LiveBadge: View {
+    var body: some View {
+        Text(L10n.string("实时"))
+            .font(AppTypography.metadata.weight(.medium))
+            .foregroundStyle(AppPalette.accent)
+            .padding(.horizontal, 7).padding(.vertical, 4)
+            .background(AppPalette.accentSoft, in: RoundedRectangle(cornerRadius: 7))
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
