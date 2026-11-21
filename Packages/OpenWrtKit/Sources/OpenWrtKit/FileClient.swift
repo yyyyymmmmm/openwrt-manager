@@ -119,6 +119,32 @@ public struct FileClient: Sendable {
         _ = try await caller.call(object: "file", method: "remove", parameters: ["path": .string(path)])
     }
 
+    /// Creates a directory (package D, audit F8). rpcd's file object
+    /// has no mkdir, so this goes through file exec with a fixed
+    /// command path and the path as a single argument — no shell is
+    /// involved, so a hostile name cannot become a command. A nonzero
+    /// exit (permissions, ACL, existing entry) throws instead of
+    /// pretending success; callers verify by re-listing.
+    public func makeDirectory(path: String) async throws {
+        let (code, _) = try await exec(command: "/bin/mkdir", arguments: [path])
+        guard code == 0 else { throw OpenWrtKitError.transport(KitL10n.format("文件操作失败（退出码 %lld）", code)) }
+    }
+
+    /// Renames or moves a file or directory (package D, audit F8):
+    /// same fixed-command exec discipline as makeDirectory.
+    public func rename(from source: String, to destination: String) async throws {
+        let (code, _) = try await exec(command: "/bin/mv", arguments: [source, destination])
+        guard code == 0 else { throw OpenWrtKitError.transport(KitL10n.format("文件操作失败（退出码 %lld）", code)) }
+    }
+
+    /// Removes an EMPTY directory (package D, audit F8). Deliberately
+    /// rmdir, never a recursive delete: a non-empty directory fails
+    /// honestly instead of vanishing with its contents.
+    public func removeDirectory(path: String) async throws {
+        let (code, _) = try await exec(command: "/bin/rmdir", arguments: [path])
+        guard code == 0 else { throw OpenWrtKitError.transport(KitL10n.format("文件操作失败（退出码 %lld）", code)) }
+    }
+
     public func md5(path: String) async throws -> String {
         let value = try await caller.call(object: "file", method: "md5", parameters: ["path": .string(path)])
         guard let digest = value["md5"].stringValue else { throw OpenWrtKitError.malformedResponse }

@@ -27,6 +27,7 @@ extension KitL10n {
         "未找到": "Not found",
         "未知错误": "Unknown error",
         "权限不足": "Permission denied",
+        "文件操作失败（退出码 %lld）": "File operation failed (exit code %lld)",
         "生成时间：%@": "Generated: %@",
         "登录失败": "Sign-in failed",
         "系统：%@ %@": "System: %@ %@",
