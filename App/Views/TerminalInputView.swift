@@ -160,8 +160,8 @@ final class TerminalInputView: UIView, UIKeyInput, UITextInput {
         }
         set {
             if let range = newValue as? TerminalTextRange {
-                composingSelection = NSRange(location: range.start.offset,
-                                             length: range.end.offset - range.start.offset)
+                composingSelection = NSRange(location: range.startOffset,
+                                             length: range.endOffset - range.startOffset)
             }
         }
     }
@@ -175,8 +175,8 @@ final class TerminalInputView: UIView, UIKeyInput, UITextInput {
     func text(in range: UITextRange) -> String? {
         guard let range = range as? TerminalTextRange else { return nil }
         let text = composingText
-        let start = text.index(text.startIndex, offsetBy: min(range.start.offset, text.count))
-        let end = text.index(text.startIndex, offsetBy: min(range.end.offset, text.count))
+        let start = text.index(text.startIndex, offsetBy: min(range.startOffset, text.count))
+        let end = text.index(text.startIndex, offsetBy: min(range.endOffset, text.count))
         return String(text[start..<end])
     }
 
@@ -221,14 +221,16 @@ final class TerminalInputView: UIView, UIKeyInput, UITextInput {
     func position(from position: UITextPosition, in direction: UITextLayoutDirection,
                   offset: Int) -> UITextPosition? {
         // LTR semantics throughout (baseWritingDirection is fixed
-        // .leftToRight): right/down/forward move towards the end of
-        // the composition, left/up/backward towards its start. A move
-        // that would land outside the composition has no position.
+        // .leftToRight): right/down move towards the end of the
+        // composition, left/up towards its start. (UITextLayoutDirection
+        // has no forward/backward — those are storage directions.)
+        // A move that would land outside the composition has no
+        // position.
         guard let position = position as? TerminalTextPosition else { return nil }
         let target: Int
         switch direction {
-        case .right, .down, .forward: target = position.offset + offset
-        case .left, .up, .backward: target = position.offset - offset
+        case .right, .down: target = position.offset + offset
+        case .left, .up: target = position.offset - offset
         @unknown default: return position
         }
         guard target >= 0, target <= composingText.count else { return nil }
@@ -238,11 +240,11 @@ final class TerminalInputView: UIView, UIKeyInput, UITextInput {
     func position(within range: UITextRange, farthestIn direction: UITextLayoutDirection) -> UITextPosition? {
         // The farthest position inside the range in a direction: in
         // this LTR-only document that is the range's start for
-        // left/up/backward and its end for right/down/forward.
+        // left/up and its end for right/down.
         guard let range = range as? TerminalTextRange else { return nil }
         switch direction {
-        case .left, .up, .backward: return range.start
-        case .right, .down, .forward: return range.end
+        case .left, .up: return range.start
+        case .right, .down: return range.end
         @unknown default: return range.end
         }
     }
@@ -326,9 +328,15 @@ final class TerminalTextRange: UITextRange {
     }
     override var start: UITextPosition { startPosition }
     override var end: UITextPosition { endPosition }
-    override var isEmpty: Bool {
-        (start as? TerminalTextPosition)?.offset == (end as? TerminalTextPosition)?.offset
-    }
+    override var isEmpty: Bool { startOffset == endOffset }
+
+    /// Offsets of the range's ends. UITextPosition is opaque — it has
+    /// no offset member — so the ends must come back through the
+    /// concrete position type before any arithmetic. Positions this
+    /// input did not mint have no offset; 0 keeps the arithmetic
+    /// total instead of trapping.
+    var startOffset: Int { (startPosition as? TerminalTextPosition)?.offset ?? 0 }
+    var endOffset: Int { (endPosition as? TerminalTextPosition)?.offset ?? 0 }
 }
 
 /// SwiftUI shell for TerminalInputView: pushes the rendered screen in,
