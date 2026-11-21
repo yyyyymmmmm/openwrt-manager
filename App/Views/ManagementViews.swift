@@ -384,7 +384,7 @@ struct LockScreenView: View {
             .padding(.horizontal, AppSpacing.xl)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(uiColor: .systemBackground))
+        .background(AppPalette.canvas)
         .task { await lock.authenticate() }
     }
 }

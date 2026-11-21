@@ -27,6 +27,14 @@ enum AppPalette {
     static let blue = color(0x32699C, 0xA5C7EB)
     static let blueSoft = color(0xEAF1F8, 0x222F3A)
 
+    /// The text token as a UIColor, for the UIKit surfaces (the
+    /// terminal) that cannot take a SwiftUI Color — the pair lives
+    /// here, at the palette's one definition site, instead of being
+    /// copied as hex into the view (package O).
+    static let textUIColor = UIColor { traits in
+        uiColor(hex: traits.userInterfaceStyle == .dark ? 0xEFF3F3 : 0x191E20)
+    }
+
     /// A themed accent color. The provider re-reads the current
     /// selection on every resolution, so a theme change needs no
     /// view-tree rebuild (which would reset navigation, tab and

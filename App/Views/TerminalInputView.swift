@@ -38,13 +38,9 @@ final class TerminalInputView: UIView, UIKeyInput, UITextInput {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        // Same dynamic pair as AppPalette.text (DesignSystem.swift).
-        label.textColor = UIColor { traits in
-            let hex: UInt32 = traits.userInterfaceStyle == .dark ? 0xEFF3F3 : 0x191E20
-            return UIColor(red: Double((hex >> 16) & 255) / 255,
-                           green: Double((hex >> 8) & 255) / 255,
-                           blue: Double(hex & 255) / 255, alpha: 1)
-        }
+        // AppPalette.text as a UIColor (DesignSystem.swift is the
+        // pair's one definition site, package O).
+        label.textColor = AppPalette.textUIColor
         label.font = .monospacedSystemFont(ofSize: fontSize, weight: .regular)
         label.numberOfLines = 0
         scrollView.addSubview(label)

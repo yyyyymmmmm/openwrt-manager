@@ -104,6 +104,17 @@ struct HistoryChartView: View {
                         }
                     }
                 }
+                // Explicit scale (package O): the default chart
+                // palette derives from the environment tint, which
+                // is how the old asset green reached this chart.
+                // Primary series = theme accent; upload = the fixed
+                // info blue, the same pairing as the realtime chart.
+                .chartForegroundStyleScale([
+                    L10n.string("下载"): AppPalette.accent,
+                    L10n.string("上传"): AppPalette.blue,
+                    L10n.string("负载"): AppPalette.accent,
+                    L10n.string("内存"): AppPalette.accent,
+                ])
                 .frame(height: 170)
                 .chartYAxis {
                     AxisMarks { value in

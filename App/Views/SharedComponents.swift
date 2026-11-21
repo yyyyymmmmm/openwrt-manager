@@ -206,12 +206,25 @@ struct RealtimeChartView: View {
                     ForEach(points) { point in
                         LineMark(x: .value("时间", point.at), y: .value("值", point.value),
                                  series: .value("序列", point.series))
+                            .foregroundStyle(by: .value("序列", point.series))
                             .interpolationMethod(.monotone)
                         AreaMark(x: .value("时间", point.at), y: .value("值", point.value),
                                  series: .value("序列", point.series))
+                            .foregroundStyle(by: .value("序列", point.series))
                             .opacity(0.15)
                     }
                 }
+                // Explicit scale (package O): unstyled marks take
+                // the environment tint, which is how the old asset
+                // green reached the charts. The primary series is
+                // the theme accent; upload is the fixed info blue,
+                // the same pairing as the history chart.
+                .chartForegroundStyleScale([
+                    "负载": AppPalette.accent,
+                    "连接": AppPalette.accent,
+                    L10n.string("下载"): AppPalette.accent,
+                    L10n.string("上传"): AppPalette.blue,
+                ])
                 .frame(height: 160)
                 .chartXAxis(.hidden)
             }
@@ -240,8 +253,8 @@ struct RealtimeChartView: View {
         case .bandwidth:
             return samples.flatMap { sample -> [Point] in
                 guard let total = sample.totalRate else { return [] }
-                return [Point(at: sample.at, series: "下载", value: total.rxBytesPerSecond / 1024),
-                        Point(at: sample.at, series: "上传", value: total.txBytesPerSecond / 1024)]
+                return [Point(at: sample.at, series: L10n.string("下载"), value: total.rxBytesPerSecond / 1024),
+                        Point(at: sample.at, series: L10n.string("上传"), value: total.txBytesPerSecond / 1024)]
             }
         }
     }

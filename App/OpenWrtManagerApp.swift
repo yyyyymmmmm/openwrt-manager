@@ -25,7 +25,12 @@ struct OpenWrtManagerApp: App {
         WindowGroup {
             RootView()
                 .environment(store)
-                .tint(.accentColor)
+                // No .tint(.accentColor) here (package O): an inner
+                // tint would shadow AppPreferences' theme tint for
+                // every environment-tinted control (toggles, pickers,
+                // progress), pinning them to the AccentColor asset.
+                // The asset now matches the default theme and only
+                // serves surfaces that read it outside this hierarchy.
                 .modifier(AppPreferences())
         }
     }
