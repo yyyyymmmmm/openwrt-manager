@@ -71,3 +71,23 @@ public struct RouterStatusSummary: Codable, Equatable, Sendable {
         RouterStatusSummary(routerName: "Zirox-openwrt", model: "—", firmware: "—", updatedAt: date)
     }
 }
+
+/// The App Group store both processes agree on. The app saves after
+/// each refresh; the widget loads when building its timeline. The
+/// store is deliberately dumb — freshness judgement ("how old is
+/// this summary") belongs to the rendering side, which can see the
+/// summary's own timestamp.
+public enum RouterStatusSummaryStore {
+    public static let appGroupIdentifier = "group.app.openwrtmanager.ios"
+    public static let defaultsKey = "router-status-summary.v1"
+
+    public static func save(_ summary: RouterStatusSummary, to defaults: UserDefaults) {
+        guard let data = try? JSONEncoder().encode(summary) else { return }
+        defaults.set(data, forKey: defaultsKey)
+    }
+
+    public static func load(from defaults: UserDefaults) -> RouterStatusSummary? {
+        guard let data = defaults.data(forKey: defaultsKey) else { return nil }
+        return try? JSONDecoder().decode(RouterStatusSummary.self, from: data)
+    }
+}
