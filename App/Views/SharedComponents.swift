@@ -122,6 +122,26 @@ struct ErrorStateView: View {
     }
 }
 
+/// The weak sibling of ErrorStateView (package I, audit U12): for
+/// notices where the data DID load — discovery warnings, partial
+/// hauls. No "failure" wording, no retry button, neutral chrome, so
+/// a warning never masquerades as an error.
+struct WarningNoticeView: View {
+    let message: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            Label("提示", systemImage: "info.circle")
+                .font(AppTypography.rowTitle).foregroundStyle(AppPalette.accent)
+            Text(L10n.key(message)).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                .textSelection(.enabled)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AppSpacing.md)
+        .background(AppPalette.canvas, in: RoundedRectangle(cornerRadius: AppRadius.md))
+    }
+}
+
 // MARK: - Collapsible group
 
 struct CollapsibleGroup<Content: View>: View {

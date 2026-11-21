@@ -168,6 +168,9 @@ struct RatedRow: View {
     let title: String
     let value: String
     let grade: HealthGrade
+    /// Strength metrics (signal) use the strength wording, same as
+    /// GradeChip's own switch.
+    var strength = false
 
     var body: some View {
         HStack(spacing: AppSpacing.sm) {
@@ -175,7 +178,7 @@ struct RatedRow: View {
             Spacer(minLength: AppSpacing.sm)
             Text(value).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                 .monospacedDigit()
-            GradeChip(grade: grade)
+            GradeChip(grade: grade, strength: strength)
         }
     }
 }

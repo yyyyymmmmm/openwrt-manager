@@ -25,6 +25,10 @@ struct OverviewTabScreen: View {
                     Section {
                         ErrorStateView(message: error) { Task { await store.loadCapability() } }
                     }
+                } else if let warning = store.capabilityWarning {
+                    Section {
+                        WarningNoticeView(message: warning)
+                    }
                 }
                 homeSection
                 if pages.count > 1 {
@@ -148,6 +152,15 @@ struct OverviewTabScreen: View {
                 }
                 FreshnessBadge(freshness: store.freshnessPolicy.evaluate(
                     fetchedAt: store.realtimeUpdatedAt, now: Date()))
+            } else if store.realtimeUnavailable {
+                // Polling has failed repeatedly (audit U13): a
+                // failure state with a way back, not an eternal
+                // "collecting…" that hides a dead read path.
+                HStack(spacing: AppSpacing.sm) {
+                    Text("实时数据暂时读不到").foregroundStyle(AppPalette.orange)
+                    Spacer()
+                    Button("重试") { store.retryRealtime() }
+                }
             } else {
                 Text("正在采集实时数据…").foregroundStyle(AppPalette.muted)
             }
@@ -160,10 +173,31 @@ struct OverviewTabScreen: View {
             LabeledContent("DHCP 已分配租约", value: "\(store.leases.count)")
             if store.capability?.services.contains(where: { $0.key == "ddns" }) == true {
                 let ddns = store.capability?.services.first { $0.key == "ddns" }
-                LabeledContent("动态 DNS", value: ddns?.running == true ? L10n.string("运行中") : L10n.string("已检出"))
+                let ddnsValue = ddns?.running == true ? L10n.string("运行中") : L10n.string("已检出")
+                // The row itself is the way in (audit U14): a
+                // summary that names a detail page must reach it.
+                if let page = store.tabs.first(where: { $0.tab == .services })?.pages
+                    .first(where: { $0.serviceKey == "ddns" }) {
+                    NavigationLink {
+                        PageDestination(page: page)
+                    } label: {
+                        LabeledContent("动态 DNS", value: ddnsValue)
+                    }
+                } else {
+                    LabeledContent("动态 DNS", value: ddnsValue)
+                }
             }
             if store.capability?.menuNode("admin/network/upnp") != nil {
-                LabeledContent("UPnP", value: L10n.string("已检出（详情见网络页）"))
+                if let page = store.tabs.first(where: { $0.tab == .network })?.pages
+                    .first(where: { $0.kind == .upnp }) {
+                    NavigationLink {
+                        PageDestination(page: page)
+                    } label: {
+                        LabeledContent("UPnP", value: L10n.string("已检出"))
+                    }
+                } else {
+                    LabeledContent("UPnP", value: L10n.string("已检出"))
+                }
             }
         }
 
@@ -296,11 +330,24 @@ struct FirewallStatusView: View {
                     ForEach(tables) { table in
                         Section("\(table.family) · \(table.name)") {
                             ForEach(table.chains) { chain in
-                                HStack {
-                                    Text(chain.name).font(AppTypography.rowTitle)
-                                    Spacer()
-                                    Text("\(chain.countedRules) 条计数规则 · \(chain.packets) 包")
-                                        .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                                if chain.rules.isEmpty {
+                                    chainHeader(chain)
+                                } else {
+                                    // The rules themselves are the
+                                    // detail layer (audit U6): a
+                                    // chain expands to its rules,
+                                    // each rule opens its fields.
+                                    DisclosureGroup {
+                                        ForEach(chain.rules) { rule in
+                                            NavigationLink {
+                                                NftRuleDetailView(rule: rule)
+                                            } label: {
+                                                ruleRow(rule)
+                                            }
+                                        }
+                                    } label: {
+                                        chainHeader(chain)
+                                    }
                                 }
                             }
                         }
@@ -316,11 +363,90 @@ struct FirewallStatusView: View {
         .task { await load() }
     }
 
+    private func chainHeader(_ chain: NftChain) -> some View {
+        HStack {
+            Text(chain.name).font(AppTypography.rowTitle)
+            Spacer()
+            Text("\(chain.countedRules) 条计数规则 · \(chain.packets) 包")
+                .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+        }
+    }
+
+    private func ruleRow(_ rule: NftRule) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            Text(rule.comment ?? rule.summary)
+                .font(AppTypography.row).foregroundStyle(AppPalette.text)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: AppSpacing.sm) {
+                if rule.comment != nil {
+                    Text(rule.summary).font(AppTypography.metadata)
+                        .foregroundStyle(AppPalette.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                Text(rule.action.label)
+                    .font(AppTypography.metadata.weight(.medium))
+                    .foregroundStyle(rule.action.isPassing ? AppPalette.green : AppPalette.red)
+            }
+        }
+    }
+
     private func load() async {
         guard let client = store.readClient else { state = .failed("未连接路由器。"); return }
         state = .loading
         do { state = .loaded(try await client.nftables()) }
         catch { state = .failed(FriendlyError.message(error)) }
+    }
+}
+
+/// One firewall rule in full (audit U6 detail layer): the parsed
+/// fields as labeled rows, the raw rule demoted to the bottom.
+struct NftRuleDetailView: View {
+    let rule: NftRule
+
+    var body: some View {
+        List {
+            Section {
+                SummaryBanner(summary: PageSummary(headline: rule.summary,
+                                                   tone: rule.action.isPassing ? .good : .neutral))
+                    .summaryRow()
+            }
+            Section("规则") {
+                if let comment = rule.comment {
+                    LabeledContent("备注", value: comment)
+                }
+                LabeledContent("动作", value: rule.action.label)
+                if let source = rule.source {
+                    LabeledContent("来源", value: source)
+                }
+                if let destination = rule.destination {
+                    LabeledContent("目的地", value: destination)
+                }
+                if let protocolName = rule.protocolName {
+                    LabeledContent("协议", value: protocolName)
+                }
+                if let sourcePort = rule.sourcePort {
+                    LabeledContent("来源端口", value: sourcePort)
+                }
+                if let destinationPort = rule.destinationPort {
+                    LabeledContent("目标端口", value: destinationPort)
+                }
+                if let inputInterface = rule.inputInterface {
+                    LabeledContent("入接口", value: inputInterface)
+                }
+                if let outputInterface = rule.outputInterface {
+                    LabeledContent("出接口", value: outputInterface)
+                }
+                if rule.packets > 0 || rule.bytes > 0 {
+                    LabeledContent("命中", value: L10n.format("%lld 包 · %@", rule.packets, FormatHelpers.bytes(rule.bytes)))
+                }
+            }
+            RawDataSection {
+                Text(rule.rawText).font(AppTypography.metadata.monospaced()).textSelection(.enabled)
+            }
+        }
+        .navigationTitle(rule.comment ?? "规则详情")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -416,6 +542,7 @@ struct ProcessesView: View {
                             if let cpu = process.cpuPercent {
                                 Text(String(format: "%.1f%% CPU", cpu))
                                     .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                                GradeChip(grade: HealthRating.cpuGrade(percent: cpu))
                             }
                         }
                     }
@@ -545,6 +672,8 @@ struct WireGuardStatusView: View {
 
 struct ChannelAnalysisView: View {
     @Environment(RouterStore.self) private var store
+    @State private var scan: [WirelessScanEntry]?
+    @State private var scanning = false
 
     var body: some View {
         List {
@@ -558,6 +687,12 @@ struct ChannelAnalysisView: View {
                         networkCount: store.radios.reduce(0) { $0 + $1.networks.count }))
                         .summaryRow()
                 }
+                if let scan {
+                    Section {
+                        SummaryBanner(summary: congestionSummary(scan: scan))
+                            .summaryRow()
+                    }
+                }
                 ForEach(store.radios) { radio in
                     Section(radio.name) {
                         LabeledContent("状态", value: radio.up == true ? L10n.string("启用") : L10n.string("未启用"))
@@ -569,11 +704,87 @@ struct ChannelAnalysisView: View {
                         ForEach(radio.networks, id: \.self) { ssid in
                             LabeledContent("网络", value: ssid)
                         }
+                        if let scan, let channel = Int(radio.channel) {
+                            let others = coChannelCount(radio: radio, channel: channel, scan: scan)
+                            HStack {
+                                Text("同信道其他网络").font(AppTypography.row)
+                                Spacer(minLength: AppSpacing.sm)
+                                Text("\(others)").font(AppTypography.secondary)
+                                    .foregroundStyle(AppPalette.muted).monospacedDigit()
+                                GradeChip(grade: HealthRating.channelGrade(coChannelCount: others))
+                            }
+                        }
+                    }
+                }
+                Section("附近的网络") {
+                    if scanning, scan == nil {
+                        HStack { ProgressView(); Text("正在扫描附近网络…") }
+                    } else if let scan, !scan.isEmpty {
+                        ForEach(scan.sorted { ($0.signal ?? -999) > ($1.signal ?? -999) }) { entry in
+                            HStack(spacing: AppSpacing.sm) {
+                                VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                                    Text(entry.ssid ?? L10n.string("隐藏网络"))
+                                        .font(AppTypography.rowTitle)
+                                    Text(L10n.format("%@ · 信道 %@", entry.bssid, entry.channel.map { "\($0)" } ?? "—"))
+                                        .font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
+                                }
+                                Spacer()
+                                if entry.encrypted == true {
+                                    Image(systemName: "lock.fill")
+                                        .font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
+                                }
+                                if let signal = entry.signal {
+                                    Text("\(signal) dBm").font(AppTypography.metadata)
+                                        .foregroundStyle(AppPalette.muted).monospacedDigit()
+                                    GradeChip(grade: HealthRating.signalGrade(dBm: Double(signal)), strength: true)
+                                }
+                            }
+                        }
+                    } else {
+                        Text("扫描没有返回结果：路由器可能未授权无线扫描，或无线未开启。")
+                            .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                     }
                 }
             }
         }
         .navigationTitle("信道分析")
         .navigationBarTitleDisplayMode(.inline)
+        .task { await loadScan() }
+        .refreshable { await loadScan() }
+    }
+
+    /// Other people's networks on this radio's channel — the scan
+    /// includes our own SSIDs, which are not congestion.
+    private func coChannelCount(radio: WirelessRadio, channel: Int, scan: [WirelessScanEntry]) -> Int {
+        scan.filter { entry in
+            entry.channel == channel && !(entry.ssid.map { radio.networks.contains($0) } ?? false)
+        }.count
+    }
+
+    private func congestionSummary(scan: [WirelessScanEntry]) -> PageSummary {
+        let worst = store.radios.compactMap { radio -> (Int, Int)? in
+            guard let channel = Int(radio.channel) else { return nil }
+            return (channel, coChannelCount(radio: radio, channel: channel, scan: scan))
+        }.max { $0.1 < $1.1 }
+        if let worst, worst.1 >= 5 {
+            return PageSummary(
+                headline: L10n.format("信道 %lld 上有 %lld 个其他网络，比较拥挤，可以考虑换信道", worst.0, worst.1),
+                tone: .warning)
+        }
+        if let worst, worst.1 > 0 {
+            return PageSummary(
+                headline: L10n.format("附近共扫到 %lld 个网络，自家信道上最多有 %lld 个其他网络", scan.count, worst.1),
+                tone: .neutral)
+        }
+        return PageSummary(
+            headline: L10n.format("附近共扫到 %lld 个网络，自家信道上没有其他网络", scan.count),
+            tone: .good)
+    }
+
+    private func loadScan() async {
+        guard let client = store.readClient else { return }
+        scanning = true
+        defer { scanning = false }
+        scan = await client.wirelessScan()
     }
 }

@@ -9,6 +9,7 @@ struct SettingsTabScreen: View {
     @Environment(RouterStore.self) private var store
     @Binding var showingRouterPicker: Bool
     @State private var removeError: String?
+    @State private var removalTarget: RouterProfile?
 
     var body: some View {
         NavigationStack {
@@ -34,8 +35,7 @@ struct SettingsTabScreen: View {
                         }
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) {
-                                do { try store.remove(profile) }
-                                catch { removeError = FriendlyError.message(error) }
+                                removalTarget = profile
                             } label: {
                                 Label("删除", systemImage: "trash")
                             }
@@ -98,6 +98,17 @@ struct SettingsTabScreen: View {
             }
             .navigationTitle("设置")
             .navigationBarTitleDisplayMode(.inline)
+            // Same confirmation as the connection page's long-press
+            // delete (audit U19): one removal, one wording — the
+            // swipe no longer deletes silently.
+            .alert(item: $removalTarget) { profile in
+                Alert(title: Text("删除保存的路由器？"),
+                      message: Text("“\(profile.name)”及其本机凭据会从此设备移除。不会修改路由器设置。"),
+                      primaryButton: .destructive(Text("删除")) {
+                          do { try store.remove(profile) }
+                          catch { removeError = FriendlyError.message(error) }
+                      }, secondaryButton: .cancel())
+            }
         }
     }
 }

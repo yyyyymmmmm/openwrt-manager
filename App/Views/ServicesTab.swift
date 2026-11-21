@@ -12,6 +12,13 @@ struct ServicesTabScreen: View {
         store.tabs.first { $0.tab == .services }?.pages ?? []
     }
 
+    /// Whether the Open-Box spotlight section above the list is on
+    /// screen (it needs both the page and the service state).
+    private var hasOpenBoxSpotlight: Bool {
+        pages.contains { $0.serviceKey == "openbox" }
+            && store.capability?.services.contains { $0.key == "openbox" } == true
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -48,7 +55,12 @@ struct ServicesTabScreen: View {
                     if pages.isEmpty {
                         EmptyStateView(title: "暂无服务", message: "发现完成后，这里会列出这台路由器实际检出的服务。", symbol: "square.stack.3d.up.slash")
                     } else {
-                        ForEach(pages) { page in
+                        // Open-Box has its spotlight section above;
+                        // listing it again here would put two doors
+                        // to the same page on one screen (audit U15).
+                        ForEach(pages.filter { page in
+                            !(page.serviceKey == "openbox" && hasOpenBoxSpotlight)
+                        }) { page in
                             let service = store.capability?.services.first { $0.key == page.serviceKey }
                             NavigationLink {
                                 PageDestination(page: page)
@@ -927,9 +939,10 @@ struct HomeProxyView: View {
                 }
             }
             Section("配置分组") {
-                ForEach([("客户端", "config"), ("节点", "node"), ("服务器", "server")], id: \.1) { title, _ in
+                ForEach([("客户端", "config"), ("节点", "node"), ("服务器", "server")], id: \.1) { title, type in
                     NavigationLink {
-                        UCIConfigView(title: "HomeProxy · \(title)", configNames: ["homeproxy"])
+                        UCIConfigView(title: "HomeProxy · \(title)", configNames: ["homeproxy"],
+                                      sectionTypeFilter: type)
                     } label: {
                         Label(title, systemImage: "list.bullet.rectangle")
                     }
@@ -983,10 +996,18 @@ struct MosDNSView: View {
                 ErrorStateView(message: message) { Task { await load() } }
             case .loaded(let configuration):
                 if let configuration {
-                    ForEach(GenericPageModel.sections(from: configuration, localizer: localization)) { section in
-                        Section(section.title) {
-                            ForEach(section.rows) { row in
-                                LabeledContent(row.displayKey, value: row.valueText)
+                    // Folded per section (audit U16): the status
+                    // layer above is the reading surface; the full
+                    // key/value config sits one tap down, grouped —
+                    // not one flat wall of rows.
+                    Section("配置") {
+                        ForEach(GenericPageModel.sections(from: configuration, localizer: localization)) { section in
+                            DisclosureGroup {
+                                ForEach(section.rows) { row in
+                                    LabeledContent(row.displayKey, value: row.valueText)
+                                }
+                            } label: {
+                                Text(section.title).font(AppTypography.row)
                             }
                         }
                     }

@@ -72,6 +72,7 @@ struct DevicesView: View {
             if let signal = device.signal {
                 Text("\(signal) dBm").font(AppTypography.metadata)
                     .foregroundStyle(AppPalette.muted).monospacedDigit()
+                GradeChip(grade: HealthRating.signalGrade(dBm: Double(signal)), strength: true)
             }
         }
     }
@@ -179,7 +180,10 @@ struct DeviceDetailView: View {
                     LabeledContent("无线设备", value: wirelessDevice)
                 }
                 if let signal = device.signal {
-                    LabeledContent("信号", value: "\(signal) dBm")
+                    RatedRow(title: "信号", value: "\(signal) dBm",
+                             grade: HealthRating.signalGrade(dBm: Double(signal)), strength: true)
+                    MeterBar(fraction: HealthRating.signalFraction(dBm: Double(signal)),
+                             grade: HealthRating.signalGrade(dBm: Double(signal)))
                 }
                 if let expires = device.leaseExpiresIn {
                     LabeledContent("租约剩余", value: FormatHelpers.uptime(TimeInterval(expires)))
@@ -316,7 +320,7 @@ struct AppLockToggleRow: View {
                 if newValue {
                     Task { _ = await lock.enableWithAuthentication() }
                 } else {
-                    lock.disable()
+                    Task { _ = await lock.disableWithAuthentication() }
                 }
             })) {
             Label("打开 App 需解锁", systemImage: "faceid")

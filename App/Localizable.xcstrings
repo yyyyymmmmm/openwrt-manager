@@ -69,6 +69,40 @@
         }
       }
     },
+    "%@ · 信道 %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · channel %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · 信道 %@"
+          }
+        }
+      }
+    },
+    "%@ · 第 %lld 节": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · section %lld"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · 第 %lld 节"
+          }
+        }
+      }
+    },
     "%@ 出示的指纹与已信任记录不一致。": {
       "extractionState": "manual",
       "localizations": {
@@ -354,6 +388,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld minutes ago"
+          }
+        }
+      }
+    },
+    "%lld 包 · %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld packets · %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 包 · %@"
           }
         }
       }
@@ -1701,6 +1752,23 @@
         }
       }
     },
+    "下载 %@ · 上传 %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download %@ · Upload %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载 %@ · 上传 %@"
+          }
+        }
+      }
+    },
     "下载速率": {
       "extractionState": "manual",
       "localizations": {
@@ -2037,6 +2105,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Only the latest 50 session records are kept; this is not the router’s complete log. Cleared when you disconnect."
+          }
+        }
+      }
+    },
+    "仅显示当前路由器的记录；其他路由器的记录没有消失，切到「全部路由器」即可查看。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Showing only the current router's records. Other routers' records have not disappeared — switch to “All routers” to see them."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅显示当前路由器的记录；其他路由器的记录没有消失，切到「全部路由器」即可查看。"
+          }
+        }
+      }
+    },
+    "仅显示用量前 %lld 台，其余 %lld 台见原始数据": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Showing the top %lld devices by usage; the remaining %lld are in the raw data"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅显示用量前 %lld 台，其余 %lld 台见原始数据"
           }
         }
       }
@@ -2466,6 +2568,23 @@
         }
       }
     },
+    "信道 %lld 上有 %lld 个其他网络，比较拥挤，可以考虑换信道": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Channel %lld has %lld other networks on it — crowded; consider switching channels"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "信道 %lld 上有 %lld 个其他网络，比较拥挤，可以考虑换信道"
+          }
+        }
+      }
+    },
     "信道分析": {
       "extractionState": "manual",
       "localizations": {
@@ -2619,6 +2738,23 @@
         }
       }
     },
+    "入接口": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Input interface"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "入接口"
+          }
+        }
+      }
+    },
     "全家网络将中断约 2–5 分钟，所有设备的连接都会断开。发送后 App 会自动等待路由器恢复并重新读取状态。": {
       "extractionState": "manual",
       "localizations": {
@@ -2734,6 +2870,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "All subscriptions refreshed; %lld changed."
+          }
+        }
+      }
+    },
+    "全部路由器": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All routers"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部路由器"
           }
         }
       }
@@ -3057,6 +3210,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Not Yet"
+          }
+        }
+      }
+    },
+    "出接口": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Output interface"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出接口"
           }
         }
       }
@@ -3503,6 +3673,23 @@
         }
       }
     },
+    "动作": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Action"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "动作"
+          }
+        }
+      }
+    },
     "动态 DNS": {
       "extractionState": "manual",
       "localizations": {
@@ -3652,6 +3839,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Protocol"
+          }
+        }
+      }
+    },
+    "占 %lld%%": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%% of total"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "占 %lld%%"
           }
         }
       }
@@ -4030,6 +4234,23 @@
         }
       }
     },
+    "取消本次升级": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel this upgrade"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消本次升级"
+          }
+        }
+      }
+    },
     "只查常用网关地址": {
       "extractionState": "manual",
       "localizations": {
@@ -4162,6 +4383,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Per-Device Rates"
+          }
+        }
+      }
+    },
+    "同信道其他网络": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Other networks on this channel"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同信道其他网络"
           }
         }
       }
@@ -4434,6 +4672,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Alerts are delivered as local notifications; nothing passes through a server."
+          }
+        }
+      }
+    },
+    "命中": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hits"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "命中"
           }
         }
       }
@@ -5016,6 +5271,23 @@
         }
       }
     },
+    "备注": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comment"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备注"
+          }
+        }
+      }
+    },
     "备注名": {
       "extractionState": "manual",
       "localizations": {
@@ -5267,6 +5539,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Live discovery failed: the router returned an incomplete menu (the session was not recognized as signed in). The previous result was kept and nothing was written to the cache."
+          }
+        }
+      }
+    },
+    "实时数据暂时读不到": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Realtime data is temporarily unavailable"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "实时数据暂时读不到"
           }
         }
       }
@@ -5815,6 +6104,23 @@
         }
       }
     },
+    "已取消本次升级：路由器未执行任何更改，此前自动生成的备份仍保留在路由器上。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upgrade cancelled: the router made no changes, and the automatic backup created earlier remains on the router."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已取消本次升级：路由器未执行任何更改，此前自动生成的备份仍保留在路由器上。"
+          }
+        }
+      }
+    },
     "已向路由器查询，当前没有可更新的软件包（列表未刷新时以路由器为准）。": {
       "extractionState": "manual",
       "localizations": {
@@ -6202,6 +6508,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Traffic report loaded — the raw data is below"
+          }
+        }
+      }
+    },
+    "已读取流量数据，但格式无法解析出各设备的用量": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traffic data was read, but its format could not be parsed into per-device usage"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已读取流量数据，但格式无法解析出各设备的用量"
           }
         }
       }
@@ -6937,6 +7260,23 @@
         }
       }
     },
+    "当前路由器": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current router"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前路由器"
+          }
+        }
+      }
+    },
     "当前连接": {
       "extractionState": "manual",
       "localizations": {
@@ -7362,6 +7702,23 @@
         }
       }
     },
+    "扫描没有返回结果：路由器可能未授权无线扫描，或无线未开启。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The scan returned nothing: the router may not grant wireless scanning, or Wi-Fi may be off."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "扫描没有返回结果：路由器可能未授权无线扫描，或无线未开启。"
+          }
+        }
+      }
+    },
     "扫描需要本地网络权限。发现地址后仍需确认设备并登录。": {
       "extractionState": "manual",
       "localizations": {
@@ -7494,6 +7851,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Metrics"
+          }
+        }
+      }
+    },
+    "按设备用量": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usage by device"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按设备用量"
           }
         }
       }
@@ -7664,6 +8038,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Interface (optional, e.g. br-lan)"
+          }
+        }
+      }
+    },
+    "提示": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Note"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提示"
           }
         }
       }
@@ -9861,6 +10252,40 @@
         }
       }
     },
+    "本期共用 %@，其中「%@」用得最多，占 %lld%%": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ used this period in total; “%@” used the most, at %lld%%"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本期共用 %@，其中「%@」用得最多，占 %lld%%"
+          }
+        }
+      }
+    },
+    "本期暂无流量记录": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No traffic recorded this period"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本期暂无流量记录"
+          }
+        }
+      }
+    },
     "本次会话尚未产生管理记录。": {
       "extractionState": "manual",
       "localizations": {
@@ -10010,6 +10435,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Source"
+          }
+        }
+      }
+    },
+    "来源端口": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source port"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "来源端口"
           }
         }
       }
@@ -10622,6 +11064,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Restoring…"
+          }
+        }
+      }
+    },
+    "正在扫描附近网络…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanning nearby networks…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在扫描附近网络…"
           }
         }
       }
@@ -12224,6 +12683,40 @@
         }
       }
     },
+    "目标端口": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destination port"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标端口"
+          }
+        }
+      }
+    },
+    "目的地": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destination"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目的地"
+          }
+        }
+      }
+    },
     "相关": {
       "extractionState": "manual",
       "localizations": {
@@ -13597,6 +14090,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rules & Policies"
+          }
+        }
+      }
+    },
+    "规则详情": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rule details"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "规则详情"
           }
         }
       }
@@ -16712,6 +17222,57 @@
         }
       }
     },
+    "附近共扫到 %lld 个网络，自家信道上最多有 %lld 个其他网络": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld networks found nearby; at most %lld other networks share your channel"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "附近共扫到 %lld 个网络，自家信道上最多有 %lld 个其他网络"
+          }
+        }
+      }
+    },
+    "附近共扫到 %lld 个网络，自家信道上没有其他网络": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld networks found nearby; no other network shares your channel"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "附近共扫到 %lld 个网络，自家信道上没有其他网络"
+          }
+        }
+      }
+    },
+    "附近的网络": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nearby networks"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "附近的网络"
+          }
+        }
+      }
+    },
     "隐私说明": {
       "extractionState": "manual",
       "localizations": {
@@ -16742,6 +17303,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hide Password"
+          }
+        }
+      }
+    },
+    "隐藏网络": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hidden network"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隐藏网络"
           }
         }
       }
@@ -17082,6 +17660,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "First connection to this router — verify the host fingerprint"
+          }
+        }
+      }
+    },
+    "验证身份以关闭 App 锁": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authenticate to turn off the app lock"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "验证身份以关闭 App 锁"
           }
         }
       }

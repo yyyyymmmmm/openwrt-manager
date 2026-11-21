@@ -282,5 +282,23 @@ final class AppLockController {
         isLocked = false
     }
 
+    /// Turning the lock off requires the same authentication as
+    /// turning it on (package I, audit U20): whoever holds an
+    /// already-unlocked phone must not be able to silently remove
+    /// the gate. On failure the setting simply stays on.
+    func disableWithAuthentication() async -> Bool {
+        let context = LAContext()
+        do {
+            let success = try await context.evaluatePolicy(
+                .deviceOwnerAuthentication,
+                localizedReason: L10n.string("验证身份以关闭 App 锁"))
+            if success {
+                disable()
+                return true
+            }
+        } catch { }
+        return false
+    }
+
     enum ScenePhaseLike { case active, inactive, background }
 }

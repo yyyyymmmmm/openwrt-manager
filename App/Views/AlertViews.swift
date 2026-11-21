@@ -110,14 +110,24 @@ struct EventLogView: View {
     @Environment(EventLogStore.self) private var events
     @Environment(RouterStore.self) private var store
     @State private var kindFilter: StoredEvent.Kind?
+    /// Scope (audit U21): the log used to silently filter to the
+    /// active router, so switching routers made records "vanish".
+    /// The scope is now explicit, defaulting to all routers.
+    @State private var scopeAllRouters = true
 
     private var entries: [StoredEvent] {
-        events.log.recent(routerID: store.activeProfile?.id.uuidString, kind: kindFilter)
+        events.log.recent(routerID: scopeAllRouters ? nil : store.activeProfile?.id.uuidString,
+                          kind: kindFilter)
     }
 
     var body: some View {
         List {
             Section {
+                Picker("范围", selection: $scopeAllRouters) {
+                    Text("全部路由器").tag(true)
+                    Text("当前路由器").tag(false)
+                }
+                .pickerStyle(.menu)
                 Picker("类型", selection: $kindFilter) {
                     Text("全部").tag(StoredEvent.Kind?.none)
                     ForEach(StoredEvent.Kind.allCases, id: \.self) { kind in
@@ -125,6 +135,11 @@ struct EventLogView: View {
                     }
                 }
                 .pickerStyle(.menu)
+            } footer: {
+                if !scopeAllRouters {
+                    Text("仅显示当前路由器的记录；其他路由器的记录没有消失，切到「全部路由器」即可查看。")
+                        .font(AppTypography.metadata)
+                }
             }
             if entries.isEmpty {
                 EmptyStateView(title: "暂无记录",

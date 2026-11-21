@@ -10,6 +10,10 @@ struct UCIConfigView: View {
     let title: String
     let configNames: [String]
     var sectionTypeFilter: String? = nil
+    /// Multi-type sibling of the single filter (package I, audit
+    /// U3): pages like static routes live inside a shared config
+    /// (network) but are only some of its section types.
+    var sectionTypesFilter: Set<String>? = nil
     var isGenericFallback = false
     @State private var state: LoadState<[(String, RouterConfiguration)]> = .loading
     /// Set when every requested config was refused by rpcd (not granted
@@ -36,9 +40,7 @@ struct UCIConfigView: View {
                 ErrorStateView(message: message) { Task { await load() } }
             case .loaded(let configurations):
                 let rendered = configurations.flatMap { name, configuration in
-                    (sectionTypeFilter.map { GenericPageModel.sections(from: configuration, type: $0, localizer: localization) }
-                        ?? GenericPageModel.sections(from: configuration, localizer: localization))
-                        .map { (name, $0) }
+                    filteredSections(of: configuration).map { (name, $0) }
                 }
                 if rendered.isEmpty {
                     EmptyStateView(title: "无配置数据",
@@ -74,6 +76,17 @@ struct UCIConfigView: View {
             }
         }
         .task { await load() }
+    }
+
+    private func filteredSections(of configuration: RouterConfiguration) -> [GenericSection] {
+        if let sectionTypeFilter {
+            return GenericPageModel.sections(from: configuration, type: sectionTypeFilter, localizer: localization)
+        }
+        let all = GenericPageModel.sections(from: configuration, localizer: localization)
+        if let sectionTypesFilter {
+            return all.filter { sectionTypesFilter.contains($0.type) }
+        }
+        return all
     }
 
     private func load() async {

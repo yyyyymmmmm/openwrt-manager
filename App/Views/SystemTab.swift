@@ -863,6 +863,15 @@ private struct FirmwareUpgradeSection: View {
                     Task { await finish() }
                 }
                 .disabled(working)
+                // A way out that is not "leave the page" (audit
+                // U18): cancelling undoes nothing on the router —
+                // the upgrade never ran — and the auto-backup stays.
+                Button("取消本次升级") {
+                    prepared = nil
+                    step = nil
+                    outcome = L10n.string("已取消本次升级：路由器未执行任何更改，此前自动生成的备份仍保留在路由器上。")
+                }
+                .disabled(working)
             }
             if let outcome {
                 Text(outcome).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)

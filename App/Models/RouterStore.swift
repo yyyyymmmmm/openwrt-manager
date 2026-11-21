@@ -31,12 +31,22 @@ final class RouterStore {
     private(set) var capability: CapabilitySnapshot?
     private(set) var capabilityUpdatedAt: Date?
     private(set) var capabilityError: String?
+    /// Discovery succeeded but parts of the haul reported warnings
+    /// (package I, audit U12): a weak notice, NOT a failure — the
+    /// data below it loaded fine, so it must never wear the error
+    /// card's "读取失败" heading or its retry button.
+    private(set) var capabilityWarning: String?
     private(set) var capabilityIsFromCache = false
     /// The snapshot-language prediction in effect when the last live
     /// discovery ran; the baseline for the refresh-time language gate.
     private var lastDiscoveryPrediction: String?
     private(set) var realtimeSamples: [RealtimeSample] = []
     private(set) var realtimeUpdatedAt: Date?
+    /// True once polling has failed repeatedly with no sample at
+    /// all (package I, audit U13): the overview's realtime section
+    /// shows a failure state with a retry instead of "collecting…"
+    /// forever.
+    private(set) var realtimeUnavailable = false
     private(set) var defaultProfileID: UUID?
 
     @ObservationIgnored private var transport: RouterTransport?
@@ -161,6 +171,7 @@ final class RouterStore {
             AppDiagnostics.record(.discovery, L10n.string("实时发现失败"),
                                   metadata: ["address": profile.address])
             capabilityError = L10n.string("实时发现失败：路由器返回的菜单不完整（会话未被认可为已登录），已保留上次结果，未写入缓存。")
+            capabilityWarning = nil
             if capability == nil, let cached = cachedCapability(for: profile) {
                 capability = cached
                 capabilityIsFromCache = true
@@ -173,7 +184,8 @@ final class RouterStore {
         capabilityIsFromCache = false
         capabilityUpdatedAt = Date()
         lastDiscoveryPrediction = L10n.expectedSnapshotLanguage
-        capabilityError = result.snapshot.warnings.isEmpty ? nil : result.snapshot.warnings.joined(separator: "\n")
+        capabilityError = nil
+        capabilityWarning = result.snapshot.warnings.isEmpty ? nil : result.snapshot.warnings.joined(separator: "\n")
         if let data = try? JSONEncoder().encode(result.collected) {
             defaults.set(data, forKey: capabilityCachePrefix + profile.id.uuidString)
         }
@@ -224,17 +236,33 @@ final class RouterStore {
         realtimeEngine = engine
         let interval = pollInterval
         pollTask = Task { [weak self] in
+            var consecutiveFailures = 0
             while !Task.isCancelled {
                 if let sample = await engine.pollOnce() {
+                    consecutiveFailures = 0
                     let samples = await engine.samples
                     await MainActor.run { [weak self] in
                         self?.realtimeSamples = samples
                         self?.realtimeUpdatedAt = sample.at
+                        self?.realtimeUnavailable = false
+                    }
+                } else {
+                    consecutiveFailures += 1
+                    if consecutiveFailures >= 2 {
+                        await MainActor.run { [weak self] in
+                            self?.realtimeUnavailable = true
+                        }
                     }
                 }
                 try? await Task.sleep(for: .seconds(interval))
             }
         }
+    }
+
+    /// Restart realtime polling after the failure state (audit U13).
+    func retryRealtime() {
+        realtimeUnavailable = false
+        startPolling()
     }
 
     func setDefaultProfile(_ profile: RouterProfile?) {
@@ -344,8 +372,8 @@ final class RouterStore {
 
     private func clearData() {
         snapshot = nil; leases = []; radios = []; services = []
-        capability = nil; capabilityUpdatedAt = nil; capabilityError = nil; capabilityIsFromCache = false
-        realtimeSamples = []; realtimeUpdatedAt = nil
+        capability = nil; capabilityUpdatedAt = nil; capabilityError = nil; capabilityWarning = nil; capabilityIsFromCache = false
+        realtimeSamples = []; realtimeUpdatedAt = nil; realtimeUnavailable = false
         activities = []
         inventory = RouterInventory(); inventoryUpdatedAt = nil; pendingConfiguration = nil
         overviewError = nil; devicesError = nil; wirelessError = nil; servicesError = nil

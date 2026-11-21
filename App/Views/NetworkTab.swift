@@ -186,7 +186,12 @@ struct StaticRoutesView: View {
     @Environment(RouterStore.self) private var store
 
     var body: some View {
-        UCIConfigView(title: "静态路由", configNames: ["network"])
+        // Only the route-shaped sections of the network config
+        // (audit U3): the full config — interfaces, devices, switch
+        // — lives on the interfaces page, and this page no longer
+        // wears a routes title over all of it.
+        UCIConfigView(title: "静态路由", configNames: ["network"],
+                      sectionTypesFilter: ["route", "route6", "rule", "rule6"])
             .navigationTitle("静态路由")
     }
 }
@@ -536,7 +541,17 @@ struct UPnPView: View {
 
 struct BandwidthView: View {
     @Environment(RouterStore.self) private var store
-    @State private var state: LoadState<String?> = .loading
+    @State private var state: LoadState<BandwidthData> = .loading
+    @State private var names = DeviceNameStore.shared
+
+    /// The raw dump plus its per-host rollup; the rollup is nil when
+    /// the dump's shape is not one the parser recognizes.
+    private struct BandwidthData {
+        var raw: String
+        var report: BandwidthReport?
+    }
+
+    private static let hostLimit = 20
 
     var body: some View {
         List {
@@ -545,18 +560,38 @@ struct BandwidthView: View {
                 ProgressView("正在读取带宽监控…")
             case .failed(let message):
                 ErrorStateView(message: message) { Task { await load() } }
-            case .loaded(let report):
-                if let report, !report.isEmpty {
+            case .loaded(let data):
+                if let report = data.report, !report.hosts.isEmpty {
+                    Section {
+                        SummaryBanner(summary: summary(report))
+                            .summaryRow()
+                    }
+                    Section("按设备用量") {
+                        ForEach(report.hosts.prefix(Self.hostLimit)) { host in
+                            hostRow(host, report: report)
+                        }
+                        if report.hosts.count > Self.hostLimit {
+                            Text(L10n.format("仅显示用量前 %lld 台，其余 %lld 台见原始数据",
+                                             Self.hostLimit, report.hosts.count - Self.hostLimit))
+                                .font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
+                        }
+                    }
+                    RawDataSection {
+                        Text(data.raw).font(AppTypography.metadata.monospaced()).textSelection(.enabled)
+                    }
+                } else if data.report != nil {
+                    EmptyStateView(title: "暂无流量数据", message: "带宽监控服务未返回数据，可能尚未积累或未启用。", symbol: "chart.bar.xaxis")
+                } else {
+                    // The dump arrived but its shape is unknown: say
+                    // so, keep the raw text, invent nothing.
                     Section {
                         SummaryBanner(summary: PageSummary(
-                            headline: L10n.string("已读取流量分布报表，原始数据在下方"), tone: .neutral))
+                            headline: L10n.string("已读取流量数据，但格式无法解析出各设备的用量"), tone: .unknown))
                             .summaryRow()
                     }
                     RawDataSection {
-                        Text(report).font(AppTypography.metadata.monospaced()).textSelection(.enabled)
+                        Text(data.raw).font(AppTypography.metadata.monospaced()).textSelection(.enabled)
                     }
-                } else {
-                    EmptyStateView(title: "暂无流量数据", message: "带宽监控服务未返回数据，可能尚未积累或未启用。", symbol: "chart.bar.xaxis")
                 }
             }
             Section {
@@ -572,13 +607,72 @@ struct BandwidthView: View {
         .task { await load() }
     }
 
+    private func summary(_ report: BandwidthReport) -> PageSummary {
+        guard let top = report.hosts.first, report.totalBytes > 0 else {
+            return PageSummary(headline: L10n.string("本期暂无流量记录"), tone: .neutral)
+        }
+        let percent = Int(((report.share(of: top) ?? 0) * 100).rounded())
+        return PageSummary(
+            headline: L10n.format("本期共用 %@，其中「%@」用得最多，占 %lld%%",
+                                  FormatHelpers.bytes(report.totalBytes),
+                                  displayName(top), Int64(percent)),
+            tone: .neutral)
+    }
+
+    private func hostRow(_ host: BandwidthHost, report: BandwidthReport) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            HStack(spacing: AppSpacing.sm) {
+                Text(displayName(host)).font(AppTypography.rowTitle).lineLimit(1)
+                Spacer(minLength: AppSpacing.sm)
+                Text(FormatHelpers.bytes(host.totalBytes))
+                    .font(AppTypography.rowTitle).monospacedDigit()
+            }
+            HStack(spacing: AppSpacing.sm) {
+                Text(L10n.format("下载 %@ · 上传 %@", FormatHelpers.bytes(host.downloadBytes),
+                                 FormatHelpers.bytes(host.uploadBytes)))
+                    .font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
+                Spacer(minLength: AppSpacing.sm)
+                if let share = report.share(of: host) {
+                    Text(L10n.format("占 %lld%%", Int64((share * 100).rounded())))
+                        .font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
+                }
+            }
+            if let share = report.share(of: host) {
+                // A proportion bar, not a health meter: the neutral
+                // grade keeps the shared component from implying a
+                // verdict about the share.
+                MeterBar(fraction: share, grade: .unknown)
+            }
+        }
+        .padding(.vertical, AppSpacing.xs)
+    }
+
+    /// The friendliest name available: the user's own note first,
+    /// then the DHCP hostname, then the address, then the MAC.
+    private func displayName(_ host: BandwidthHost) -> String {
+        let routerID = store.activeProfile?.id.uuidString ?? ""
+        if let mac = host.mac, let custom = names.name(routerID: routerID, mac: mac) {
+            return custom
+        }
+        if let mac = host.mac,
+           let lease = store.leases.first(where: { $0.mac.uppercased() == mac }),
+           !lease.hostname.isEmpty, lease.hostname != "*" {
+            return lease.hostname
+        }
+        return host.address ?? host.mac ?? host.id
+    }
+
     private func load() async {
         guard let client = store.readClient else { state = .failed("未连接路由器。"); return }
         state = .loading
         // A refused or failing nlbw call is a failure state, not
         // "no data yet" (audit U9): only a successful empty report
         // may present as empty.
-        do { state = .loaded(try await client.exec(command: "/usr/sbin/nlbw", arguments: ["-c", "json"])) }
+        do {
+            let raw = try await client.exec(command: "/usr/sbin/nlbw", arguments: ["-c", "json"])
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            state = .loaded(BandwidthData(raw: raw, report: trimmed.isEmpty ? BandwidthReport(hosts: [], totalDownload: 0, totalUpload: 0) : BandwidthParser.parse(raw)))
+        }
         catch { state = .failed(FriendlyError.message(error)) }
     }
 }

@@ -178,7 +178,7 @@ struct ConfigEditorView: View {
                             Label("删除此配置节", systemImage: "trash")
                         }
                     } header: {
-                        Text(section.anonymous ? section.type : "\(section.type) · \(section.id)")
+                        Text(sectionHeader(for: section))
                     }
                 }
                 Section {
@@ -210,6 +210,22 @@ struct ConfigEditorView: View {
                 dismiss()
             }
         }
+    }
+
+    /// Section headers name sections the way a person would
+    /// (audit U22): the section's own `name` option when it has
+    /// one, otherwise its type and position — never the internal
+    /// cfg… identifier, which means nothing outside the config
+    /// file. (Unmapped *option* keys inside a section stay raw by
+    /// design: this is the editor, and inventing labels for keys
+    /// the catalog does not know would misname real options.)
+    private func sectionHeader(for section: ConfigurationSection) -> String {
+        if section.anonymous { return section.type }
+        if let name = section.values["name"]?.stringValue, !name.isEmpty {
+            return "\(section.type) · \(name)"
+        }
+        let index = (draft?.sections.firstIndex { $0.id == section.id } ?? 0) + 1
+        return L10n.format("%@ · 第 %lld 节", section.type, Int64(index))
     }
 
     @ViewBuilder
