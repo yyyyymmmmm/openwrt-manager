@@ -299,4 +299,35 @@ public enum TerminalInput {
             return Data([UInt8(scalar.value - 0x40)])
         }
     }
+
+    /// Encodes text the user committed (typed, pasted, or an IME
+    /// composition confirmed) into PTY bytes. The terminal surface is
+    /// stateless — the shell's line discipline owns editing — so this
+    /// is a pure per-scalar mapping:
+    /// - CR, LF and CRLF each become the single CR the shell expects
+    ///   from the Return key (an IME or keyboard that reports the
+    ///   Return key as "\n" must still submit the line);
+    /// - DEL (U+007F) stays DEL, matching the backspace key;
+    /// - every other scalar, CJK included, passes through as UTF-8.
+    public static func data(forCommittedText text: String) -> Data {
+        var out = Data()
+        var previousWasCR = false
+        for scalar in text.unicodeScalars {
+            switch scalar {
+            case "\r":
+                out.append(contentsOf: data(for: .enter))
+                previousWasCR = true
+            case "\n":
+                if !previousWasCR { out.append(contentsOf: data(for: .enter)) }
+                previousWasCR = false
+            case "\u{7F}":
+                out.append(contentsOf: data(for: .backspace))
+                previousWasCR = false
+            default:
+                out.append(contentsOf: String(scalar).utf8)
+                previousWasCR = false
+            }
+        }
+        return out
+    }
 }

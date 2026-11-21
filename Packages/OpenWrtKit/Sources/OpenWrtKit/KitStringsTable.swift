@@ -204,5 +204,8 @@ extension KitL10n {
         "统计容量": "Stats Capacity",
         "统计转储文件": "Stats Dump File",
         "统计转储间隔": "Stats Dump Interval",
+        "未找到对应的 init.d 服务，无法读取运行状态。": "No matching init.d service was found, so the running state cannot be read.",
+        "路由器未报告此服务的运行状态（这类服务多为一次性脚本，没有常驻进程），无法判定。": "The router does not report a running state for this service (such services are usually one-shot scripts with no resident process), so it cannot be determined.",
+        "服务状态读取失败，请重新发现或下拉刷新后重试。": "Reading the service state failed. Re-run discovery or pull to refresh and try again.",
     ]
 }

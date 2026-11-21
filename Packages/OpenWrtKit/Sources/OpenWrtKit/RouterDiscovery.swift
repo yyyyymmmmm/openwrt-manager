@@ -54,7 +54,9 @@ public struct RouterDiscovery: Sendable {
         let menuPaths = inventory.allMenus.map(\.id)
         var entries: [String: CollectedRouterSnapshot.MenuEntryInfo] = [:]
         for entry in inventory.allMenus {
-            entries[entry.id] = CollectedRouterSnapshot.MenuEntryInfo(title: entry.title, order: entry.order)
+            entries[entry.id] = CollectedRouterSnapshot.MenuEntryInfo(
+                title: entry.title, order: entry.order,
+                configs: entry.configs, aclGroups: entry.aclGroups)
         }
         let procd: [RouterService] = raw.services.flatMap { try? SnapshotParser.services($0) } ?? []
         var runningByName: [String: Bool?] = Dictionary(uniqueKeysWithValues: procd.map { service in
@@ -68,10 +70,18 @@ public struct RouterDiscovery: Sendable {
         })
         // rc list is the running-state source on firmware that grants no
         // procd service object at all; where both exist, procd's instance
-        // detail wins and rc only fills names procd did not report.
+        // detail wins and rc fills every name whose procd-derived state
+        // is still unknown. The fill condition must look through the
+        // dictionary's outer optional: a service procd lists with no
+        // instances (the stopped-daemon shape on OpenWrt 25.12 — an
+        // empty object) sits in runningByName with a nil VALUE, and the
+        // old `runningByName[name] == nil` test read that as "already
+        // known", so rc's state never landed and most services on the
+        // bypass router rendered unknown (round-6 root cause, measured
+        // against both routers' real hauls).
         let rcStates: [String: InventoryParser.RCServiceState] =
             raw.rcList.flatMap { try? InventoryParser.rcServices($0) } ?? [:]
-        for (name, state) in rcStates where runningByName[name] == nil {
+        for (name, state) in rcStates where (runningByName[name] ?? nil) == nil {
             runningByName[name] = state.running
         }
         var initServices = inventory.initServices.map { service in

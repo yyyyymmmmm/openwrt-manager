@@ -6,17 +6,39 @@ import OpenWrtSSH
 /// router rendered by the kit's VT parser. Credentials come from the
 /// active profile (Keychain copy when remembered, otherwise a one-time
 /// prompt that is never stored by this view).
+///
+/// Input (round 6): the surface itself is the text input
+/// (TerminalSurfaceView) — keystrokes become PTY bytes as they happen
+/// and the shell's own echo is the only editing state. The previous
+/// design typed into a TextField and diffed its text against the last
+/// value to guess the bytes; any divergence between the field's text
+/// and the shell's line (Ctrl+C, mid-line edits, execution) broke
+/// input, Return included.
 struct TerminalView: View {
     @Environment(RouterStore.self) private var store
     @State private var parser = TerminalParser(columns: 80, rows: 24)
     @State private var session: SSHTerminalSession?
     @State private var phase: Phase = .idle
     @State private var password = ""
-    @State private var input = ""
     @State private var fingerprint: String?
     @State private var receiveTask: Task<Void, Never>?
+    @State private var focusToken = 0
+    #if DEBUG
+    @State private var stubbedBytes = Data()
+    #endif
 
     private enum Phase { case idle, connecting, connected, failed(String) }
+
+    #if DEBUG
+    /// UI-test seam (DEBUG only, same rule as UITestingSeed): with
+    /// -ZiroxSeedTerminal the view opens in the connected state and
+    /// every byte the input surface produces lands in stubbedBytes
+    /// instead of an SSH session, so the suite can assert the exact
+    /// byte stream typing produces.
+    private var isTerminalStubbed: Bool {
+        ProcessInfo.processInfo.arguments.contains("-ZiroxSeedTerminal")
+    }
+    #endif
 
     var body: some View {
         VStack(spacing: AppSpacing.sm) {
@@ -37,6 +59,11 @@ struct TerminalView: View {
         .padding(AppSpacing.md)
         .navigationTitle("终端")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            #if DEBUG
+            if isTerminalStubbed, case .idle = phase { phase = .connected }
+            #endif
+        }
         .onDisappear {
             receiveTask?.cancel()
             if let session { Task { await session.close() } }
@@ -68,26 +95,20 @@ struct TerminalView: View {
 
     private var terminalSurface: some View {
         VStack(spacing: AppSpacing.sm) {
-            ScrollView {
-                Text(renderedText)
-                    .font(AppTypography.metadata.monospaced())
-                    .foregroundStyle(AppPalette.text)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
-            }
-            .frame(maxHeight: .infinity)
-            .background(AppPalette.surface, in: RoundedRectangle(cornerRadius: AppRadius.md))
+            TerminalSurfaceView(text: renderedText, focusToken: focusToken, onSend: sendToShell)
+                .frame(maxHeight: .infinity)
+                .background(AppPalette.surface, in: RoundedRectangle(cornerRadius: AppRadius.md))
+                .accessibilityIdentifier("terminalSurface")
             keyBar
-            TextField("输入命令", text: $input)
-                .textFieldStyle(.roundedBorder)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
-                .onChange(of: input) { old, new in
-                    forwardInput(from: old, to: new)
-                }
-                .onSubmit {
-                    session?.send(TerminalInput.data(for: .enter))
-                }
+            #if DEBUG
+            if isTerminalStubbed {
+                Text(stubbedBytes.map { String(format: "%02x", $0) }.joined(separator: " "))
+                    .font(AppTypography.metadata)
+                    .foregroundStyle(AppPalette.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("terminalByteLog")
+            }
+            #endif
             Button("断开连接", role: .destructive) {
                 receiveTask?.cancel()
                 if let session { Task { await session.close() } }
@@ -100,11 +121,14 @@ struct TerminalView: View {
     private var keyBar: some View {
         HStack(spacing: AppSpacing.sm) {
             ForEach([("esc", TerminalInput.Key.escape), ("ctrl+c", .control("C")),
-                     ("tab", .tab), ("↑", .arrowUp), ("↓", .arrowDown),
+                     ("tab", .tab), ("回车", .enter), ("↑", .arrowUp), ("↓", .arrowDown),
                      ("←", .arrowLeft), ("→", .arrowRight)], id: \.0) { label, key in
-                Button(label) { session?.send(TerminalInput.data(for: key)) }
-                    .buttonStyle(.bordered)
-                    .font(AppTypography.metadata)
+                Button(label) {
+                    sendToShell(TerminalInput.data(for: key))
+                    focusToken += 1
+                }
+                .buttonStyle(.bordered)
+                .font(AppTypography.metadata)
             }
         }
     }
@@ -122,15 +146,16 @@ struct TerminalView: View {
         return credential.password != nil
     }
 
-    private func forwardInput(from old: String, to new: String) {
-        guard let session else { return }
-        if new.count > old.count {
-            session.send(Data(new.dropFirst(old.count).utf8))
-        } else if new.count < old.count {
-            for _ in 0..<(old.count - new.count) {
-                session.send(TerminalInput.data(for: .backspace))
-            }
+    /// The one byte sink for every input path — surface keystrokes,
+    /// IME commits and the key bar all land here.
+    private func sendToShell(_ data: Data) {
+        #if DEBUG
+        if isTerminalStubbed {
+            stubbedBytes.append(data)
+            return
         }
+        #endif
+        session?.send(data)
     }
 
     private func connect() async {

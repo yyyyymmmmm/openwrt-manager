@@ -231,6 +231,10 @@ struct HomeProxyView: View {
             if let service {
                 Section("服务状态") {
                     LabeledContent("运行状态", value: service.running.map { $0 ? L10n.string("运行中") : L10n.string("已停止") } ?? L10n.string("未知"))
+                    if service.running == nil, let note = service.statusNote {
+                        Text(note)
+                            .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                    }
                     LabeledContent("开机自启", value: service.enabled.map { $0 ? L10n.string("已启用") : L10n.string("未启用") } ?? L10n.string("未知"))
                 }
             }
@@ -273,6 +277,10 @@ struct MosDNSView: View {
             if let service {
                 Section("服务状态") {
                     LabeledContent("运行状态", value: service.running.map { $0 ? L10n.string("运行中") : L10n.string("已停止") } ?? L10n.string("未知"))
+                    if service.running == nil, let note = service.statusNote {
+                        Text(note)
+                            .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                    }
                     LabeledContent("开机自启", value: service.enabled.map { $0 ? L10n.string("已启用") : L10n.string("未启用") } ?? L10n.string("未知"))
                 }
             }

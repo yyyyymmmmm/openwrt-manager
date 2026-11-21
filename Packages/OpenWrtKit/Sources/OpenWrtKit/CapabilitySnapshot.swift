@@ -59,8 +59,33 @@ public struct CollectedRouterSnapshot: Codable, Equatable, Sendable {
         public var title: String?
         public var order: Int?
         public var file: String?
-        public init(title: String? = nil, order: Int? = nil, file: String? = nil) {
+        /// The node's depends.uci config names and depends.acl groups,
+        /// carried since schema 4: they are discovery signals for tying
+        /// a menu entry to its init.d service (see synthesizeServices).
+        /// Before schema 4 the haul dropped them, which is part of why
+        /// service states stayed unknown.
+        public var configs: [String]
+        public var aclGroups: [String]
+        public init(title: String? = nil, order: Int? = nil, file: String? = nil,
+                    configs: [String] = [], aclGroups: [String] = []) {
             self.title = title; self.order = order; self.file = file
+            self.configs = configs; self.aclGroups = aclGroups
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case title, order, file, configs
+            case aclGroups = "acl_groups"
+        }
+
+        /// Tolerant decoding: pre-schema-4 hauls carry neither signal
+        /// list; they decode as empty rather than failing the haul.
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            title = try container.decodeIfPresent(String.self, forKey: .title)
+            order = try container.decodeIfPresent(Int.self, forKey: .order)
+            file = try container.decodeIfPresent(String.self, forKey: .file)
+            configs = try container.decodeIfPresent([String].self, forKey: .configs) ?? []
+            aclGroups = try container.decodeIfPresent([String].self, forKey: .aclGroups) ?? []
         }
     }
 
@@ -135,10 +160,14 @@ public struct CollectedRouterSnapshot: Codable, Equatable, Sendable {
     /// English by the negotiation miss on auto-lang routers (build #8
     /// field failure — the language tag honestly said "source", but a
     /// same-version cache could still outlive the fix on devices whose
-    /// refresh gate had settled). The app refuses to serve a cache
+    /// refresh gate had settled); version 4 discards version-3 hauls
+    /// whose service states were poisoned by the rc-fill miss and the
+    /// dropped menu signals (build #10 field failure — most services
+    /// on the bypass router rendered "unknown" while rc reported their
+    /// state all along). The app refuses to serve a cache
     /// whose version is not current — an old snapshot must be
     /// re-discovered, not rendered.
-    public static let currentSchemaVersion = 3
+    public static let currentSchemaVersion = 4
 
     public var device: Device
     public var collectedAt: String
@@ -274,6 +303,13 @@ public struct CapabilitySnapshot: Equatable, Sendable {
         public var enabled: Bool?
         public var running: Bool?
         public var source: Source
+        /// Why the running state is unknown, in user language; nil when
+        /// the state is known. The list column shows only the state
+        /// itself — this note is what the detail page shows next to an
+        /// "unknown" so the user never has to guess which kind of
+        /// unknown it is (round-6: no init match, no state reported by
+        /// the router, or the state haul itself failed).
+        public var statusNote: String?
         public var id: String { key }
     }
 
@@ -437,6 +473,59 @@ public enum DiscoveryRules {
         return find(target: "0.0.0.0", isIPv6: false) ?? find(target: "::", isIPv6: true)
     }
 
+    /// Menu leaf -> init.d names for the entries no discovery signal
+    /// can tie together. This table is a last resort and grows only
+    /// from measured routers, never from naming folklore: every entry
+    /// records the router and date that proved the signals empty.
+    /// - wol -> etherwake: 192.168.31.167 (OpenWrt 25.12.5), measured
+    ///   2026-11-21. The wol menu node carries no depends.uci, its acl
+    ///   group names only the app (luci-app-wol) and its action path is
+    ///   "wol"; the init script is /etc/init.d/etherwake.
+    public static let measuredServiceInitNames: [String: [String]] = [
+        "wol": ["etherwake"]
+    ]
+
+    /// Why a service's running state is unknown, in user language. The
+    /// three cases are kept apart because they ask different things of
+    /// the user: nothing (one-shot scripts have no state to know),
+    /// nothing yet (discovery limitation), or a retry (the haul failed).
+    public enum ServiceStatusNote {
+        public static var noInitMatch: String {
+            KitL10n.text("未找到对应的 init.d 服务，无法读取运行状态。")
+        }
+        public static var noStateReported: String {
+            KitL10n.text("路由器未报告此服务的运行状态（这类服务多为一次性脚本，没有常驻进程），无法判定。")
+        }
+        public static var stateSourceFailed: String {
+            KitL10n.text("服务状态读取失败，请重新发现或下拉刷新后重试。")
+        }
+    }
+
+    /// Resolves one services-menu entry to its init.d service names by
+    /// trying the discovery signals in a fixed priority — the leaf name
+    /// itself, the node's depends.uci config names, its depends.acl
+    /// app groups, the leaf's prefix family, and only then the measured
+    /// mapping table. The first signal that names at least one real
+    /// init service wins, and a hit always carries its prefix family
+    /// (openbox -> openbox + openbox-panel are one service to the user).
+    public static func resolveInitNames(key: String, entry: CollectedRouterSnapshot.MenuEntryInfo?,
+                                        initNames: Set<String>) -> [String] {
+        func family(of base: String) -> [String] {
+            initNames.filter { $0 == base || $0.hasPrefix(base + "-") || $0.hasPrefix(base + "_") }.sorted()
+        }
+        if initNames.contains(key) { return family(of: key) }
+        for config in entry?.configs ?? [] where initNames.contains(config) {
+            return family(of: config)
+        }
+        for group in entry?.aclGroups ?? [] {
+            let candidate = group.hasPrefix("luci-app-") ? String(group.dropFirst("luci-app-".count)) : group
+            if initNames.contains(candidate) { return family(of: candidate) }
+        }
+        let prefixed = family(of: key)
+        if !prefixed.isEmpty { return prefixed }
+        return (measuredServiceInitNames[key] ?? []).filter { initNames.contains($0) }.sorted()
+    }
+
     /// Services are menu entries intersected with init.d state. Package
     /// lists are never consulted: luci-app-openbox is not in the package
     /// manager's list on the bypass router, yet its menu and its init.d
@@ -450,24 +539,38 @@ public enum DiscoveryRules {
                 CapabilitySnapshot.CapabilityService(
                     key: service.name, title: service.name, menuPath: nil,
                     initNames: [service.name], enabled: service.enabled,
-                    running: service.running, source: .initFallback)
+                    running: service.running, source: .initFallback,
+                    statusNote: service.running == nil ? ServiceStatusNote.noStateReported : nil)
             }.sorted { $0.key < $1.key }
         }
+        let initNameSet = Set(collected.services.map(\.name))
+        let byName = Dictionary(uniqueKeysWithValues: collected.services.map { ($0.name, $0) })
         return menuChildren.map { path in
             let key = String(path.split(separator: "/").last ?? "")
-            let matched = collected.services.filter { service in
-                service.name == key || service.name.hasPrefix(key + "-") || service.name.hasPrefix(key + "_")
-            }
+            let resolved = resolveInitNames(key: key, entry: collected.menuTree[path], initNames: initNameSet)
+            let matched = resolved.compactMap { byName[$0] }
             let enabledValues = matched.compactMap(\.enabled)
             let runningValues = matched.compactMap(\.running)
+            let running: Bool? = runningValues.contains(true) ? true : (runningValues.isEmpty ? nil : false)
+            let note: String?
+            if running != nil {
+                note = nil
+            } else if matched.isEmpty {
+                note = collected.services.isEmpty
+                    ? ServiceStatusNote.stateSourceFailed
+                    : ServiceStatusNote.noInitMatch
+            } else {
+                note = ServiceStatusNote.noStateReported
+            }
             return CapabilitySnapshot.CapabilityService(
                 key: key,
                 title: (collected.menuTree[path]?.title ?? nil) ?? key,
                 menuPath: path,
-                initNames: matched.map(\.name).sorted(),
+                initNames: resolved,
                 enabled: enabledValues.isEmpty ? nil : enabledValues.contains(true),
-                running: runningValues.contains(true) ? true : (runningValues.isEmpty ? nil : false),
-                source: matched.isEmpty ? .menuOnly : .menuAndInit)
+                running: running,
+                source: matched.isEmpty ? .menuOnly : .menuAndInit,
+                statusNote: note)
         }.sorted { lhs, rhs in
             let leftOrder = (collected.menuTree[lhs.menuPath ?? ""]?.order ?? nil) ?? 100
             let rightOrder = (collected.menuTree[rhs.menuPath ?? ""]?.order ?? nil) ?? 100

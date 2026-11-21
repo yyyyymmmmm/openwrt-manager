@@ -44,7 +44,12 @@ let package = Package(
                 .copy("Fixtures/translations-192.168.31.1.txt"),
                 .copy("Fixtures/uci-luci-192.168.31.167.json"),
                 .copy("Fixtures/uci-luci-192.168.31.1.json"),
-                .copy("Fixtures/nftables-192.168.31.167.json")
+                .copy("Fixtures/nftables-192.168.31.167.json"),
+                .copy("Fixtures/haul-192.168.31.167-menu.json"),
+                .copy("Fixtures/haul-192.168.31.167-rclist.json"),
+                .copy("Fixtures/haul-192.168.31.167-servicelist.json"),
+                .copy("Fixtures/haul-192.168.31.1-menu.json"),
+                .copy("Fixtures/haul-192.168.31.1-rclist.json")
             ]
         )
     ],

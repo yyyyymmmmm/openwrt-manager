@@ -57,6 +57,31 @@ final class AppFlowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Side Router"].exists)
     }
 
+    /// Round 6: the terminal surface IS the text input. Under the
+    /// DEBUG stub seed the typed bytes land in a visible byte log
+    /// instead of an SSH session; assert the exact stream — plain
+    /// characters, Return as CR, and a key-bar Escape.
+    @MainActor
+    func testTerminalTypingProducesTheExactByteStream() {
+        let app = launch(arguments: ["-ZiroxSeedConnected", "-ZiroxSeedTerminal"])
+        app.tabBars.buttons["系统"].tap()
+        scrollUntilExists(app.buttons["终端"], app)
+        app.buttons["终端"].tap()
+
+        let surface = app.descendants(matching: .any)["terminalSurface"]
+        XCTAssertTrue(surface.waitForExistence(timeout: 5))
+        surface.tap()
+
+        let byteLog = app.staticTexts["terminalByteLog"]
+        XCTAssertTrue(byteLog.waitForExistence(timeout: 5))
+        app.typeText("ls")
+        XCTAssertTrue(byteLog.label.contains("6c 73"), byteLog.label)
+        app.typeText("\n")
+        XCTAssertTrue(byteLog.label.contains("6c 73 0d"), byteLog.label)
+        app.buttons["esc"].tap()
+        XCTAssertTrue(byteLog.label.contains("6c 73 0d 1b"), byteLog.label)
+    }
+
     /// Launch in the seeded connected state → all five tabs exist and
     /// each one opens to its own screen; the settings tab shows the
     /// profile section with the active profile.
