@@ -153,6 +153,62 @@ final class RouterStore {
         startPolling()
     }
 
+    /// Outcome of a one-tap connection attempt that spends the
+    /// saved credential (package K). The expected non-success
+    /// results are values, not errors, because the caller routes on
+    /// them: manual password entry, certificate confirmation, or an
+    /// inline failure line with retry.
+    enum SavedConnectOutcome {
+        case connected
+        case needsManualPassword
+        case certificate(CertificateNotice)
+        case failed(String)
+    }
+
+    /// One-tap switch / reconnect spending the Keychain credential
+    /// (package K). The caller owns the CredentialGate prompt; this
+    /// method only runs after the user has been authorized to spend
+    /// the saved password. A profile with no saved password reports
+    /// `.needsManualPassword` instead of guessing one. The success
+    /// path is the ordinary `connect`, so a switch lands in the
+    /// operation log exactly like a form login; the failure and
+    /// certificate-hold paths are recorded here, where they happen.
+    /// No password ever enters a log line.
+    func connectSaved(profile: RouterProfile, fingerprint: String? = nil) async -> SavedConnectOutcome {
+        if activeProfile?.id == profile.id { return .connected }
+        let stored: StoredCredential?
+        do { stored = try credentials.read(id: profile.id) }
+        catch { return .failed(FriendlyError.message(error)) }
+        guard let password = stored?.password else { return .needsManualPassword }
+        do {
+            try await connect(profile: profile, password: password,
+                              fingerprint: fingerprint ?? stored?.certificateFingerprint)
+            return .connected
+        } catch let failure as AppFailure {
+            if case .certificate(let notice) = failure {
+                EventLogStore.shared.append(
+                    category: .operation, kind: .login,
+                    title: L10n.string("切换路由器：证书待核对"),
+                    detail: L10n.format("切换到 %@ 前，需要先核对路由器证书指纹。", profile.name),
+                    routerID: profile.id.uuidString)
+                return .certificate(notice)
+            }
+            return recordSwitchFailure(profile: profile, error: failure)
+        } catch {
+            return recordSwitchFailure(profile: profile, error: error)
+        }
+    }
+
+    private func recordSwitchFailure(profile: RouterProfile, error: Error) -> SavedConnectOutcome {
+        let message = FriendlyError.message(error)
+        EventLogStore.shared.append(
+            category: .operation, kind: .login,
+            title: L10n.string("切换路由器失败"),
+            detail: L10n.format("切换到 %@ 失败：%@", profile.name, message),
+            routerID: profile.id.uuidString)
+        return .failed(message)
+    }
+
     /// L2 discovery: build the CapabilitySnapshot the whole navigation is
     /// generated from, cache its collected form, and fall back to that
     /// cache (clearly marked) when the live haul fails.
