@@ -23,18 +23,18 @@ public struct RouterReader: Sendable {
         var info: JSONValue = .null
         switch boardResult {
         case .success(let value): board = value
-        case .failure(let error): snapshot.warnings.append(KitL10n.format("硬件信息：%@", error.localizedDescription))
+        case .failure(let error): snapshot.warnings.append(KitL10n.format("硬件信息：%@", KitErrorSummary.summary(for: error)))
         }
         switch infoResult {
         case .success(let value): info = value
-        case .failure(let error): snapshot.warnings.append(KitL10n.format("运行状态：%@", error.localizedDescription))
+        case .failure(let error): snapshot.warnings.append(KitL10n.format("运行状态：%@", KitErrorSummary.summary(for: error)))
         }
         snapshot.system = SnapshotParser.system(board: board, info: info)
         switch interfacesResult {
         case .success(let value):
             do { snapshot.interfaces = try SnapshotParser.interfaces(value) }
-            catch { snapshot.warnings.append(KitL10n.format("网络接口：%@", error.localizedDescription)) }
-        case .failure(let error): snapshot.warnings.append(KitL10n.format("网络接口：%@", error.localizedDescription))
+            catch { snapshot.warnings.append(KitL10n.format("网络接口：%@", KitErrorSummary.summary(for: error))) }
+        case .failure(let error): snapshot.warnings.append(KitL10n.format("网络接口：%@", KitErrorSummary.summary(for: error)))
         }
         snapshot.refreshedAt = Date()
         return snapshot
@@ -81,19 +81,19 @@ public struct RouterReader: Sendable {
         var inventory = RouterInventory()
         switch results.0 {
         case .success(let value): inventory.menus = value; inventory.menuRead = true
-        case .failure(let error): inventory.warnings.append(KitL10n.format("功能目录：%@", error.localizedDescription))
+        case .failure(let error): inventory.warnings.append(KitL10n.format("功能目录：%@", KitErrorSummary.summary(for: error)))
         }
         switch results.1 {
         case .success(let value): inventory.packages = value; inventory.packagesRead = true
-        case .failure(let error): inventory.warnings.append(KitL10n.format("软件包：%@", error.localizedDescription))
+        case .failure(let error): inventory.warnings.append(KitL10n.format("软件包：%@", KitErrorSummary.summary(for: error)))
         }
         switch results.2 {
         case .success(let value): inventory.configNames = value; inventory.configsRead = true
-        case .failure(let error): inventory.warnings.append(KitL10n.format("配置目录：%@", error.localizedDescription))
+        case .failure(let error): inventory.warnings.append(KitL10n.format("配置目录：%@", KitErrorSummary.summary(for: error)))
         }
         switch results.3 {
         case .success(let value): inventory.initServices = value; inventory.initRead = true
-        case .failure(let error): inventory.warnings.append(KitL10n.format("启动项：%@", error.localizedDescription))
+        case .failure(let error): inventory.warnings.append(KitL10n.format("启动项：%@", KitErrorSummary.summary(for: error)))
         }
         // Menu titles arrive as LuCI source strings on every firmware —
         // the router never translates them (see LuciTranslationCatalog).
@@ -111,7 +111,7 @@ public struct RouterReader: Sendable {
                     inventory.menus = inventory.menus.map { $0.applyingTranslations(catalog) }
                 }
             } catch {
-                inventory.warnings.append(KitL10n.format("菜单翻译：未能加载路由器语言包，标题保留原文（%@）", error.localizedDescription))
+                inventory.warnings.append(KitL10n.format("菜单翻译：未能加载路由器语言包，标题保留原文（%@）", KitErrorSummary.summary(for: error)))
             }
         }
         return inventory
@@ -149,11 +149,11 @@ public struct RouterReader: Sendable {
         var data = DiscoveryRawData()
         switch results.0 {
         case .success(let value): data.board = value
-        case .failure(let error): data.warnings.append(KitL10n.format("发现-硬件信息：%@", error.localizedDescription))
+        case .failure(let error): data.warnings.append(KitL10n.format("发现-硬件信息：%@", KitErrorSummary.summary(for: error)))
         }
         switch results.1 {
         case .success(let value): data.interfaces = value
-        case .failure(let error): data.warnings.append(KitL10n.format("发现-接口：%@", error.localizedDescription))
+        case .failure(let error): data.warnings.append(KitL10n.format("发现-接口：%@", KitErrorSummary.summary(for: error)))
         }
         switch results.2 {
         case .success(let value): data.wireless = value
@@ -171,7 +171,7 @@ public struct RouterReader: Sendable {
             // firmware that grants no service object; only warn when rc
             // could not fill the gap either.
             if case .failure = results.4 {
-                data.warnings.append(KitL10n.format("发现-服务状态：%@", error.localizedDescription))
+                data.warnings.append(KitL10n.format("发现-服务状态：%@", KitErrorSummary.summary(for: error)))
             }
         }
         switch results.4 {

@@ -187,23 +187,28 @@ public struct DiagnosticExportHeader: Equatable, Sendable {
 }
 
 public enum DiagnosticExport {
-    /// Structural labels stay in English — the convention for technical
-    /// log files — while event messages are rendered exactly as they
-    /// were recorded (already localized by their producers).
+    /// Header convention (settled in audit H / L8): the export's first
+    /// reader is the owner troubleshooting their own router, so the
+    /// structural labels follow the app language through KitL10n like
+    /// every other kit-produced string — they are not hard-coded
+    /// English. Event messages are rendered exactly as they were
+    /// recorded (already localized by their producers), timestamps
+    /// stay ISO 8601, and the category tags stay the stable English
+    /// raw values: those are machine vocabulary, not prose.
     public static func render(header: DiagnosticExportHeader, events: [DiagnosticEvent],
                               maxEvents: Int = 200) -> String {
         let formatter = ISO8601DateFormatter()
         let shown = events.suffix(max(0, maxEvents))
         var lines: [String] = []
-        lines.append("Zirox-openwrt diagnostics")
-        lines.append("Generated: \(formatter.string(from: header.generatedAt))")
-        lines.append("App: \(header.appVersion) (\(header.appBuild))")
-        lines.append("Device: \(header.deviceModel)")
-        lines.append("System: \(header.systemName) \(header.systemVersion)")
-        if let routerName = header.routerName { lines.append("Router: \(routerName)") }
-        if let routerModel = header.routerModel { lines.append("Router model: \(routerModel)") }
-        if let firmware = header.firmwareDescription { lines.append("Firmware: \(firmware)") }
-        lines.append("Events: \(events.count) total, showing last \(shown.count)")
+        lines.append(KitL10n.text("Zirox-openwrt 诊断日志"))
+        lines.append(KitL10n.format("生成时间：%@", formatter.string(from: header.generatedAt)))
+        lines.append(KitL10n.format("应用：%@（%@）", header.appVersion, header.appBuild))
+        lines.append(KitL10n.format("设备：%@", header.deviceModel))
+        lines.append(KitL10n.format("系统：%@ %@", header.systemName, header.systemVersion))
+        if let routerName = header.routerName { lines.append(KitL10n.format("路由器：%@", routerName)) }
+        if let routerModel = header.routerModel { lines.append(KitL10n.format("路由器型号：%@", routerModel)) }
+        if let firmware = header.firmwareDescription { lines.append(KitL10n.format("固件：%@", firmware)) }
+        lines.append(KitL10n.format("事件：共 %lld 条，显示最近 %lld 条", events.count, shown.count))
         lines.append("")
         for event in shown {
             var line = "[\(formatter.string(from: event.date))] [\(event.category.rawValue)] \(event.message)"

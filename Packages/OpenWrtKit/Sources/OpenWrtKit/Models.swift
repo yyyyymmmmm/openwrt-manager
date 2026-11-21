@@ -134,7 +134,34 @@ public enum OpenWrtKitError: LocalizedError, Equatable, Sendable {
         case .permissionDenied: return KitL10n.text("会话已过期或账户权限不足。请重新登录，或检查 rpcd ACL。")
         case .unsupported(let message): return message
         case .malformedResponse: return KitL10n.text("路由器响应不符合 ubus JSON-RPC 格式。")
-        case .ubus(let code, let message): return KitL10n.format("%@（ubus %lld）", message, code)
+        case .ubus(let code, let message):
+            // Well-known status codes get the localized semantic label;
+            // rpcd's raw message for them is terse English ("Access
+            // denied", "Not found") and must not reach the user as-is.
+            // Unknown codes keep the raw message plus the code — the
+            // message may be the only clue, and the code keeps it
+            // reportable (audit L5).
+            if let label = Self.ubusStatusLabel(code: code) {
+                return KitL10n.format("%@（ubus %lld）", label, code)
+            }
+            return KitL10n.format("%@（ubus %lld）", message, code)
+        }
+    }
+
+    /// Short human label for the well-known ubus status codes (the C
+    /// library's UBUS_STATUS_* set); nil for codes outside that set.
+    public static func ubusStatusLabel(code: Int) -> String? {
+        switch code {
+        case 1: return KitL10n.text("无效命令")
+        case 2: return KitL10n.text("参数无效")
+        case 3: return KitL10n.text("路由器不支持此功能")
+        case 4: return KitL10n.text("未找到")
+        case 5: return KitL10n.text("暂无数据")
+        case 6: return KitL10n.text("权限不足")
+        case 7: return KitL10n.text("请求超时")
+        case 8: return KitL10n.text("路由器不支持")
+        case 10: return KitL10n.text("连接失败")
+        default: return nil
         }
     }
 }

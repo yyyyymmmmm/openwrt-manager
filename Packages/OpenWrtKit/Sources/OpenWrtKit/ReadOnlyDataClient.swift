@@ -6,6 +6,13 @@ import Foundation
 public enum PackageManager: String, Equatable, Sendable {
     case opkg
     case apk
+
+    /// The display mapping for this vocabulary — the single place a
+    /// view may get the manager's name from, so no view renders the
+    /// raw value directly (audit H raw-value rule). The names are the
+    /// tools' own proper names and are shown verbatim in every
+    /// language, like other device-side vocabulary.
+    public var displayName: String { rawValue }
 }
 
 /// One update check's honest outcome: which manager answered and
@@ -66,18 +73,18 @@ public struct ReadOnlyDataClient: Sendable {
         var infoValue: JSONValue = .null
         switch boardResult {
         case .success(let value): boardValue = value
-        case .failure(let error): snapshot.warnings.append(KitL10n.format("硬件信息：%@", error.localizedDescription))
+        case .failure(let error): snapshot.warnings.append(KitL10n.format("硬件信息：%@", KitErrorSummary.summary(for: error)))
         }
         switch infoResult {
         case .success(let value): infoValue = value
-        case .failure(let error): snapshot.warnings.append(KitL10n.format("运行状态：%@", error.localizedDescription))
+        case .failure(let error): snapshot.warnings.append(KitL10n.format("运行状态：%@", KitErrorSummary.summary(for: error)))
         }
         snapshot.system = SnapshotParser.system(board: boardValue, info: infoValue)
         switch dumpResult {
         case .success(let value):
             do { snapshot.interfaces = try SnapshotParser.interfaces(value) }
-            catch { snapshot.warnings.append(KitL10n.format("网络接口：%@", error.localizedDescription)) }
-        case .failure(let error): snapshot.warnings.append(KitL10n.format("网络接口：%@", error.localizedDescription))
+            catch { snapshot.warnings.append(KitL10n.format("网络接口：%@", KitErrorSummary.summary(for: error))) }
+        case .failure(let error): snapshot.warnings.append(KitL10n.format("网络接口：%@", KitErrorSummary.summary(for: error)))
         }
         snapshot.refreshedAt = Date()
         return snapshot

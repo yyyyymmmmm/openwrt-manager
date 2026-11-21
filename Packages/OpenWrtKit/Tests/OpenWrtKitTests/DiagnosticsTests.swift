@@ -103,11 +103,11 @@ final class DiagnosticsTests: XCTestCase {
             firmwareDescription: "OpenWrt 24.10.8 r29233-443ec4032a",
             generatedAt: Date(timeIntervalSince1970: 1_800_000_120))
         let text = DiagnosticExport.render(header: header, events: log.events)
-        XCTAssertTrue(text.contains("App: 0.3.0 (6)"))
-        XCTAssertTrue(text.contains("Device: iPhone17,2"))
-        XCTAssertTrue(text.contains("System: iOS 26.0"))
-        XCTAssertTrue(text.contains("Router model: Xiaomi Mi Router AX3000T"))
-        XCTAssertTrue(text.contains("Firmware: OpenWrt 24.10.8"))
+        XCTAssertTrue(text.contains("应用：0.3.0（6）"))
+        XCTAssertTrue(text.contains("设备：iPhone17,2"))
+        XCTAssertTrue(text.contains("系统：iOS 26.0"))
+        XCTAssertTrue(text.contains("路由器型号：Xiaomi Mi Router AX3000T"))
+        XCTAssertTrue(text.contains("固件：OpenWrt 24.10.8"))
         XCTAssertTrue(text.contains("[connection] Connected"))
         XCTAssertTrue(text.contains("[error] Discovery failed"))
         XCTAssertTrue(text.contains("address=192.168.31.1"))
@@ -124,7 +124,7 @@ final class DiagnosticsTests: XCTestCase {
             appVersion: "0.3.0", appBuild: "6", deviceModel: "iPhone17,2",
             systemName: "iOS", systemVersion: "26.0")
         let text = DiagnosticExport.render(header: header, events: log.events, maxEvents: 3)
-        XCTAssertTrue(text.contains("Events: 10 total, showing last 3"))
+        XCTAssertTrue(text.contains("事件：共 10 条，显示最近 3 条"))
         XCTAssertTrue(text.contains("tick 10"))
         XCTAssertFalse(text.contains("tick 7"))
     }
