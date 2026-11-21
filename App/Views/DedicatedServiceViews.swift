@@ -739,8 +739,16 @@ struct VLMCSDView: View {
                 draftEnabled = DedicatedValue.truthy(section.values["enabled"]) ?? false
                 draftAutoactivate = DedicatedValue.truthy(section.values["autoactivate"]) ?? false
             }
-        } catch let error as OpenWrtKitError where error == .permissionDenied || error == .unsupported {
+        } catch let error as OpenWrtKitError where error == .permissionDenied {
             state = .loaded(nil)
+        } catch let error as OpenWrtKitError {
+            // .unsupported carries a message, so it cannot be
+            // compared with ==; match it as a pattern instead.
+            if case .unsupported = error {
+                state = .loaded(nil)
+            } else {
+                state = .failed(FriendlyError.message(error))
+            }
         } catch {
             state = .failed(FriendlyError.message(error))
         }
