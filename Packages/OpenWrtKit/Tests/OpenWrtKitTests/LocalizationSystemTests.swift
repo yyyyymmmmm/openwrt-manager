@@ -154,12 +154,12 @@ final class LocalizationSystemTests: XCTestCase {
         // The wire form carries both new keys.
         let data = try JSONEncoder().encode(collected)
         let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        XCTAssertEqual(object?["schema_version"] as? Int, 2)
+        XCTAssertEqual(object?["schema_version"] as? Int, 3)
         XCTAssertEqual(object?["language"] as? String, "zh-cn")
         // And the capability view exposes them for the app's cache gate.
         let snapshot = CapabilitySnapshot(collected: collected)
         XCTAssertEqual(snapshot.language, "zh-cn")
-        XCTAssertEqual(snapshot.schemaVersion, 2)
+        XCTAssertEqual(snapshot.schemaVersion, 3)
     }
 
     // MARK: The negotiated language flows through discovery

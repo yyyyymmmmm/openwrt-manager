@@ -130,10 +130,15 @@ public struct CollectedRouterSnapshot: Codable, Equatable, Sendable {
     /// The cache format version of this collected form. Version 1 is
     /// the implicit format of every haul before language tagging
     /// existed (no schema_version key on the wire); version 2 records
-    /// the language the haul's display strings were localized with.
-    /// The app refuses to serve a cache whose version is not current —
-    /// an old snapshot must be re-discovered, not rendered.
-    public static let currentSchemaVersion = 2
+    /// the language the haul's display strings were localized with;
+    /// version 3 discards version-2 hauls whose titles were left in
+    /// English by the negotiation miss on auto-lang routers (build #8
+    /// field failure — the language tag honestly said "source", but a
+    /// same-version cache could still outlive the fix on devices whose
+    /// refresh gate had settled). The app refuses to serve a cache
+    /// whose version is not current — an old snapshot must be
+    /// re-discovered, not rendered.
+    public static let currentSchemaVersion = 3
 
     public var device: Device
     public var collectedAt: String

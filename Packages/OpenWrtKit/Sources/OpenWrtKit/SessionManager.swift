@@ -33,7 +33,11 @@ public actor SessionManager {
     /// the translations catalog is the router's full dictionary
     /// (thousands of entries), and every sub-page resolves its
     /// router-source strings through it, so it must not be re-fetched
-    /// per page. Discarded with the session.
+    /// per page. Discarded with the session. Only a context that
+    /// carries a real catalog is cached — a degraded source-language
+    /// result (config read failed, negotiation missed, payload did not
+    /// parse) must not poison the session: the next call retries the
+    /// negotiation instead of serving English until re-login.
     private var cachedLocalization: LuciLocalization?
 
     public init(client: UbusClient, credentialProvider: any SessionCredentialProvider,
@@ -113,7 +117,11 @@ public actor SessionManager {
         _ = try await session()
         let config = try? await call(object: "uci", method: "get", parameters: ["config": .string("luci")])
         let localization = try await client.localization(cookie: luciSessionCookie(), luciConfig: config)
-        cachedLocalization = localization
+        // Cache only a real catalog. A source-language degradation is
+        // returned to this caller but never stored: whatever made it
+        // degrade (a transient config-read failure above all) gets a
+        // fresh attempt on the next call.
+        if localization.catalog != nil { cachedLocalization = localization }
         return localization
     }
 

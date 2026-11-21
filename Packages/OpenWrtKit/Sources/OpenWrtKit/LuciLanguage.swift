@@ -141,7 +141,7 @@ public struct LuciLocalization: Sendable {
 public enum SnapshotLanguage {
     public static func expectedTag(preferredLanguages: [String]) -> String? {
         guard let first = preferredLanguages.first?.lowercased() else { return nil }
-        if first.hasPrefix("zh") { return "zh-cn" }
+        if first.hasPrefix("zh") { return first.contains("hant") ? "zh-tw" : "zh-cn" }
         if first.hasPrefix("en") { return "source" }
         return nil
     }
@@ -189,6 +189,25 @@ public enum LuciLanguageNegotiator {
             var candidates: [String] = []
             if parts.count >= 3 { candidates.append("\(base)_\(parts[parts.count - 1])") }
             if parts.count >= 2 { candidates.append("\(base)_\(parts[1])") }
+            // Script-default region (CLDR): a Chinese preference is a
+            // script plus an optional region, but LuCI registers one
+            // catalog per script family — zh_cn for Simplified, zh_tw
+            // for Traditional. "zh-Hans" (no region) and "zh-Hans-US"
+            // (a region the router has no catalog for) name the zh_cn
+            // catalog just as surely as "zh-Hans-CN" does. (Build #8
+            // field failure: with only the exact forms above, an
+            // auto-lang router stayed English for these tag shapes
+            // while a fixed-lang router masked it via step 2 — verified
+            // against both routers' real uci responses.)
+            if base == "zh", parts.count >= 2 {
+                if parts[1] == "hans" { candidates.append("zh_cn") }
+                if parts[1] == "hant" { candidates.append("zh_tw") }
+            }
+            // Any registered variant of the same base language, in
+            // stable order: the last resort before abandoning this
+            // preference (covers a bare "zh", or the one Chinese
+            // catalog a router ships when it is not the script default).
+            candidates.append(contentsOf: available.filter { $0.hasPrefix("\(base)_") }.sorted())
             candidates.append(base)
             for candidate in candidates where available.contains(candidate) {
                 return candidate.replacingOccurrences(of: "_", with: "-")
