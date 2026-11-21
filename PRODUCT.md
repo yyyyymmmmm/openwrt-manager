@@ -1,3 +1,5 @@
+> **已作废（2026-11-21）**：本文件为 2026-11-20 结构重构前旧档，内容与现状多处不符，不再作为事实来源。现行口径见 [README.md](README.md) 与 [docs/](docs/)；变更历程见 [CHANGELOG.md](CHANGELOG.md)。保留原文仅作历史追溯。
+
 # OpenWrt 路由器管理客户端
 
 <!-- impeccable:product-schema 1 -->
