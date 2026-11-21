@@ -62,6 +62,65 @@ public enum FieldCatalog {
         "dnsmasq.cachesize": .init(label: "缓存大小", kind: .number),
         "dnsmasq.local": .init(label: "本地域"),
         "dnsmasq.domain": .init(label: "域名"),
+        "dnsmasq.rebind_protection": .init(label: "重绑定保护", kind: .boolean),
+        "dnsmasq.rebind_localhost": .init(label: "本地主机重绑定", kind: .boolean),
+        "dnsmasq.leasefile": .init(label: "租约文件"),
+        "dnsmasq.resolvfile": .init(label: "resolv 文件"),
+        "dnsmasq.nonwildcard": .init(label: "非通配符绑定", kind: .boolean),
+        "dnsmasq.localservice": .init(label: "仅本地服务", kind: .boolean),
+        "dnsmasq.ednspacket_max": .init(label: "EDNS 数据包上限", kind: .number),
+        "dnsmasq.filter_aaaa": .init(label: "过滤 IPv6 AAAA", kind: .boolean),
+        "dnsmasq.filter_a": .init(label: "过滤 IPv4 A", kind: .boolean),
+        "dnsmasq.confdir": .init(label: "附加配置目录"),
+        "dnsmasq.noresolv": .init(label: "忽略 resolv 文件", kind: .boolean),
+        "dhcp.dhcpv4": .init(label: "启用 DHCPv4", kind: .boolean),
+        "dhcp.dhcpv6": .init(label: "启用 DHCPv6", kind: .boolean),
+        "dhcp.ra": .init(label: "启用路由通告", kind: .boolean),
+        "dhcp.ra_slaac": .init(label: "RA SLAAC", kind: .boolean),
+        "dhcp.ra_flags": .init(label: "RA 标志", kind: .list),
+        "dhcp.dhcp_option": .init(label: "DHCP 选项", kind: .list),
+        "odhcpd.maindhcp": .init(label: "主 DHCP 服务", kind: .boolean),
+        "odhcpd.leasefile": .init(label: "租约文件"),
+        "odhcpd.leasetrigger": .init(label: "租约触发脚本"),
+        "odhcpd.loglevel": .init(label: "日志级别", kind: .number),
+        "odhcpd.piodir": .init(label: "PIO 目录"),
+        "odhcpd.piofolder": .init(label: "PIO 目录"),
+        "odhcpd.hostsdir": .init(label: "主机文件目录"),
+        // Dropbear
+        "dropbear.enable": .init(label: "启用", kind: .boolean),
+        "dropbear.PasswordAuth": .init(label: "密码登录", kind: .boolean),
+        "dropbear.RootPasswordAuth": .init(label: "root 密码登录", kind: .boolean),
+        // MosDNS (core options; the geo/stats long tail stays raw)
+        "mosdns.listen_address": .init(label: "监听地址"),
+        "mosdns.log_file": .init(label: "日志文件"),
+        "mosdns.cache": .init(label: "缓存", kind: .boolean),
+        "mosdns.configfile": .init(label: "配置文件"),
+        "mosdns.bootstrap_dns": .init(label: "引导 DNS"),
+        "mosdns.remote_dns": .init(label: "远程 DNS"),
+        "mosdns.prefer_ipv4": .init(label: "优先 IPv4", kind: .boolean),
+        "mosdns.geo_auto_update": .init(label: "地理数据自动更新", kind: .boolean),
+        "mosdns.geo_update_week_time": .init(label: "地理更新星期"),
+        "mosdns.geo_update_day_time": .init(label: "地理更新时间"),
+        "mosdns.geoip_type": .init(label: "GeoIP 类型"),
+        "mosdns.log_size": .init(label: "日志大小", kind: .number),
+        "mosdns.concurrent": .init(label: "并发数", kind: .number),
+        "mosdns.idle_timeout": .init(label: "空闲超时", kind: .number),
+        "mosdns.minimal_ttl": .init(label: "最小 TTL", kind: .number),
+        "mosdns.maximum_ttl": .init(label: "最大 TTL", kind: .number),
+        "mosdns.enable_pipeline": .init(label: "启用管道", kind: .boolean),
+        "mosdns.insecure_skip_verify": .init(label: "跳过证书校验", kind: .boolean),
+        "mosdns.dns_leak": .init(label: "防 DNS 泄漏", kind: .boolean),
+        "mosdns.cloudflare": .init(label: "Cloudflare 优选", kind: .boolean),
+        "mosdns.listen_port_api": .init(label: "API 监听端口", kind: .number),
+        "mosdns.redirect": .init(label: "重定向", kind: .boolean),
+        "mosdns.enable_ecs_remote": .init(label: "远程 ECS", kind: .boolean),
+        "mosdns.lazy_cache_ttl": .init(label: "惰性缓存 TTL", kind: .number),
+        "mosdns.dump_file": .init(label: "转储文件"),
+        "mosdns.reject_type65": .init(label: "拒绝 TYPE65 查询", kind: .boolean),
+        "mosdns.stats_collector": .init(label: "统计收集", kind: .boolean),
+        "mosdns.stats_capacity": .init(label: "统计容量", kind: .number),
+        "mosdns.stats_dump_file": .init(label: "统计转储文件"),
+        "mosdns.stats_dump_interval": .init(label: "统计转储间隔", kind: .number),
         // DDNS
         "ddns.service_name": .init(label: "服务商"),
         "ddns.lookup_host": .init(label: "查询主机名"),
@@ -123,7 +182,11 @@ public enum FieldCatalog {
     ]
 
     public static func descriptor(config: String, sectionType: String, option: String) -> FieldDescriptor? {
-        fields["\(config).\(option)"] ?? fields["\(sectionType).\(option)"] ?? fields[option]
+        guard let found = fields["\(config).\(option)"] ?? fields["\(sectionType).\(option)"] ?? fields[option]
+        else { return nil }
+        // The catalog's labels are kit-fixed copy (Chinese source);
+        // they resolve through KitL10n like every other kit string.
+        return FieldDescriptor(label: KitL10n.text(found.label), kind: found.kind)
     }
 
     public static func label(config: String, sectionType: String, option: String) -> String? {

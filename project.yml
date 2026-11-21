@@ -1,6 +1,9 @@
 name: OpenWrtManager
 options:
   bundleIdPrefix: app.openwrtmanager
+  # The String Catalog's source language: app copy is authored in
+  # Simplified Chinese and translated to English in the catalog.
+  developmentLanguage: "zh-Hans"
   deploymentTarget:
     iOS: "26.0"
   createIntermediateGroups: true

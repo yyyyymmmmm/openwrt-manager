@@ -127,6 +127,14 @@ public struct CollectedRouterSnapshot: Codable, Equatable, Sendable {
         }
     }
 
+    /// The cache format version of this collected form. Version 1 is
+    /// the implicit format of every haul before language tagging
+    /// existed (no schema_version key on the wire); version 2 records
+    /// the language the haul's display strings were localized with.
+    /// The app refuses to serve a cache whose version is not current —
+    /// an old snapshot must be re-discovered, not rendered.
+    public static let currentSchemaVersion = 2
+
     public var device: Device
     public var collectedAt: String
     public var firmwareFields: [String: String]
@@ -139,21 +147,28 @@ public struct CollectedRouterSnapshot: Codable, Equatable, Sendable {
     public var services: [InitServiceState]
     public var interfaces: [InterfaceState]
     public var wireless: WirelessState
+    public var schemaVersion: Int
+    /// Canonical tag of the catalog language this haul's router-source
+    /// display strings were localized with ("zh-cn"), or "source".
+    public var language: String
 
     public init(device: Device, collectedAt: String, firmwareFields: [String: String] = [:],
                 board: Board, menuFiles: [String] = [], menuPaths: [String],
                 menuTree: [String: MenuEntryInfo] = [:], installedPackages: [String] = [],
                 installedApps: [String] = [], services: [InitServiceState] = [],
-                interfaces: [InterfaceState] = [], wireless: WirelessState) {
+                interfaces: [InterfaceState] = [], wireless: WirelessState,
+                schemaVersion: Int = CollectedRouterSnapshot.currentSchemaVersion,
+                language: String = "source") {
         self.device = device; self.collectedAt = collectedAt; self.firmwareFields = firmwareFields
         self.board = board; self.menuFiles = menuFiles; self.menuPaths = menuPaths
         self.menuTree = menuTree; self.installedPackages = installedPackages
         self.installedApps = installedApps; self.services = services
         self.interfaces = interfaces; self.wireless = wireless
+        self.schemaVersion = schemaVersion; self.language = language
     }
 
     private enum CodingKeys: String, CodingKey {
-        case device, board, services, interfaces, wireless
+        case device, board, services, interfaces, wireless, language
         case collectedAt = "collected_at"
         case firmwareFields = "firmware"
         case menuFiles = "menu_files"
@@ -161,6 +176,43 @@ public struct CollectedRouterSnapshot: Codable, Equatable, Sendable {
         case menuTree = "menu_tree"
         case installedPackages = "luci_packages"
         case installedApps = "luci_apps"
+        case schemaVersion = "schema_version"
+    }
+
+    /// Whether this haul may be served from the cache: only a
+    /// current-schema haul, and — when the caller knows the language a
+    /// fresh discovery would produce now — only one discovered in that
+    /// same language. Anything else is re-discovered instead of shown.
+    public func isUsableCache(expectedLanguage: String?) -> Bool {
+        guard schemaVersion == Self.currentSchemaVersion else { return false }
+        if let expectedLanguage { return language == expectedLanguage }
+        return true
+    }
+}
+
+extension CollectedRouterSnapshot {
+    /// Tolerant decoding: hauls written before language tagging (the
+    /// on-disk caches of earlier builds, the collected test fixtures)
+    /// carry no schema_version/language keys and decode as version 1 /
+    /// "source". Encoding stays synthesized — only decoding is custom
+    /// (it lives in this extension for exactly that reason), so the
+    /// wire format gains exactly the two new keys.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        device = try container.decode(Device.self, forKey: .device)
+        collectedAt = try container.decodeIfPresent(String.self, forKey: .collectedAt) ?? ""
+        firmwareFields = try container.decodeIfPresent([String: String].self, forKey: .firmwareFields) ?? [:]
+        board = try container.decodeIfPresent(Board.self, forKey: .board) ?? Board()
+        menuFiles = try container.decodeIfPresent([String].self, forKey: .menuFiles) ?? []
+        menuPaths = try container.decodeIfPresent([String].self, forKey: .menuPaths) ?? []
+        menuTree = try container.decodeIfPresent([String: MenuEntryInfo].self, forKey: .menuTree) ?? [:]
+        installedPackages = try container.decodeIfPresent([String].self, forKey: .installedPackages) ?? []
+        installedApps = try container.decodeIfPresent([String].self, forKey: .installedApps) ?? []
+        services = try container.decodeIfPresent([InitServiceState].self, forKey: .services) ?? []
+        interfaces = try container.decodeIfPresent([InterfaceState].self, forKey: .interfaces) ?? []
+        wireless = try container.decodeIfPresent(WirelessState.self, forKey: .wireless) ?? WirelessState(present: false)
+        schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
+        language = try container.decodeIfPresent(String.self, forKey: .language) ?? "source"
     }
 }
 
@@ -241,8 +293,18 @@ public struct CapabilitySnapshot: Equatable, Sendable {
     public let wireless: CollectedRouterSnapshot.WirelessState
     public let services: [CapabilityService]
     public let warnings: [String]
+    /// The collected haul's cache-format version (see
+    /// CollectedRouterSnapshot.currentSchemaVersion).
+    public let schemaVersion: Int
+    /// The language this snapshot's router-source display strings were
+    /// localized with ("zh-cn"), or "source". Compared against the
+    /// language a fresh discovery would use now to decide whether the
+    /// snapshot must be re-discovered rather than rendered.
+    public let language: String
 
     public init(collected: CollectedRouterSnapshot, warnings: [String] = []) {
+        schemaVersion = collected.schemaVersion
+        language = collected.language
         routerID = collected.device.id
         address = collected.device.address
         role = collected.device.role

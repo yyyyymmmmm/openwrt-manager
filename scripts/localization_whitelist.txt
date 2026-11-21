@@ -1,0 +1,5 @@
+# Localization audit whitelist — see audit_localization in audit_release.py.
+# One normalized literal per line. An entry here means: this Chinese
+# literal is legitimately outside the String Catalog / KitL10n table,
+# for the reason stated in the comment above it. Keep this list short;
+# user-visible copy belongs in the catalog, not here.

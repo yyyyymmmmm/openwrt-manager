@@ -5,10 +5,10 @@ enum AppTextSize: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .system: return "跟随系统"
-        case .compact: return "紧凑"
-        case .standard: return "标准"
-        case .large: return "加大"
+        case .system: return L10n.string("跟随系统")
+        case .compact: return L10n.string("紧凑")
+        case .standard: return L10n.string("标准")
+        case .large: return L10n.string("加大")
         }
     }
 

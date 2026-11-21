@@ -25,6 +25,14 @@ struct RootView: View {
             guard store.hasConnection else { return }
             await store.refresh()
         }
+        // Language changes (system or per-app) re-run the refresh,
+        // whose language gate re-discovers when the snapshot's
+        // language no longer matches — no manual refresh needed for
+        // pages to follow the new language.
+        .onReceive(NotificationCenter.default.publisher(for: NSLocale.currentLocaleDidChangeNotification)) { _ in
+            L10n.syncKitLanguage()
+            Task { await store.refresh() }
+        }
     }
 }
 

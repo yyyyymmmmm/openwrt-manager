@@ -40,10 +40,10 @@ public enum ConfigurationEdit: Equatable, Sendable {
 
     public var summary: String {
         switch self {
-        case .add(let section): return "新增 \(section.type) 配置节"
-        case .removeSection(let name): return "删除配置节 \(name)"
-        case .set(let section, let option, _): return "设置 \(section).\(option)"
-        case .removeOption(let section, let option): return "删除 \(section).\(option)"
+        case .add(let section): return KitL10n.format("新增 %@ 配置节", section.type)
+        case .removeSection(let name): return KitL10n.format("删除配置节 %@", name)
+        case .set(let section, let option, _): return KitL10n.format("设置 %@.%@", section, option)
+        case .removeOption(let section, let option): return KitL10n.format("删除 %@.%@", section, option)
         }
     }
 }
@@ -96,13 +96,13 @@ public enum ConfigurationError: LocalizedError, Equatable {
     case invalidIdentifier, invalidValue, changedElsewhere, existingChanges, busy, noChanges, noPending
     public var errorDescription: String? {
         switch self {
-        case .invalidIdentifier: return "配置名称只能包含字母、数字、下划线和连字符，且不能重复。"
-        case .invalidValue: return "配置包含无法写入的值。请使用文本或文本列表。"
-        case .changedElsewhere: return "路由器配置已发生变化。请重新读取后再修改，避免覆盖其他操作。"
-        case .existingChanges: return "当前会话已有未提交修改。请先处理这些修改，再应用本次配置。"
-        case .busy: return "已有配置正在应用或等待确认，请先完成该操作。"
-        case .noChanges: return "没有需要应用的修改。"
-        case .noPending: return "没有等待确认的配置。请重新读取路由器状态。"
+        case .invalidIdentifier: return KitL10n.text("配置名称只能包含字母、数字、下划线和连字符，且不能重复。")
+        case .invalidValue: return KitL10n.text("配置包含无法写入的值。请使用文本或文本列表。")
+        case .changedElsewhere: return KitL10n.text("路由器配置已发生变化。请重新读取后再修改，避免覆盖其他操作。")
+        case .existingChanges: return KitL10n.text("当前会话已有未提交修改。请先处理这些修改，再应用本次配置。")
+        case .busy: return KitL10n.text("已有配置正在应用或等待确认，请先完成该操作。")
+        case .noChanges: return KitL10n.text("没有需要应用的修改。")
+        case .noPending: return KitL10n.text("没有等待确认的配置。请重新读取路由器状态。")
         }
     }
 }
@@ -176,7 +176,7 @@ public actor RouterConfigurationClient {
         } catch {
             // Only this transaction's config is reverted; pre-existing changes were refused.
             do { _ = try await caller.call(object: "uci", method: "revert", parameters: config) }
-            catch { throw OpenWrtKitError.unsupported("写入未完成，暂存修改也未能清理。请保持会话并重新检查配置，勿重复提交。") }
+            catch { throw OpenWrtKitError.unsupported(KitL10n.text("写入未完成，暂存修改也未能清理。请保持会话并重新检查配置，勿重复提交。")) }
             throw error
         }
         let deadline = Date().addingTimeInterval(90)
@@ -255,11 +255,11 @@ public enum ServiceAction: String, CaseIterable, Identifiable, Sendable {
     public var id: String { rawValue }
     public var title: String {
         switch self {
-        case .start: return "启动"
-        case .stop: return "停止"
-        case .restart: return "重启"
-        case .enable: return "启用开机启动"
-        case .disable: return "关闭开机启动"
+        case .start: return KitL10n.text("启动")
+        case .stop: return KitL10n.text("停止")
+        case .restart: return KitL10n.text("重启")
+        case .enable: return KitL10n.text("启用开机启动")
+        case .disable: return KitL10n.text("关闭开机启动")
         }
     }
 }

@@ -31,7 +31,10 @@ let package = Package(
                 .copy("Fixtures/snapshot-192.168.31.167-2026-11-20.json"),
                 .copy("Fixtures/snapshot-192.168.31.1-2026-11-20.json"),
                 .copy("Fixtures/menu-192.168.31.167-anonymous.json"),
-                .copy("Fixtures/menu-192.168.31.167-full.json")
+                .copy("Fixtures/menu-192.168.31.167-full.json"),
+                .copy("Fixtures/translations-192.168.31.167.txt"),
+                .copy("Fixtures/translations-192.168.31.1.txt"),
+                .copy("Fixtures/nftables-192.168.31.167.json")
             ]
         )
     ],

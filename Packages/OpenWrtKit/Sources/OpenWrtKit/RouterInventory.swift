@@ -64,6 +64,9 @@ public struct RouterInventory: Sendable {
     public var configNames: [String] = []
     public var initServices: [InitService] = []
     public var warnings: [String] = []
+    /// Canonical tag of the catalog language the menu titles were
+    /// localized with ("zh-cn"), or "source" when no catalog applied.
+    public var language: String = "source"
     public var packagesRead = false
     public var menuRead = false
     public var configsRead = false

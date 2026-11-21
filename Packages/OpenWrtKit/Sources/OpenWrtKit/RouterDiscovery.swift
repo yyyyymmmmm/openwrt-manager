@@ -30,7 +30,7 @@ public struct RouterDiscovery: Sendable {
         await reader.invalidateSession()
         let second = await haul(routerID: routerID, address: address, role: role)
         guard MenuQuality.isAnonymousGrade(second.inventory.menus) else { return second.result }
-        let warning = "发现-菜单权限：路由器返回的菜单不完整（会话未被 LuCI 认可为已登录），已重新登录重试仍未恢复；页面可能缺失，此结果不会被缓存。"
+        let warning = KitL10n.text("发现-菜单权限：路由器返回的菜单不完整（会话未被 LuCI 认可为已登录），已重新登录重试仍未恢复；页面可能缺失，此结果不会被缓存。")
         let snapshot = CapabilitySnapshot(collected: second.result.collected,
                                           warnings: second.result.snapshot.warnings + [warning])
         return (second.result.collected, snapshot)
@@ -96,7 +96,8 @@ public struct RouterDiscovery: Sendable {
             installedApps: inventory.packages.map(\.name).filter { $0.hasPrefix("luci-app-") },
             services: initServices,
             interfaces: parseInterfaces(raw.interfaces),
-            wireless: parseWireless(raw.wireless))
+            wireless: parseWireless(raw.wireless),
+            language: inventory.language)
     }
 
     static func parseBoard(_ value: JSONValue?) -> CollectedRouterSnapshot.Board {

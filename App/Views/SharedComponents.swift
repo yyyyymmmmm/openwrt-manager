@@ -45,12 +45,12 @@ struct StatusCard: View {
                 if let symbol {
                     Image(systemName: symbol).foregroundStyle(AppPalette.accent)
                 }
-                Text(title).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                Text(L10n.key(title)).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
             }
-            Text(value).font(AppTypography.title).foregroundStyle(AppPalette.text)
+            Text(L10n.key(value)).font(AppTypography.title).foregroundStyle(AppPalette.text)
                 .lineLimit(2).minimumScaleFactor(0.7)
             if let detail {
-                Text(detail).font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
+                Text(L10n.key(detail)).font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -71,18 +71,18 @@ struct FreshnessBadge: View {
     var body: some View {
         switch freshness {
         case .missing:
-            StatusBadge(title: "暂无数据")
+            StatusBadge(title: L10n.string("暂无数据"))
         case .live:
-            StatusBadge(title: cached ? "离线缓存" : "实时", good: !cached)
+            StatusBadge(title: cached ? L10n.string("离线缓存") : L10n.string("实时"), good: !cached)
         case .stale(let age):
-            StatusBadge(title: "已过期 · \(Self.ageText(age))")
+            StatusBadge(title: L10n.format("已过期 · %@", Self.ageText(age)))
         }
     }
 
     static func ageText(_ age: TimeInterval) -> String {
-        if age < 60 { return "\(Int(age)) 秒前" }
-        if age < 3600 { return "\(Int(age / 60)) 分钟前" }
-        return "\(Int(age / 3600)) 小时前"
+        if age < 60 { return L10n.format("%lld 秒前", Int(age)) }
+        if age < 3600 { return L10n.format("%lld 分钟前", Int(age / 60)) }
+        return L10n.format("%lld 小时前", Int(age / 3600))
     }
 }
 
@@ -94,7 +94,11 @@ struct EmptyStateView: View {
     var symbol = "tray"
 
     var body: some View {
-        ContentUnavailableView(title, systemImage: symbol, description: Text(message))
+        ContentUnavailableView {
+            Label(L10n.key(title), systemImage: symbol)
+        } description: {
+            Text(L10n.key(message))
+        }
     }
 }
 
@@ -106,7 +110,7 @@ struct ErrorStateView: View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
             Label("读取失败", systemImage: "exclamationmark.triangle")
                 .font(AppTypography.rowTitle).foregroundStyle(AppPalette.orange)
-            Text(message).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+            Text(L10n.key(message)).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                 .textSelection(.enabled)
             if let retry {
                 Button("重试", action: retry)
@@ -131,10 +135,10 @@ struct CollapsibleGroup<Content: View>: View {
             content
         } label: {
             HStack {
-                Text(title).font(AppTypography.rowTitle).foregroundStyle(AppPalette.text)
+                Text(L10n.key(title)).font(AppTypography.rowTitle).foregroundStyle(AppPalette.text)
                 Spacer()
                 if let detail {
-                    Text(detail).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                    Text(L10n.key(detail)).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                 }
             }
         }
@@ -235,7 +239,7 @@ struct RouterChromeHeader: View {
                 HStack(spacing: AppSpacing.sm) {
                     Image(systemName: "wifi.router").foregroundStyle(AppPalette.accent)
                     VStack(alignment: .leading, spacing: AppSpacing.xs) {
-                        Text(store.activeProfile?.name ?? "未连接")
+                        Text(store.activeProfile?.name ?? L10n.string("未连接"))
                             .font(AppTypography.rowTitle).foregroundStyle(AppPalette.text)
                         Text(store.activeProfile?.address ?? "")
                             .font(AppTypography.metadata).foregroundStyle(AppPalette.muted).lineLimit(1)
@@ -278,9 +282,9 @@ enum FormatHelpers {
     static func uptime(_ seconds: TimeInterval) -> String {
         let total = Int(seconds)
         let days = total / 86400, hours = (total % 86400) / 3600, minutes = (total % 3600) / 60
-        if days > 0 { return "\(days) 天 \(hours) 小时" }
-        if hours > 0 { return "\(hours) 小时 \(minutes) 分" }
-        return "\(minutes) 分"
+        if days > 0 { return L10n.format("%lld 天 %lld 小时", days, hours) }
+        if hours > 0 { return L10n.format("%lld 小时 %lld 分", hours, minutes) }
+        return L10n.format("%lld 分", minutes) }
     }
 
     static func percent(used: Int64?, total: Int64?) -> String? {

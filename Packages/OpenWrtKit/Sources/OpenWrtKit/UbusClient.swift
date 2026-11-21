@@ -45,7 +45,7 @@ public actor UbusClient {
         let response = try await send(UbusRequest(id: requestID, session: session.token, object: object, method: method, parameters: parameters))
         if let error = response.error {
             if error.code == -32002 { throw OpenWrtKitError.permissionDenied }
-            throw OpenWrtKitError.ubus(code: error.code ?? -1, message: error.message ?? "JSON-RPC 请求失败")
+            throw OpenWrtKitError.ubus(code: error.code ?? -1, message: error.message ?? KitL10n.text("JSON-RPC 请求失败"))
         }
         guard let result = response.result, let code = result.first?.intValue else {
             throw OpenWrtKitError.malformedResponse
@@ -53,8 +53,8 @@ public actor UbusClient {
         switch code {
         case 0: return result.count > 1 ? result[1] : .object([:])
         case 6: throw OpenWrtKitError.permissionDenied
-        case 3, 4: throw OpenWrtKitError.unsupported("路由器未提供 \(object).\(method)，可能缺少模块或该版本不支持。")
-        default: throw OpenWrtKitError.ubus(code: code, message: "\(object).\(method) 未成功")
+        case 3, 4: throw OpenWrtKitError.unsupported(KitL10n.format("路由器未提供 %@.%@，可能缺少模块或该版本不支持。", object, method))
+        default: throw OpenWrtKitError.ubus(code: code, message: KitL10n.format("%@.%@ 未成功", object, method))
         }
     }
 
@@ -137,9 +137,22 @@ public actor UbusClient {
     /// missing catalog as "titles stay in the source language", never
     /// as a discovery failure.
     public func translationCatalog(cookie: String, luciConfig: JSONValue?) async throws -> LuciTranslationCatalog? {
+        try await localization(cookie: cookie, luciConfig: luciConfig).catalog
+    }
+
+    /// The full localization context for this router: the negotiated
+    /// catalog language (recorded in the discovery snapshot so a cache
+    /// can be told apart by language) plus the parsed catalog. A
+    /// negotiated language whose payload does not parse degrades to the
+    /// source context — titles stay in the source language and the
+    /// snapshot is tagged "source", never with a language whose strings
+    /// were not actually applied.
+    public func localization(cookie: String, luciConfig: JSONValue?) async throws -> LuciLocalization {
         guard let language = LuciLanguageNegotiator.effectiveLanguage(
-            luciConfig: luciConfig, preferredLanguages: preferredLanguages) else { return nil }
-        return LuciTranslationCatalog.parse(try await translations(cookie: cookie, language: language))
+            luciConfig: luciConfig, preferredLanguages: preferredLanguages) else { return .source }
+        guard let catalog = LuciTranslationCatalog.parse(try await translations(cookie: cookie, language: language))
+        else { return .source }
+        return LuciLocalization(language: language, catalog: catalog)
     }
 
     /// Native data requests only. No arbitrary commands or web UI are exposed.
@@ -180,7 +193,7 @@ public actor UbusClient {
             throw OpenWrtKitError.malformedResponse
         }
         guard (200..<300).contains(http.statusCode) else { throw OpenWrtKitError.http(http.statusCode) }
-        guard data.count <= 4 * 1024 * 1024 else { throw OpenWrtKitError.unsupported("响应过大，已停止解析。") }
+        guard data.count <= 4 * 1024 * 1024 else { throw OpenWrtKitError.unsupported(KitL10n.text("响应过大，已停止解析。")) }
         return data
     }
 
@@ -196,7 +209,7 @@ public actor UbusClient {
         guard let http = response as? HTTPURLResponse else { throw OpenWrtKitError.malformedResponse }
         guard (200..<300).contains(http.statusCode) else { throw OpenWrtKitError.http(http.statusCode) }
         guard data.count <= 4 * 1024 * 1024 else {
-            throw OpenWrtKitError.unsupported("响应过大，已停止解析。")
+            throw OpenWrtKitError.unsupported(KitL10n.text("响应过大，已停止解析。"))
         }
         guard let decoded = try? JSONDecoder().decode(UbusResponse.self, from: data),
               decoded.jsonrpc == "2.0", decoded.id == payload.id,

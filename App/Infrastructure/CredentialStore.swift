@@ -13,7 +13,7 @@ struct CredentialStore {
         if status == errSecItemNotFound { return nil }
         guard status == errSecSuccess, let data = result as? Data else { throw error(status) }
         do { return try JSONDecoder().decode(StoredCredential.self, from: data) }
-        catch { throw AppFailure.storage("保存的凭据无法读取，请重新输入密码。") }
+        catch { throw AppFailure.storage(L10n.string("保存的凭据无法读取，请重新输入密码。")) }
     }
 
     func save(_ credential: StoredCredential, id: UUID) throws {
@@ -42,6 +42,6 @@ struct CredentialStore {
 
     private func error(_ status: OSStatus) -> AppFailure {
         // No credential contents appear in errors or logs.
-        .storage("无法访问钥匙串（\(status)），请解锁设备后重试。")
+        .storage(L10n.format("无法访问钥匙串（%lld），请解锁设备后重试。", Int(status)))
     }
 }

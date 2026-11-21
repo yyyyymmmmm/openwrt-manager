@@ -25,9 +25,9 @@ public enum TransactionError: LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .unacknowledged: return "路由器未确认应用结果，事务保持待处理状态，请核对后再决定保留或回滚。"
-        case .reloadFailed(let service): return "服务 \(service) 重载失败，配置已回滚。"
-        case .verificationFailed(let config): return "回读验证失败：\(config) 的实际内容与预期不一致，配置已回滚。"
+        case .unacknowledged: return KitL10n.text("路由器未确认应用结果，事务保持待处理状态，请核对后再决定保留或回滚。")
+        case .reloadFailed(let service): return KitL10n.format("服务 %@ 重载失败，配置已回滚。", service)
+        case .verificationFailed(let config): return KitL10n.format("回读验证失败：%@ 的实际内容与预期不一致，配置已回滚。", config)
         }
     }
 }

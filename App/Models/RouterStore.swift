@@ -32,6 +32,9 @@ final class RouterStore {
     private(set) var capabilityUpdatedAt: Date?
     private(set) var capabilityError: String?
     private(set) var capabilityIsFromCache = false
+    /// The snapshot-language prediction in effect when the last live
+    /// discovery ran; the baseline for the refresh-time language gate.
+    private var lastDiscoveryPrediction: String?
     private(set) var realtimeSamples: [RealtimeSample] = []
     private(set) var realtimeUpdatedAt: Date?
     private(set) var defaultProfileID: UUID?
@@ -117,7 +120,7 @@ final class RouterStore {
         activeProfile = saved
         connectionID = UUID()
         clearData()
-        recordActivity("已连接路由器", detail: "通过路由器账户建立管理会话。")
+        recordActivity(L10n.string("已连接路由器"), detail: L10n.string("通过路由器账户建立管理会话。"))
         profiles.removeAll { $0.id == saved.id }
         profiles.insert(saved, at: 0)
         persist()
@@ -143,18 +146,19 @@ final class RouterStore {
         // snapshot. (The old check required BOTH an empty tree and a
         // missing hostname, so stripped menus were cached as success.)
         if !snapshot.hasSubstantiveMenu {
-            capabilityError = "实时发现失败：路由器返回的菜单不完整（会话未被认可为已登录），已保留上次结果，未写入缓存。"
+            capabilityError = L10n.string("实时发现失败：路由器返回的菜单不完整（会话未被认可为已登录），已保留上次结果，未写入缓存。")
             if capability == nil, let cached = cachedCapability(for: profile) {
                 capability = cached
                 capabilityIsFromCache = true
                 capabilityUpdatedAt = nil
-                recordActivity("显示离线缓存", detail: "实时发现不完整，导航来自上次成功发现的缓存快照。", isWarning: true)
+                recordActivity(L10n.string("显示离线缓存"), detail: L10n.string("实时发现不完整，导航来自上次成功发现的缓存快照。"), isWarning: true)
             }
             return
         }
         capability = snapshot
         capabilityIsFromCache = false
         capabilityUpdatedAt = Date()
+        lastDiscoveryPrediction = L10n.expectedSnapshotLanguage
         capabilityError = result.snapshot.warnings.isEmpty ? nil : result.snapshot.warnings.joined(separator: "\n")
         if let data = try? JSONEncoder().encode(result.collected) {
             defaults.set(data, forKey: capabilityCachePrefix + profile.id.uuidString)
@@ -164,6 +168,14 @@ final class RouterStore {
     private func cachedCapability(for profile: RouterProfile) -> CapabilitySnapshot? {
         guard let data = defaults.data(forKey: capabilityCachePrefix + profile.id.uuidString),
               let collected = try? JSONDecoder().decode(CollectedRouterSnapshot.self, from: data) else { return nil }
+        // Language gate (localization package, spec D): a cache written
+        // by an older schema — including every pre-tagging haul — is
+        // discarded outright, and a haul whose display strings were
+        // localized for a different language than a fresh discovery
+        // would produce now is not rendered either; the caller falls
+        // back to live re-discovery instead of showing stale-language
+        // pages until the user happens to refresh.
+        guard collected.isUsableCache(expectedLanguage: L10n.expectedSnapshotLanguage) else { return nil }
         return CapabilitySnapshot(collected: collected)
     }
 
@@ -262,14 +274,27 @@ final class RouterStore {
         }
         inventory = results.4
         inventoryUpdatedAt = Date()
-        if capability == nil || capabilityIsFromCache { await loadCapability() }
+        // If the system language changed since the snapshot was
+        // discovered (per-app language in Settings, or a cache admitted
+        // while the language was unpredictable), re-discover so every
+        // page — titles included — follows the current language. The
+        // prediction recorded at the last live discovery is the
+        // baseline: a router without a catalog for the system language
+        // settles on a different tag once, and that settled result must
+        // not trigger a re-discovery on every refresh.
+        L10n.syncKitLanguage()
+        let expectedLanguage = L10n.expectedSnapshotLanguage
+        let languageStale = capability != nil && expectedLanguage != nil
+            && expectedLanguage != capability?.language
+            && expectedLanguage != lastDiscoveryPrediction
+        if capability == nil || capabilityIsFromCache || languageStale { await loadCapability() }
         let errors = [overviewError, devicesError, wirelessError, servicesError].compactMap { $0 }
         if !errors.isEmpty && (!wasLoaded || !previouslyFailed) {
-            recordActivity("部分信息读取失败", detail: "\(errors.count) 项数据未能更新，请在对应页面查看原因。", isWarning: true)
+            recordActivity(L10n.string("部分信息读取失败"), detail: L10n.format("%lld 项数据未能更新，请在对应页面查看原因。", errors.count), isWarning: true)
         } else if errors.isEmpty && previouslyFailed {
-            recordActivity("状态读取已恢复", detail: "概览、租约、无线和服务状态已重新读取。")
+            recordActivity(L10n.string("状态读取已恢复"), detail: L10n.string("概览、租约、无线和服务状态已重新读取。"))
         } else if !wasLoaded && errors.isEmpty {
-            recordActivity("首次读取完成", detail: "概览、租约、无线和服务状态已读取。")
+            recordActivity(L10n.string("首次读取完成"), detail: L10n.string("概览、租约、无线和服务状态已读取。"))
         }
         hasLoaded = true
     }
@@ -336,9 +361,9 @@ final class RouterStore {
         let pending = try await configurationClient.apply(plan)
         pendingConfiguration = pending
         if pending.acknowledged {
-            recordActivity("配置等待确认", detail: "\(plan.original.name) 的应用请求已获路由器确认，等待连接验证。")
+            recordActivity(L10n.string("配置等待确认"), detail: L10n.format("%@ 的应用请求已获路由器确认，等待连接验证。", plan.original.name))
         } else {
-            recordActivity("配置应用结果待确认", detail: "\(plan.original.name) 的应用请求未收到响应，请验证连接并核对配置。", isWarning: true)
+            recordActivity(L10n.string("配置应用结果待确认"), detail: L10n.format("%@ 的应用请求未收到响应，请验证连接并核对配置。", plan.original.name), isWarning: true)
         }
     }
 
@@ -348,7 +373,7 @@ final class RouterStore {
         defer { isMutating = false }
         try await configurationClient.confirm()
         pendingConfiguration = nil
-        recordActivity("配置已确认", detail: "路由器连接验证通过，修改已保留。")
+        recordActivity(L10n.string("配置已确认"), detail: L10n.string("路由器连接验证通过，修改已保留。"))
         await refresh()
     }
 
@@ -358,7 +383,7 @@ final class RouterStore {
         defer { isMutating = false }
         try await configurationClient.rollback()
         pendingConfiguration = nil
-        recordActivity("配置已回滚", detail: "路由器已接受回滚请求，请核对重新读取的配置。")
+        recordActivity(L10n.string("配置已回滚"), detail: L10n.string("路由器已接受回滚请求，请核对重新读取的配置。"))
         await refresh()
     }
 
@@ -366,7 +391,7 @@ final class RouterStore {
         guard let pendingConfiguration, pendingConfiguration.deadline <= Date(), !isMutating else { return }
         await configurationClient?.releaseExpired()
         self.pendingConfiguration = nil
-        recordActivity("配置确认已超时", detail: "已超过回滚期限。请重新读取配置，核对路由器实际状态。", isWarning: true)
+        recordActivity(L10n.string("配置确认已超时"), detail: L10n.string("已超过回滚期限。请重新读取配置，核对路由器实际状态。"), isWarning: true)
         await refresh()
     }
 
@@ -394,9 +419,9 @@ final class RouterStore {
             })
         let outcome = try await transaction.execute(name: name, action: action)
         if outcome.verified == false {
-            recordActivity("服务操作后状态未达预期", detail: "\(name)：\(action.title) 已下发，但路由器报告的状态与预期不一致，请核对。", isWarning: true)
+            recordActivity(L10n.string("服务操作后状态未达预期"), detail: L10n.format("%@：%@ 已下发，但路由器报告的状态与预期不一致，请核对。", name, action.title), isWarning: true)
         } else {
-            recordActivity("服务操作已执行", detail: "\(name)：\(action.title)。")
+            recordActivity(L10n.string("服务操作已执行"), detail: L10n.format("%@：%@。", name, action.title))
         }
         await refresh()
     }
@@ -413,7 +438,7 @@ final class RouterStore {
             let receipt = try await configurationClient.execute(plan: plan, reloadServices: reloadServices) { name, action in
                 try await reader.serviceAction(name: name, action: action)
             }
-            recordActivity("配置已更新", detail: "\(plan.original.name)：\(plan.edits.count) 项修改已下发、回读验证并确认。")
+            recordActivity(L10n.string("配置已更新"), detail: L10n.format("%@：%lld 项修改已下发、回读验证并确认。", plan.original.name, plan.edits.count))
             await refresh()
             return receipt
         } catch let error as TransactionError {
@@ -423,9 +448,9 @@ final class RouterStore {
                 pendingConfiguration = PendingConfiguration(config: plan.original.name,
                                                             deadline: Date().addingTimeInterval(90),
                                                             acknowledged: false)
-                recordActivity("配置应用结果待确认", detail: "\(plan.original.name) 的应用请求未收到确认，请验证连接后决定保留或回滚。", isWarning: true)
+                recordActivity(L10n.string("配置应用结果待确认"), detail: L10n.format("%@ 的应用请求未收到确认，请验证连接后决定保留或回滚。", plan.original.name), isWarning: true)
             } else {
-                recordActivity("配置事务失败", detail: error.localizedDescription, isWarning: true)
+                recordActivity(L10n.string("配置事务失败"), detail: error.localizedDescription, isWarning: true)
             }
             throw error
         }
@@ -436,7 +461,7 @@ final class RouterStore {
     func rebootRouter() async throws {
         guard !isMutating, pendingConfiguration == nil, let sessionManager else { throw ConfigurationError.busy }
         try await SystemControlClient(caller: sessionManager).reboot()
-        recordActivity("已发送重启指令", detail: "路由器正在重启，连接将中断数分钟。", isWarning: true)
+        recordActivity(L10n.string("已发送重启指令"), detail: L10n.string("路由器正在重启，连接将中断数分钟。"), isWarning: true)
     }
 
     func records(_ kind: RouterRecordKind) async throws -> [JSONValue] {

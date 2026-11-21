@@ -102,8 +102,8 @@ struct OpenBoxView: View {
                 }
             case .loaded(let (status, version, proxies)):
                 Section("内核与面板") {
-                    LabeledContent("内核", value: status.coreRunning.map { $0 ? "运行中" : "已停止" } ?? "未知")
-                    LabeledContent("面板", value: status.panelRunning.map { $0 ? "运行中" : "已停止" } ?? "未知")
+                    LabeledContent("内核", value: status.coreRunning.map { $0 ? L10n.string("运行中") : L10n.string("已停止") } ?? L10n.string("未知"))
+                    LabeledContent("面板", value: status.panelRunning.map { $0 ? L10n.string("运行中") : L10n.string("已停止") } ?? L10n.string("未知"))
                     if let version { LabeledContent("内核版本", value: version) }
                     if status.needsRestart == true {
                         Label("有待重启生效的变更", systemImage: "exclamationmark.triangle")
@@ -145,8 +145,8 @@ struct OpenBoxView: View {
             }
             if let service = store.capability?.services.first(where: { $0.key == "openbox" }) {
                 Section("路由器侧状态") {
-                    LabeledContent("init.d", value: service.initNames.joined(separator: "、"))
-                    LabeledContent("开机自启", value: service.enabled.map { $0 ? "已启用" : "未启用" } ?? "未知")
+                    LabeledContent("init.d", value: service.initNames.joined(separator: L10n.string("、")))
+                    LabeledContent("开机自启", value: service.enabled.map { $0 ? L10n.string("已启用") : L10n.string("未启用") } ?? L10n.string("未知"))
                 }
             }
         }
@@ -230,8 +230,8 @@ struct HomeProxyView: View {
         List {
             if let service {
                 Section("服务状态") {
-                    LabeledContent("运行状态", value: service.running.map { $0 ? "运行中" : "已停止" } ?? "未知")
-                    LabeledContent("开机自启", value: service.enabled.map { $0 ? "已启用" : "未启用" } ?? "未知")
+                    LabeledContent("运行状态", value: service.running.map { $0 ? L10n.string("运行中") : L10n.string("已停止") } ?? L10n.string("未知"))
+                    LabeledContent("开机自启", value: service.enabled.map { $0 ? L10n.string("已启用") : L10n.string("未启用") } ?? L10n.string("未知"))
                 }
             }
             Section("配置分组") {
@@ -262,6 +262,7 @@ struct HomeProxyView: View {
 struct MosDNSView: View {
     @Environment(RouterStore.self) private var store
     @State private var state: LoadState<RouterConfiguration?> = .loading
+    @State private var localization: LuciLocalization = .source
 
     private var service: CapabilitySnapshot.CapabilityService? {
         store.capability?.services.first { $0.key == "mosdns" }
@@ -271,8 +272,8 @@ struct MosDNSView: View {
         List {
             if let service {
                 Section("服务状态") {
-                    LabeledContent("运行状态", value: service.running.map { $0 ? "运行中" : "已停止" } ?? "未知")
-                    LabeledContent("开机自启", value: service.enabled.map { $0 ? "已启用" : "未启用" } ?? "未知")
+                    LabeledContent("运行状态", value: service.running.map { $0 ? L10n.string("运行中") : L10n.string("已停止") } ?? L10n.string("未知"))
+                    LabeledContent("开机自启", value: service.enabled.map { $0 ? L10n.string("已启用") : L10n.string("未启用") } ?? L10n.string("未知"))
                 }
             }
             switch state {
@@ -282,10 +283,10 @@ struct MosDNSView: View {
                 ErrorStateView(message: message) { Task { await load() } }
             case .loaded(let configuration):
                 if let configuration {
-                    ForEach(GenericPageModel.sections(from: configuration)) { section in
+                    ForEach(GenericPageModel.sections(from: configuration, localizer: localization)) { section in
                         Section(section.title) {
                             ForEach(section.rows) { row in
-                                LabeledContent(row.key, value: row.valueText)
+                                LabeledContent(row.displayKey, value: row.valueText)
                             }
                         }
                     }
@@ -309,6 +310,7 @@ struct MosDNSView: View {
     private func load() async {
         guard let client = store.readClient else { state = .failed("未连接路由器。"); return }
         state = .loading
+        localization = await client.localization()
         do { state = .loaded(try await client.configuration("mosdns")) }
         catch { state = .failed(FriendlyError.message(error)) }
     }

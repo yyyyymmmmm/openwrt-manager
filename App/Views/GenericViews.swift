@@ -17,6 +17,9 @@ struct UCIConfigView: View {
     /// an explanatory empty state instead of an error card with a retry
     /// button that can never succeed.
     @State private var unavailableHint: String?
+    /// The discovery session's localization entry: section titles and
+    /// field labels on this page resolve through it.
+    @State private var localization: LuciLocalization = .source
 
     var body: some View {
         List {
@@ -33,8 +36,8 @@ struct UCIConfigView: View {
                 ErrorStateView(message: message) { Task { await load() } }
             case .loaded(let configurations):
                 let rendered = configurations.flatMap { name, configuration in
-                    (sectionTypeFilter.map { GenericPageModel.sections(from: configuration, type: $0) }
-                        ?? GenericPageModel.sections(from: configuration))
+                    (sectionTypeFilter.map { GenericPageModel.sections(from: configuration, type: $0, localizer: localization) }
+                        ?? GenericPageModel.sections(from: configuration, localizer: localization))
                         .map { (name, $0) }
                 }
                 if rendered.isEmpty {
@@ -44,14 +47,14 @@ struct UCIConfigView: View {
                     ForEach(rendered, id: \.1.id) { name, section in
                         Section(configurations.count > 1 ? "\(name) · \(section.title)" : section.title) {
                             ForEach(section.rows) { row in
-                                LabeledContent(row.key, value: row.valueText)
+                                LabeledContent(row.displayKey, value: row.valueText)
                             }
                         }
                     }
                 }
             }
         }
-        .navigationTitle(title)
+        .navigationTitle(L10n.key(title))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if configNames.count == 1, let name = configNames.first {
@@ -68,9 +71,10 @@ struct UCIConfigView: View {
     }
 
     private func load() async {
-        guard let client = store.readClient else { state = .failed("未连接路由器。"); return }
+        guard let client = store.readClient else { state = .failed(L10n.string("未连接路由器。")); return }
         state = .loading
         unavailableHint = nil
+        localization = await client.localization()
         var loaded: [(String, RouterConfiguration)] = []
         var lastError: Error?
         var accessRefusedOnly = true
@@ -120,12 +124,12 @@ struct GenericServiceView: View {
                             .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                     }
                     Section("状态") {
-                        LabeledContent("运行状态", value: service.running.map { $0 ? "运行中" : "已停止" } ?? "未知")
-                        LabeledContent("开机自启", value: service.enabled.map { $0 ? "已启用" : "未启用" } ?? "未知")
+                        LabeledContent("运行状态", value: service.running.map { $0 ? L10n.string("运行中") : L10n.string("已停止") } ?? L10n.string("未知"))
+                        LabeledContent("开机自启", value: service.enabled.map { $0 ? L10n.string("已启用") : L10n.string("未启用") } ?? L10n.string("未知"))
                         if !service.initNames.isEmpty {
-                            LabeledContent("init.d 服务", value: service.initNames.joined(separator: "、"))
+                            LabeledContent("init.d 服务", value: service.initNames.joined(separator: L10n.string("、")))
                         }
-                        LabeledContent("来源", value: service.source == .initFallback ? "init.d 核心服务" : "菜单 ∩ init.d")
+                        LabeledContent("来源", value: service.source == .initFallback ? L10n.string("init.d 核心服务") : L10n.string("菜单 ∩ init.d"))
                     }
                     if let initName = service.initNames.first {
                         ServiceActionsSection(serviceName: initName)
@@ -140,7 +144,7 @@ struct GenericServiceView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink {
-                    UCIConfigView(title: "\(page.title) 配置", configNames: page.configNames,
+                    UCIConfigView(title: L10n.format("%@ 配置", page.title), configNames: page.configNames,
                                   isGenericFallback: true)
                 } label: {
                     Text("配置")

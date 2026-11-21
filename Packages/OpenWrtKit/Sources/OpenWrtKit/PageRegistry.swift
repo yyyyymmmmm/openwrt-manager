@@ -10,11 +10,11 @@ public enum AppTabID: String, CaseIterable, Equatable, Sendable {
 
     public var title: String {
         switch self {
-        case .overview: return "概览"
-        case .network: return "网络"
-        case .services: return "服务"
-        case .system: return "系统"
-        case .settings: return "设置"
+        case .overview: return KitL10n.text("概览")
+        case .network: return KitL10n.text("网络")
+        case .services: return KitL10n.text("服务")
+        case .system: return KitL10n.text("系统")
+        case .settings: return KitL10n.text("设置")
         }
     }
 }
@@ -108,7 +108,7 @@ public enum PageRegistry {
     // MARK: Overview — the router's status group
 
     private static func overviewPages(_ snapshot: CapabilitySnapshot) -> [PageDescriptor] {
-        var pages = [PageDescriptor(id: "app/overview-home", tab: .overview, title: "概况", kind: .overviewHome)]
+        var pages = [PageDescriptor(id: "app/overview-home", tab: .overview, title: KitL10n.text("概况"), kind: .overviewHome)]
         guard let group = snapshot.menuNode("admin/status") else { return pages }
         for child in group.children {
             switch child.path {
@@ -239,16 +239,16 @@ public enum PageRegistry {
         // join the system tab as app-provided pages. Their LuCI menu
         // counterparts stay excluded above — these are the native
         // implementations, present on every OpenWrt.
-        pages.append(PageDescriptor(id: "app/file-manager", tab: .system, title: "文件管理", kind: .fileManager))
-        pages.append(PageDescriptor(id: "app/terminal", tab: .system, title: "终端", kind: .terminal))
+        pages.append(PageDescriptor(id: "app/file-manager", tab: .system, title: KitL10n.text("文件管理"), kind: .fileManager))
+        pages.append(PageDescriptor(id: "app/terminal", tab: .system, title: KitL10n.text("终端"), kind: .terminal))
         return pages
     }
 
     // MARK: Settings — the app itself
 
     private static func settingsPages() -> [PageDescriptor] {
-        [PageDescriptor(id: "app/profiles", tab: .settings, title: "路由器档案", kind: .profiles),
-         PageDescriptor(id: "app/about", tab: .settings, title: "关于", kind: .about)]
+        [PageDescriptor(id: "app/profiles", tab: .settings, title: KitL10n.text("路由器档案"), kind: .profiles),
+         PageDescriptor(id: "app/about", tab: .settings, title: KitL10n.text("关于"), kind: .about)]
     }
 
     private static func descriptor(_ node: CapabilitySnapshot.MenuNode, tab: AppTabID,

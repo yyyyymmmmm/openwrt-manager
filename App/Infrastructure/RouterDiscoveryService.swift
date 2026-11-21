@@ -47,9 +47,9 @@ final class RouterDiscoveryService {
         }
         total = targets.count
         if targets.isEmpty {
-            message = "未获取到 Wi-Fi IPv4 网段，正在尝试 Bonjour 发现。你也可以手动输入地址。"
+            message = L10n.string("未获取到 Wi-Fi IPv4 网段，正在尝试 Bonjour 发现。你也可以手动输入地址。")
         } else {
-            message = "检查当前 Wi-Fi 所在网段的 80 / 443 端口；较大的网段仅检查手机所在的 /24 范围。"
+            message = L10n.string("检查当前 Wi-Fi 所在网段的 80 / 443 端口；较大的网段仅检查手机所在的 /24 范围。")
         }
         scanTask = Task { [weak self] in
             await withTaskGroup(of: (ProbeTarget, Bool).self) { group in
@@ -66,7 +66,7 @@ final class RouterDiscoveryService {
                     }
                     self.completed += 1
                     if open {
-                        self.insert(.init(address: target.address, name: target.host, source: "开放 Web 端口 · 尚未验证 OpenWrt"))
+                        self.insert(.init(address: target.address, name: target.host, source: L10n.string("开放 Web 端口 · 尚未验证 OpenWrt")))
                     }
                     if next < targets.count {
                         let target = targets[next]
@@ -116,7 +116,7 @@ final class RouterDiscoveryService {
                 Task { @MainActor [weak self] in
                     guard let self, self.generation == run else { return }
                     self.permissionDenied = true
-                    self.message = "本地网络访问被拒绝。请在系统设置中允许本地网络访问，或手动输入可访问的地址。"
+                    self.message = L10n.string("本地网络访问被拒绝。请在系统设置中允许本地网络访问，或手动输入可访问的地址。")
                     self.stop()
                 }
             }
@@ -142,7 +142,7 @@ final class RouterDiscoveryService {
                                 guard let self, self.generation == run, self.isScanning else { return }
                                 self.insert(.init(
                                     address: "\(scheme)://\(hostText):\(port.rawValue)",
-                                    name: name, source: "Bonjour Web 服务 · 尚未验证 OpenWrt"
+                                    name: name, source: L10n.string("Bonjour Web 服务 · 尚未验证 OpenWrt")
                                 ))
                             }
                         case .failed, .cancelled:

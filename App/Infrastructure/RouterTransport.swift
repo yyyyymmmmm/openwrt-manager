@@ -82,16 +82,16 @@ enum FriendlyError {
     static func message(_ error: Error) -> String {
         if let error = error as? URLError {
             switch error.code {
-            case .notConnectedToInternet: return "网络不可用。请连接路由器所在的 Wi-Fi，并在设置中允许本地网络访问。"
-            case .timedOut: return "连接超时。请检查路由器地址、管理端口和当前网络。"
+            case .notConnectedToInternet: return L10n.string("网络不可用。请连接路由器所在的 Wi-Fi，并在设置中允许本地网络访问。")
+            case .timedOut: return L10n.string("连接超时。请检查路由器地址、管理端口和当前网络。")
             case .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed:
-                return "找不到路由器。请检查地址，并确认手机能访问这个网络。"
+                return L10n.string("找不到路由器。请检查地址，并确认手机能访问这个网络。")
             case .appTransportSecurityRequiresSecureConnection:
-                return "系统阻止了此 HTTP 连接，请改用 HTTPS 或局域网地址。"
+                return L10n.string("系统阻止了此 HTTP 连接，请改用 HTTPS 或局域网地址。")
             case .serverCertificateUntrusted, .serverCertificateHasBadDate, .secureConnectionFailed:
-                return "HTTPS 证书验证失败。请检查路由器证书、设备时间或证书指纹。"
-            case .cancelled: return "连接已取消。"
-            default: return "网络请求失败（\(error.errorCode)），请检查连接后重试。"
+                return L10n.string("HTTPS 证书验证失败。请检查路由器证书、设备时间或证书指纹。")
+            case .cancelled: return L10n.string("连接已取消。")
+            default: return L10n.format("网络请求失败（%lld），请检查连接后重试。", error.errorCode)
             }
         }
         return error.localizedDescription

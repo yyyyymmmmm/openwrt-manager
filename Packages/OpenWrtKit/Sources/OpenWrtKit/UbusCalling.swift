@@ -13,6 +13,14 @@ public protocol UbusCalling: Sendable {
     /// effective language is not English. Default: no catalog (callers
     /// keep the source-language titles).
     func translationsCatalog() async throws -> LuciTranslationCatalog?
+    /// The router's localization context: the negotiated catalog
+    /// language plus its catalog — the single entry every router-source
+    /// display string is resolved through. Default: derived from
+    /// translationsCatalog(), tagged "source" because a caller that
+    /// only provides a catalog cannot report the negotiated language;
+    /// the app then re-discovers instead of caching a snapshot under a
+    /// wrong language tag.
+    func localization() async throws -> LuciLocalization
     func destroySession() async
     /// Drops the current session so the next call logs in again. Used by
     /// discovery's self-healing when a haul comes back at anonymous grade
@@ -25,6 +33,10 @@ extension UbusCalling {
     public func destroySession() async {}
     public func invalidateSession() async {}
     public func translationsCatalog() async throws -> LuciTranslationCatalog? { nil }
+    public func localization() async throws -> LuciLocalization {
+        guard let catalog = try await translationsCatalog() else { return .source }
+        return LuciLocalization(language: "source", catalog: catalog)
+    }
 
     /// Parameterless convenience mirroring UbusClient.call's default.
     public func call(object: String, method: String) async throws -> JSONValue {
@@ -53,7 +65,7 @@ public struct FixedSessionCaller: UbusCalling {
 
     public func menu() async throws -> JSONValue {
         guard let luciCookie else {
-            throw OpenWrtKitError.unsupported("固定会话没有 LuCI 登录 cookie，无法读取菜单（菜单需要 LuCI 网页登录会话）。")
+            throw OpenWrtKitError.unsupported(KitL10n.text("固定会话没有 LuCI 登录 cookie，无法读取菜单（菜单需要 LuCI 网页登录会话）。"))
         }
         return try await client.menu(cookie: luciCookie)
     }
@@ -63,10 +75,14 @@ public struct FixedSessionCaller: UbusCalling {
     }
 
     public func translationsCatalog() async throws -> LuciTranslationCatalog? {
-        guard let luciCookie else { return nil }
+        try await localization().catalog
+    }
+
+    public func localization() async throws -> LuciLocalization {
+        guard let luciCookie else { return .source }
         let config = try? await client.call(session: session, object: "uci", method: "get",
                                             parameters: ["config": .string("luci")])
-        return try await client.translationCatalog(cookie: luciCookie, luciConfig: config)
+        return try await client.localization(cookie: luciCookie, luciConfig: config)
     }
 
     public func destroySession() async {

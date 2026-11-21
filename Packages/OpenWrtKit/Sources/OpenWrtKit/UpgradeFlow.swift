@@ -70,11 +70,11 @@ public enum UpgradeFlow {
         let localDigest = SHA256Hasher.hexDigest(image)
         let remoteDigest = try await operations.remoteSHA256(imagePath)
         guard remoteDigest.lowercased() == localDigest else {
-            throw TransactionError.verificationFailed("镜像哈希不一致：本地 \(localDigest)，路由器 \(remoteDigest)")
+            throw TransactionError.verificationFailed(KitL10n.format("镜像哈希不一致：本地 %@，路由器 %@", localDigest, remoteDigest))
         }
         onStep(.imageValidation)
         guard try await operations.validateImage(imagePath) else {
-            throw OpenWrtKitError.unsupported("路由器拒绝了此镜像（sysupgrade 校验未通过），未执行升级。")
+            throw OpenWrtKitError.unsupported(KitL10n.text("路由器拒绝了此镜像（sysupgrade 校验未通过），未执行升级。"))
         }
         onStep(.awaitingSecondConfirmation)
         return (backupPath, localDigest)
@@ -96,7 +96,7 @@ public enum UpgradeFlow {
                 return true
             }
         }
-        onStep(.failed("升级后未能重新连接路由器"))
+        onStep(.failed(KitL10n.text("升级后未能重新连接路由器")))
         return false
     }
 
@@ -106,7 +106,7 @@ public enum UpgradeFlow {
             createBackup: {
                 let path = "/tmp/zirox-backup.tar.gz"
                 let (code, _) = try await files.exec(command: "/sbin/sysupgrade", arguments: ["--create-backup", path])
-                guard code == 0 else { throw OpenWrtKitError.unsupported("备份创建失败（sysupgrade 返回 \(code)）。") }
+                guard code == 0 else { throw OpenWrtKitError.unsupported(KitL10n.format("备份创建失败（sysupgrade 返回 %lld）。", code)) }
                 return path
             },
             stageImage: { data, path in
@@ -115,7 +115,7 @@ public enum UpgradeFlow {
             remoteSHA256: { path in
                 let (code, output) = try await files.exec(command: "/usr/bin/sha256sum", arguments: [path])
                 guard code == 0, let digest = output.split(separator: " ").first else {
-                    throw OpenWrtKitError.unsupported("无法读取路由器上的镜像哈希。")
+                    throw OpenWrtKitError.unsupported(KitL10n.text("无法读取路由器上的镜像哈希。"))
                 }
                 return String(digest)
             },

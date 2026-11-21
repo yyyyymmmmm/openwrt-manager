@@ -102,13 +102,67 @@ public struct LuciTranslationCatalog: Sendable {
     }
 }
 
-/// Picks the catalog language a router will actually serve, mirroring
-/// dispatcher.uc `determine_request_language`: a fixed luci.main.lang
-/// wins; "auto" negotiates the client's preferred languages against the
-/// languages registered in the luci config. Returns the dash form the
-/// translations endpoint expects ("zh-cn"), or nil when the effective
-/// language is English / undetermined — English needs no catalog, its
-/// titles are the source strings already.
+/// The one localization context every router-source display string goes
+/// through: the negotiated catalog language plus the catalog itself.
+/// Menu titles were the first consumer (round 2); sub-page labels,
+/// generic-page section/field names and service titles resolve through
+/// this same entry so the whole app speaks one language per discovery.
+/// `language` is the canonical tag recorded in the snapshot ("zh-cn"),
+/// or "source" when no catalog applies — the router's strings are
+/// already in the source language (English) then.
+public struct LuciLocalization: Sendable {
+    public let language: String
+    public let catalog: LuciTranslationCatalog?
+
+    public init(language: String, catalog: LuciTranslationCatalog?) {
+        self.language = language
+        self.catalog = catalog
+    }
+
+    /// No catalog: every string stays as the router served it.
+    public static let source = LuciLocalization(language: "source", catalog: nil)
+
+    /// The display form of a router-source string: the catalog's
+    /// translation when it has one, the source string otherwise — the
+    /// LuCI web UI's own fallback rule.
+    public func translate(_ text: String) -> String {
+        catalog?.translate(text) ?? text
+    }
+}
+
+/// Predicts, from the client's preferences alone, the catalog language
+/// a fresh discovery will aim for. Used to notice that a cached
+/// snapshot was discovered under a different language than the one the
+/// user would get now (system language changed, or the snapshot predates
+/// language tagging). A heuristic trigger only: nil means "cannot
+/// predict" (languages whose catalog tag is not a simple function of
+/// the preference), and callers must not loop on a mismatch — the
+/// router's registered languages have the final say during discovery.
+public enum SnapshotLanguage {
+    public static func expectedTag(preferredLanguages: [String]) -> String? {
+        guard let first = preferredLanguages.first?.lowercased() else { return nil }
+        if first.hasPrefix("zh") { return "zh-cn" }
+        if first.hasPrefix("en") { return "source" }
+        return nil
+    }
+}
+
+/// Picks the catalog language a router will actually serve. The order
+/// is the app's localization policy (systematic localization package):
+///   1. The client's preferred languages, in order — the app follows
+///      the system language. The first preference that is English
+///      settles it (source strings, no catalog); the first preference
+///      the router has a registered language for wins its catalog.
+///   2. The router's own fixed luci.main.lang, when step 1 matched
+///      nothing (e.g. the system language is not installed on the
+///      router at all).
+///   3. nil — source strings.
+/// Returns the dash form the translations endpoint expects ("zh-cn"),
+/// or nil when the effective language is English / undetermined —
+/// English needs no catalog, its titles are the source strings already.
+/// (Before this package, a fixed luci.main.lang outranked the client's
+/// languages; the user-mandated order is system-first, and the
+/// round-2 negotiation test was updated to match.)
 public enum LuciLanguageNegotiator {
     public static func effectiveLanguage(luciConfig: JSONValue?, preferredLanguages: [String]) -> String? {
         guard let values = luciConfig?["values"].objectValue else { return nil }
@@ -126,14 +180,12 @@ public enum LuciLanguageNegotiator {
                 }
             }
         }
-        let configured = (mainLang ?? "auto").lowercased()
-        if configured != "auto" {
-            return configured == "en" ? nil : configured.replacingOccurrences(of: "_", with: "-")
-        }
+        // Step 1: the client's languages, in preference order.
         for tag in preferredLanguages {
             let parts = tag.replacingOccurrences(of: "_", with: "-")
                 .split(separator: "-").map { $0.lowercased() }
             guard let base = parts.first else { continue }
+            if base == "en" { return nil }
             var candidates: [String] = []
             if parts.count >= 3 { candidates.append("\(base)_\(parts[parts.count - 1])") }
             if parts.count >= 2 { candidates.append("\(base)_\(parts[1])") }
@@ -141,6 +193,11 @@ public enum LuciLanguageNegotiator {
             for candidate in candidates where available.contains(candidate) {
                 return candidate.replacingOccurrences(of: "_", with: "-")
             }
+        }
+        // Step 2: the router's fixed configured language.
+        let configured = (mainLang ?? "auto").lowercased()
+        if configured != "auto" {
+            return configured == "en" ? nil : configured.replacingOccurrences(of: "_", with: "-")
         }
         return nil
     }

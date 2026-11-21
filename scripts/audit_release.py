@@ -82,10 +82,202 @@ def main():
     parser.add_argument("--repository", type=Path, default=Path(__file__).resolve().parent.parent)
     parser.add_argument("--ipa", type=Path)
     args = parser.parse_args()
-    result = {"production_sources_checked": audit_sources(args.repository.resolve())}
+    result = {"production_sources_checked": audit_sources(args.repository.resolve()),
+              "localization": audit_localization(args.repository.resolve())}
     if args.ipa:
         result["ipa"] = audit_ipa(args.ipa.resolve())
     print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+
+# ---------------------------------------------------------------------------
+# Localization audit (localization system package, 2026-11-21)
+#
+# The rule being enforced: every user-visible string in the app follows
+# the system language, and that only stays true if new copy enters the
+# localization system instead of landing as a bare literal. A Chinese
+# literal is "in the system" when its normalized form is a key of
+# App/Localizable.xcstrings (SwiftUI literal call sites localize
+# automatically through the catalog; String-producing code resolves the
+# same keys through L10n), or — in the kit — when it is passed to
+# KitL10n and present in the English table, or is a FieldCatalog label
+# present in the table. Anything else fails the audit. Legitimate
+# exceptions (literals matched against device data, never displayed
+# raw) go in scripts/localization_whitelist.txt, one normalized literal
+# per line, with a comment saying why.
+# ---------------------------------------------------------------------------
+
+import re
+
+CJK_RE = re.compile(r"[\u3000-\u303f\u4e00-\u9fff\uff00-\uffef]")
+SPECIFIER_RE = re.compile(r"%(?:\d+\$)?(?:ll)?[@df]")
+_INT_EXPR_RE = re.compile(
+    r"(Int\(|\.count\b|\bcount\b|errorCode|\.completed\b|\.total\b|editCount|days|hours|minutes|packets|countedRules|\bstatus\b|\bpid\b)")
+
+
+def _specifier_for(expr):
+    return "%lld" if _INT_EXPR_RE.search(expr) else "%@"
+
+
+def iter_swift_literals(text):
+    """Yield (normalized, line) for every string literal in Swift source.
+
+    Interpolations are normalized to format specifiers (%@ / %lld) the
+    same way the compiler forms LocalizedStringKeys; escapes are
+    decoded; strings nested inside interpolations are yielded as
+    literals of their own. Comments are skipped.
+    """
+    results = []
+    i, n = 0, len(text)
+
+    def parse_string(i):
+        # text[i] == '"'; returns (value, exprs, next_index)
+        j = i + 1
+        buf, exprs = [], []
+        while j < n:
+            c = text[j]
+            if c == "\\":
+                nxt = text[j + 1] if j + 1 < n else ""
+                if nxt == "(":
+                    depth, k = 0, j + 1
+                    while k < n:
+                        ch = text[k]
+                        if ch == '"':
+                            inner, _, k2 = parse_string(k)
+                            results.append((inner, text.count("\n", 0, k) + 1))
+                            k = k2
+                            continue
+                        if ch == "(":
+                            depth += 1
+                        elif ch == ")":
+                            depth -= 1
+                            if depth == 0:
+                                break
+                        k += 1
+                    exprs.append(text[j + 2:k])
+                    buf.append("\x01%d\x02" % (len(exprs) - 1))
+                    j = k + 1
+                    continue
+                mapping = {"n": "\n", "t": "\t", "r": "\r", "\\": "\\", '"': '"', "'": "'", "0": "\0"}
+                if nxt == "u":
+                    m = re.match(r"u\{([0-9a-fA-F]+)\}", text[j + 1:])
+                    buf.append(chr(int(m.group(1), 16)))
+                    j += 1 + m.end()
+                    continue
+                buf.append(mapping.get(nxt, nxt))
+                j += 2
+                continue
+            if c == '"':
+                return "".join(buf), exprs, j + 1
+            buf.append(c)
+            j += 1
+        return "".join(buf), exprs, j
+
+    while i < n:
+        if text[i:i + 2] == "//":
+            end = text.find("\n", i)
+            i = end if end >= 0 else n
+        elif text[i:i + 2] == "/*":
+            end = text.find("*/", i + 2)
+            i = end + 2 if end >= 0 else n
+        elif text[i:i + 3] == '"""':
+            end = text.find('"""', i + 3)
+            i = end + 3 if end >= 0 else n
+        elif text[i] == '"':
+            line = text.count("\n", 0, i) + 1
+            value, exprs, i = parse_string(i)
+            parts = re.split(r"\x01(\d+)\x02", value)
+            normalized = parts[0]
+            idx = 1
+            while idx < len(parts):
+                pos = int(parts[idx])
+                normalized += _specifier_for(exprs[pos]) if pos < len(exprs) else "%@"
+                normalized += parts[idx + 1]
+                idx += 2
+            results.append((normalized, line))
+        else:
+            i += 1
+    return results
+
+
+def _load_whitelist(repository):
+    path = repository / "scripts" / "localization_whitelist.txt"
+    entries = set()
+    if path.is_file():
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if line and not line.startswith("#"):
+                entries.add(line)
+    return entries
+
+
+def audit_localization(repository):
+    errors = []
+    whitelist = _load_whitelist(repository)
+
+    catalog_path = repository / "App" / "Localizable.xcstrings"
+    if not catalog_path.is_file():
+        raise ValueError("Missing App/Localizable.xcstrings")
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    keys = set(catalog.get("strings", {}))
+    for key, entry in catalog.get("strings", {}).items():
+        locs = entry.get("localizations", {})
+        for language in ("zh-Hans", "en"):
+            if language not in locs:
+                errors.append(f"catalog key lacks {language}: {key!r}")
+        en_value = locs.get("en", {}).get("stringUnit", {}).get("value", "")
+        if SPECIFIER_RE.findall(key) != SPECIFIER_RE.findall(en_value):
+            errors.append(f"format specifiers differ between key and en value: {key!r}")
+
+    app_literals = 0
+    for source in sorted((repository / "App").rglob("*.swift")):
+        for normalized, line in iter_swift_literals(source.read_text(encoding="utf-8")):
+            if not CJK_RE.search(normalized):
+                continue
+            app_literals += 1
+            if normalized in keys or normalized in whitelist:
+                continue
+            errors.append(
+                f"{source.relative_to(repository)}:{line}: Chinese literal not in "
+                f"Localizable.xcstrings and not whitelisted: {normalized!r}")
+
+    table_path = repository / "Packages/OpenWrtKit/Sources/OpenWrtKit/KitStringsTable.swift"
+    table_keys = set()
+    if table_path.is_file():
+        for normalized, _ in iter_swift_literals(table_path.read_text(encoding="utf-8")):
+            table_keys.add(normalized)
+    kit_literals = 0
+    kit_root = repository / "Packages/OpenWrtKit/Sources"
+    for source in sorted(kit_root.rglob("*.swift")):
+        if source.name in ("KitStringsTable.swift", "KitStrings.swift"):
+            continue
+        text = source.read_text(encoding="utf-8")
+        lines = text.split("\n")
+        for normalized, line in iter_swift_literals(text):
+            if not CJK_RE.search(normalized):
+                continue
+            kit_literals += 1
+            if normalized in whitelist:
+                continue
+            if normalized not in table_keys:
+                errors.append(
+                    f"{source.relative_to(repository)}:{line}: kit Chinese literal missing "
+                    f"from the KitL10n English table and not whitelisted: {normalized!r}")
+                continue
+            # A table entry alone is not enough outside FieldCatalog
+            # (whose labels are data the catalog lookup resolves): the
+            # literal must actually be produced through KitL10n.
+            if source.name != "FieldCatalog.swift":
+                window = "\n".join(lines[max(0, line - 2):line])
+                if "KitL10n." not in window:
+                    errors.append(
+                        f"{source.relative_to(repository)}:{line}: kit Chinese literal is in "
+                        f"the English table but not produced through KitL10n: {normalized!r}")
+
+    if errors:
+        raise ValueError("Localization audit failed:\n" + "\n".join(errors))
+    return {"catalog_keys": len(keys), "app_literals_checked": app_literals,
+            "kit_literals_checked": kit_literals, "kit_english_entries": len(table_keys)}
 
 
 if __name__ == "__main__":

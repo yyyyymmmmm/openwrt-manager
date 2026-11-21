@@ -127,14 +127,14 @@ public enum OpenWrtKitError: LocalizedError, Equatable, Sendable {
 
     public var errorDescription: String? {
         switch self {
-        case .invalidAddress: return "地址无效，请输入 IP、主机名或 HTTP/HTTPS 网址。不要在网址中填写密码。"
+        case .invalidAddress: return KitL10n.text("地址无效，请输入 IP、主机名或 HTTP/HTTPS 网址。不要在网址中填写密码。")
         case .transport(let message): return message
-        case .http(let code): return "路由器返回 HTTP \(code)，请检查管理端口和 /ubus 接口。"
-        case .authenticationFailed: return "登录失败。请检查用户名、密码以及 rpcd 登录设置。"
-        case .permissionDenied: return "会话已过期或账户权限不足。请重新登录，或检查 rpcd ACL。"
+        case .http(let code): return KitL10n.format("路由器返回 HTTP %lld，请检查管理端口和 /ubus 接口。", code)
+        case .authenticationFailed: return KitL10n.text("登录失败。请检查用户名、密码以及 rpcd 登录设置。")
+        case .permissionDenied: return KitL10n.text("会话已过期或账户权限不足。请重新登录，或检查 rpcd ACL。")
         case .unsupported(let message): return message
-        case .malformedResponse: return "路由器响应不符合 ubus JSON-RPC 格式。"
-        case .ubus(let code, let message): return "\(message)（ubus \(code)）"
+        case .malformedResponse: return KitL10n.text("路由器响应不符合 ubus JSON-RPC 格式。")
+        case .ubus(let code, let message): return KitL10n.format("%@（ubus %lld）", message, code)
         }
     }
 }

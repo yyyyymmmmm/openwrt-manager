@@ -14,6 +14,14 @@ public struct ReadOnlyDataClient: Sendable {
         self.caller = FixedSessionCaller(client: client, session: session)
     }
 
+    /// The session's localization context, for pages that resolve
+    /// router-source display strings (generic-page section/field
+    /// names) through the discovery's translation entry. Never
+    /// throws: failures degrade to the source context.
+    public func localization() async -> LuciLocalization {
+        (try? await caller.localization()) ?? .source
+    }
+
     // MARK: System and interfaces
 
     public func systemBoard() async throws -> JSONValue {
@@ -36,18 +44,18 @@ public struct ReadOnlyDataClient: Sendable {
         var infoValue: JSONValue = .null
         switch boardResult {
         case .success(let value): boardValue = value
-        case .failure(let error): snapshot.warnings.append("硬件信息：\(error.localizedDescription)")
+        case .failure(let error): snapshot.warnings.append(KitL10n.format("硬件信息：%@", error.localizedDescription))
         }
         switch infoResult {
         case .success(let value): infoValue = value
-        case .failure(let error): snapshot.warnings.append("运行状态：\(error.localizedDescription)")
+        case .failure(let error): snapshot.warnings.append(KitL10n.format("运行状态：%@", error.localizedDescription))
         }
         snapshot.system = SnapshotParser.system(board: boardValue, info: infoValue)
         switch dumpResult {
         case .success(let value):
             do { snapshot.interfaces = try SnapshotParser.interfaces(value) }
-            catch { snapshot.warnings.append("网络接口：\(error.localizedDescription)") }
-        case .failure(let error): snapshot.warnings.append("网络接口：\(error.localizedDescription)")
+            catch { snapshot.warnings.append(KitL10n.format("网络接口：%@", error.localizedDescription)) }
+        case .failure(let error): snapshot.warnings.append(KitL10n.format("网络接口：%@", error.localizedDescription))
         }
         snapshot.refreshedAt = Date()
         return snapshot
@@ -217,7 +225,7 @@ public struct ReadOnlyDataClient: Sendable {
             "command": .string(command), "params": .array(arguments.map(JSONValue.string))
         ])
         guard value["code"].intValue == 0, let output = value["stdout"].stringValue else {
-            throw OpenWrtKitError.unsupported("路由器未返回 \(command) 的输出。")
+            throw OpenWrtKitError.unsupported(KitL10n.format("路由器未返回 %@ 的输出。", command))
         }
         return output
     }

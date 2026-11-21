@@ -100,7 +100,7 @@ struct OverviewTabScreen: View {
                     LabeledContent("IPv4 地址", value: address)
                 }
                 if let state = iface?.up {
-                    LabeledContent("状态", value: state ? "已连接" : "未连接")
+                    LabeledContent("状态", value: state ? L10n.string("已连接") : L10n.string("未连接"))
                 }
             }
         }
@@ -128,10 +128,10 @@ struct OverviewTabScreen: View {
             LabeledContent("DHCP 已分配租约", value: "\(store.leases.count)")
             if store.capability?.services.contains(where: { $0.key == "ddns" }) == true {
                 let ddns = store.capability?.services.first { $0.key == "ddns" }
-                LabeledContent("动态 DNS", value: ddns?.running == true ? "运行中" : "已检出")
+                LabeledContent("动态 DNS", value: ddns?.running == true ? L10n.string("运行中") : L10n.string("已检出"))
             }
             if store.capability?.menuNode("admin/network/upnp") != nil {
-                LabeledContent("UPnP", value: "已检出（详情见网络页）")
+                LabeledContent("UPnP", value: L10n.string("已检出（详情见网络页）"))
             }
         }
     }
@@ -170,7 +170,7 @@ struct RoutesStatusView: View {
                             VStack(alignment: .leading, spacing: AppSpacing.xs) {
                                 Text("\(pair.1.target)/\(pair.1.mask ?? 0)")
                                     .font(AppTypography.rowTitle)
-                                Text("经 \(pair.0)\(pair.1.nexthop.map { " · 网关 \($0)" } ?? "")")
+                                Text("经 \(pair.0)\(pair.1.nexthop.map { L10n.format(" · 网关 %@", $0) } ?? "")")
                                     .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                             }
                         }
@@ -325,7 +325,7 @@ struct ProcessesView: View {
                         HStack {
                             VStack(alignment: .leading, spacing: AppSpacing.xs) {
                                 Text(process.command).font(AppTypography.rowTitle).lineLimit(1)
-                                Text("PID \(process.pid)\(process.user.map { " · \($0)" } ?? "")")
+                                Text("PID \(process.pid)\(process.user.map { L10n.format(" · %@", $0) } ?? "")")
                                     .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                             }
                             Spacer()
@@ -388,6 +388,7 @@ struct RealtimeView: View {
 struct WireGuardStatusView: View {
     @Environment(RouterStore.self) private var store
     @State private var state: LoadState<RouterConfiguration?> = .loading
+    @State private var localization: LuciLocalization = .source
 
     var body: some View {
         List {
@@ -405,15 +406,15 @@ struct WireGuardStatusView: View {
                         EmptyStateView(title: "无 WireGuard 接口", message: "接口列表中未发现 WireGuard 接口。", symbol: "lock.shield")
                     } else {
                         ForEach(wgInterfaces, id: \.name) { iface in
-                            LabeledContent(iface.name, value: iface.up == true ? "已连接" : "未连接")
+                            LabeledContent(iface.name, value: iface.up == true ? L10n.string("已连接") : L10n.string("未连接"))
                         }
                     }
                 }
                 if let configuration {
                     Section("配置摘要") {
                         LabeledContent("配置节", value: "\(configuration.sections.count)")
-                        ForEach(GenericPageModel.sections(from: configuration)) { section in
-                            LabeledContent(section.title, value: "\(section.rows.count) 项")
+                        ForEach(GenericPageModel.sections(from: configuration, localizer: localization)) { section in
+                            LabeledContent(section.title, value: L10n.format("%lld 项", section.rows.count))
                         }
                     }
                 }
@@ -427,6 +428,7 @@ struct WireGuardStatusView: View {
     private func load() async {
         guard let client = store.readClient else { state = .failed("未连接路由器。"); return }
         state = .loading
+        localization = await client.localization()
         do { state = .loaded(try await client.configuration("wireguard")) }
         catch { state = .loaded(nil) }
     }
@@ -442,7 +444,7 @@ struct ChannelAnalysisView: View {
             } else {
                 ForEach(store.radios) { radio in
                     Section(radio.name) {
-                        LabeledContent("状态", value: radio.up == true ? "启用" : "未启用")
+                        LabeledContent("状态", value: radio.up == true ? L10n.string("启用") : L10n.string("未启用"))
                         LabeledContent("信道", value: radio.channel)
                         ForEach(radio.networks, id: \.self) { ssid in
                             LabeledContent("网络", value: ssid)

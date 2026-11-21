@@ -45,7 +45,7 @@ struct TerminalView: View {
 
     private var connectPanel: some View {
         VStack(alignment: .leading, spacing: AppSpacing.md) {
-            Label("通过 SSH 原生连接到 \(store.activeProfile?.name ?? "路由器")（\(store.activeProfile?.username ?? "root")）。",
+            Label("通过 SSH 原生连接到 \(store.activeProfile?.name ?? L10n.string("路由器"))（\(store.activeProfile?.username ?? "root")）。",
                   systemImage: "terminal")
                 .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
             if storedPasswordAvailable {

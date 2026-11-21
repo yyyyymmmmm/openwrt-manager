@@ -1,0 +1,23 @@
+{
+  "sourceLanguage": "zh-Hans",
+  "strings": {
+    "NSLocalNetworkUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查找并管理你所在 Wi-Fi 中的路由器。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find and manage routers on your Wi-Fi network."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

@@ -29,6 +29,12 @@ public actor SessionManager {
     /// recognize a bare ubus session (see UbusClient.luciLogin), so the
     /// menu endpoint is authenticated with this cookie instead.
     private var luciCookie: String?
+    /// The negotiated localization context, fetched once per session:
+    /// the translations catalog is the router's full dictionary
+    /// (thousands of entries), and every sub-page resolves its
+    /// router-source strings through it, so it must not be re-fetched
+    /// per page. Discarded with the session.
+    private var cachedLocalization: LuciLocalization?
 
     public init(client: UbusClient, credentialProvider: any SessionCredentialProvider,
                 refreshMargin: TimeInterval = 60) {
@@ -96,9 +102,19 @@ public actor SessionManager {
     /// can note it — titles then stay in the source language, they are
     /// never fabricated.
     public func translationsCatalog() async throws -> LuciTranslationCatalog? {
+        try await localization().catalog
+    }
+
+    /// The localization context behind translationsCatalog(): same
+    /// negotiation and fetch, but the negotiated language travels with
+    /// the catalog so discovery can tag its snapshot with it.
+    public func localization() async throws -> LuciLocalization {
+        if let cachedLocalization { return cachedLocalization }
         _ = try await session()
         let config = try? await call(object: "uci", method: "get", parameters: ["config": .string("luci")])
-        return try await client.translationCatalog(cookie: luciSessionCookie(), luciConfig: config)
+        let localization = try await client.localization(cookie: luciSessionCookie(), luciConfig: config)
+        cachedLocalization = localization
+        return localization
     }
 
     public func installedPackages() async throws -> [InstalledPackage] {
@@ -115,12 +131,14 @@ public actor SessionManager {
     public func invalidate() {
         current = nil
         luciCookie = nil
+        cachedLocalization = nil
     }
 
     private func invalidate(ifMatching session: UbusSession) {
         if current?.token == session.token {
             current = nil
             luciCookie = nil
+            cachedLocalization = nil
         }
     }
 

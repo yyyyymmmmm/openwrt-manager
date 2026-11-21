@@ -56,7 +56,7 @@ struct TransactionConfirmationView: View {
                 }
                 if !reloadServices.isEmpty {
                     Section {
-                        Label("应用后将重启服务：\(reloadServices.joined(separator: "、"))，期间相关功能短暂中断。",
+                        Label("应用后将重启服务：\(reloadServices.joined(separator: L10n.string("、")))，期间相关功能短暂中断。",
                               systemImage: "arrow.triangle.2.circlepath")
                             .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                     }
@@ -180,7 +180,7 @@ struct ConfigEditorView: View {
                 ProgressView("正在读取配置…")
             }
         }
-        .navigationTitle(title ?? configName)
+        .navigationTitle(L10n.key(title ?? configName))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {

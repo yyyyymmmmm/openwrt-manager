@@ -76,7 +76,7 @@ struct InterfacesView: View {
                 } else {
                     ForEach(interfaces, id: \.name) { iface in
                         Section(iface.name) {
-                            LabeledContent("状态", value: iface.up == true ? "已连接" : "未连接")
+                            LabeledContent("状态", value: iface.up == true ? L10n.string("已连接") : L10n.string("未连接"))
                             if let proto = iface.proto { LabeledContent("协议", value: proto) }
                             if let device = iface.l3Device ?? iface.device { LabeledContent("设备", value: device) }
                             ForEach(iface.ipv4, id: \.self) { address in
@@ -135,6 +135,7 @@ struct DHCPView: View {
     @Environment(RouterStore.self) private var store
     let merged: Bool
     @State private var state: LoadState<RouterConfiguration?> = .loading
+    @State private var localization: LuciLocalization = .source
 
     var body: some View {
         List {
@@ -161,14 +162,14 @@ struct DHCPView: View {
                 ErrorStateView(message: message) { Task { await load() } }
             case .loaded(let configuration):
                 if let configuration {
-                    let sections = GenericPageModel.sections(from: configuration)
+                    let sections = GenericPageModel.sections(from: configuration, localizer: localization)
                     let hosts = sections.filter { $0.type == "host" }
                     let pools = sections.filter { $0.type == "dhcp" }
                     if !hosts.isEmpty {
                         Section("静态租约") {
                             ForEach(hosts) { section in
                                 ForEach(section.rows) { row in
-                                    LabeledContent(row.key, value: row.valueText)
+                                    LabeledContent(row.displayKey, value: row.valueText)
                                 }
                             }
                         }
@@ -176,7 +177,7 @@ struct DHCPView: View {
                     if !pools.isEmpty {
                         Section("地址池") {
                             ForEach(pools) { section in
-                                LabeledContent(section.title, value: "\(section.rows.count) 项设置")
+                                LabeledContent(section.title, value: L10n.format("%lld 项设置", section.rows.count))
                             }
                         }
                     }
@@ -184,7 +185,7 @@ struct DHCPView: View {
                         Section("DNS（与 DHCP 同页）") {
                             ForEach(sections.filter { $0.type == "dnsmasq" }) { section in
                                 ForEach(section.rows) { row in
-                                    LabeledContent(row.key, value: row.valueText)
+                                    LabeledContent(row.displayKey, value: row.valueText)
                                 }
                             }
                         }
@@ -212,6 +213,7 @@ struct DHCPView: View {
     private func load() async {
         guard let client = store.readClient else { state = .failed("未连接路由器。"); return }
         state = .loading
+        localization = await client.localization()
         do { state = .loaded(try await client.configuration("dhcp")) }
         catch { state = .failed(FriendlyError.message(error)) }
     }
@@ -307,7 +309,7 @@ struct SpeedTestView: View {
                 ErrorStateView(message: message) { Task { await load() } }
             case .loaded(let iperfPresent):
                 Section("iPerf3") {
-                    LabeledContent("服务检出", value: iperfPresent ? "已检出" : "未检出")
+                    LabeledContent("服务检出", value: iperfPresent ? L10n.string("已检出") : L10n.string("未检出"))
                 }
                 Section("测速结果") {
                     EmptyStateView(title: "暂无测速结果", message: "本期为只读展示：测速执行将在后续版本提供，历史结果会显示在这里。", symbol: "gauge.with.dots.needle.67percent")
@@ -335,6 +337,7 @@ struct SpeedTestView: View {
 struct FirewallConfigView: View {
     @Environment(RouterStore.self) private var store
     @State private var state: LoadState<RouterConfiguration?> = .loading
+    @State private var localization: LuciLocalization = .source
 
     private static let groupTitles: [(type: String, title: String)] = [
         ("defaults", "常规与默认策略"), ("zone", "区域"), ("forwarding", "区域转发"),
@@ -351,7 +354,7 @@ struct FirewallConfigView: View {
                 ErrorStateView(message: message) { Task { await load() } }
             case .loaded(let configuration):
                 if let configuration {
-                    let sections = GenericPageModel.sections(from: configuration)
+                    let sections = GenericPageModel.sections(from: configuration, localizer: localization)
                     ForEach(Self.groupTitles, id: \.type) { group in
                         let groupSections = sections.filter { $0.type == group.type }
                         if !groupSections.isEmpty {
@@ -359,7 +362,7 @@ struct FirewallConfigView: View {
                                 ForEach(groupSections) { section in
                                     CollapsibleGroup(title: section.title, detail: "\(section.rows.count) 项") {
                                         ForEach(section.rows) { row in
-                                            LabeledContent(row.key, value: row.valueText)
+                                            LabeledContent(row.displayKey, value: row.valueText)
                                         }
                                     }
                                     .listRowInsets(EdgeInsets())
@@ -372,7 +375,7 @@ struct FirewallConfigView: View {
                     if !others.isEmpty {
                         Section("其他") {
                             ForEach(others) { section in
-                                LabeledContent(section.title, value: "\(section.rows.count) 项")
+                                LabeledContent(section.title, value: L10n.format("%lld 项", section.rows.count))
                             }
                         }
                     }
@@ -396,6 +399,7 @@ struct FirewallConfigView: View {
     private func load() async {
         guard let client = store.readClient else { state = .failed("未连接路由器。"); return }
         state = .loading
+        localization = await client.localization()
         do { state = .loaded(try await client.configuration("firewall")) }
         catch { state = .failed(FriendlyError.message(error)) }
     }
@@ -462,9 +466,9 @@ struct WirelessView: View {
             if let wireless = store.capability?.wireless, wireless.present {
                 ForEach(wireless.radios, id: \.name) { radio in
                     Section(radio.name) {
-                        LabeledContent("状态", value: radio.up == true ? "启用" : "未启用")
+                        LabeledContent("状态", value: radio.up == true ? L10n.string("启用") : L10n.string("未启用"))
                         if let disabled = radio.disabled {
-                            LabeledContent("禁用", value: disabled ? "是" : "否")
+                            LabeledContent("禁用", value: disabled ? L10n.string("是") : L10n.string("否"))
                         }
                         if let band = radio.band { LabeledContent("频段", value: band) }
                     }

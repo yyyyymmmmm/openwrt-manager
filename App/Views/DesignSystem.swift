@@ -65,9 +65,9 @@ struct AppPage<Content: View>: View {
             VStack(alignment: .leading, spacing: 0) {
                 if !title.isEmpty {
                     VStack(alignment: .leading, spacing: setup ? 12 : 6) {
-                        Text(title).font(AppTypography.title).accessibilityAddTraits(.isHeader)
+                        Text(L10n.key(title)).font(AppTypography.title).accessibilityAddTraits(.isHeader)
                         if let subtitle {
-                            Text(subtitle)
+                            Text(L10n.key(subtitle))
                                 .font(setup ? AppTypography.reading : AppTypography.secondary)
                                 .foregroundStyle(AppPalette.muted)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -97,14 +97,14 @@ struct AppSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if !title.isEmpty {
-                Text(title).font(AppTypography.secondary.weight(.medium))
+                Text(L10n.key(title)).font(AppTypography.secondary.weight(.medium))
                     .foregroundStyle(AppPalette.muted)
                     .padding(.horizontal, 10)
                     .accessibilityAddTraits(.isHeader)
             }
             content
             if let note {
-                Text(note).font(AppTypography.secondary)
+                Text(L10n.key(note)).font(AppTypography.secondary)
                     .foregroundStyle(AppPalette.muted)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 7)
@@ -163,10 +163,10 @@ struct AppRow: View {
 
     private var copy: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(title).font(AppTypography.rowTitle)
+            Text(L10n.key(title)).font(AppTypography.rowTitle)
                 .foregroundStyle(destructive ? AppPalette.red : AppPalette.text)
             if let detail {
-                Text(detail).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                Text(L10n.key(detail)).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -187,7 +187,7 @@ struct StatusBadge: View {
     let title: String
     var good = false
     var body: some View {
-        Text(title).font(AppTypography.metadata.weight(.medium))
+        Text(L10n.key(title)).font(AppTypography.metadata.weight(.medium))
             .foregroundStyle(good ? AppPalette.green : AppPalette.muted)
             .padding(.horizontal, 7).padding(.vertical, 4)
             .background(good ? AppPalette.greenSoft : AppPalette.canvas,
@@ -249,7 +249,7 @@ struct FilterButton: View {
     let action: () -> Void
     var body: some View {
         Button(action: action) {
-            Text(title).font(AppTypography.secondary.weight(selected ? .semibold : .medium))
+            Text(L10n.key(title)).font(AppTypography.secondary.weight(selected ? .semibold : .medium))
                 .padding(.horizontal, 12).frame(minHeight: 44)
                 .foregroundStyle(selected ? AppPalette.accentStrong : AppPalette.muted)
                 .background(selected ? AppPalette.accentSoft : AppPalette.line.opacity(0.45),
@@ -360,7 +360,7 @@ struct ManagementSearchView: View {
                         } else {
                             ForEach(results) { page in
                                 AppRow(title: page.title,
-                                       detail: page.tab.title + (page.isGenericFallback ? " · 通用页" : ""))
+                                       detail: page.tab.title + (page.isGenericFallback ? L10n.string(" · 通用页") : ""))
                                 if page.id != results.last?.id { AppDivider() }
                             }
                         }
@@ -374,7 +374,7 @@ struct ManagementSearchView: View {
 
 extension View {
     func appDetailStyle(_ title: String) -> some View {
-        self.navigationTitle(title).navigationBarTitleDisplayMode(.inline)
+        self.navigationTitle(L10n.key(title)).navigationBarTitleDisplayMode(.inline)
             .toolbar(.visible, for: .navigationBar)
             .toolbarBackground(AppPalette.canvas, for: .navigationBar)
     }

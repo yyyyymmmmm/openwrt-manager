@@ -23,18 +23,18 @@ public struct RouterReader: Sendable {
         var info: JSONValue = .null
         switch boardResult {
         case .success(let value): board = value
-        case .failure(let error): snapshot.warnings.append("硬件信息：\(error.localizedDescription)")
+        case .failure(let error): snapshot.warnings.append(KitL10n.format("硬件信息：%@", error.localizedDescription))
         }
         switch infoResult {
         case .success(let value): info = value
-        case .failure(let error): snapshot.warnings.append("运行状态：\(error.localizedDescription)")
+        case .failure(let error): snapshot.warnings.append(KitL10n.format("运行状态：%@", error.localizedDescription))
         }
         snapshot.system = SnapshotParser.system(board: board, info: info)
         switch interfacesResult {
         case .success(let value):
             do { snapshot.interfaces = try SnapshotParser.interfaces(value) }
-            catch { snapshot.warnings.append("网络接口：\(error.localizedDescription)") }
-        case .failure(let error): snapshot.warnings.append("网络接口：\(error.localizedDescription)")
+            catch { snapshot.warnings.append(KitL10n.format("网络接口：%@", error.localizedDescription)) }
+        case .failure(let error): snapshot.warnings.append(KitL10n.format("网络接口：%@", error.localizedDescription))
         }
         snapshot.refreshedAt = Date()
         return snapshot
@@ -81,35 +81,48 @@ public struct RouterReader: Sendable {
         var inventory = RouterInventory()
         switch results.0 {
         case .success(let value): inventory.menus = value; inventory.menuRead = true
-        case .failure(let error): inventory.warnings.append("功能目录：\(error.localizedDescription)")
+        case .failure(let error): inventory.warnings.append(KitL10n.format("功能目录：%@", error.localizedDescription))
         }
         switch results.1 {
         case .success(let value): inventory.packages = value; inventory.packagesRead = true
-        case .failure(let error): inventory.warnings.append("软件包：\(error.localizedDescription)")
+        case .failure(let error): inventory.warnings.append(KitL10n.format("软件包：%@", error.localizedDescription))
         }
         switch results.2 {
         case .success(let value): inventory.configNames = value; inventory.configsRead = true
-        case .failure(let error): inventory.warnings.append("配置目录：\(error.localizedDescription)")
+        case .failure(let error): inventory.warnings.append(KitL10n.format("配置目录：%@", error.localizedDescription))
         }
         switch results.3 {
         case .success(let value): inventory.initServices = value; inventory.initRead = true
-        case .failure(let error): inventory.warnings.append("启动项：\(error.localizedDescription)")
+        case .failure(let error): inventory.warnings.append(KitL10n.format("启动项：%@", error.localizedDescription))
         }
         // Menu titles arrive as LuCI source strings on every firmware —
         // the router never translates them (see LuciTranslationCatalog).
         // Localize them with the router's own catalog, the web UI's
         // mechanism; a catalog problem degrades to source-language
-        // titles plus a warning, never to a failed discovery.
+        // titles plus a warning, never to a failed discovery. The
+        // negotiated language is recorded on the inventory so the
+        // snapshot (and its cache) is tagged with the language its
+        // titles are actually in.
         if inventory.menuRead {
             do {
-                if let catalog = try await caller.translationsCatalog() {
+                let localization = try await caller.localization()
+                inventory.language = localization.language
+                if let catalog = localization.catalog {
                     inventory.menus = inventory.menus.map { $0.applyingTranslations(catalog) }
                 }
             } catch {
-                inventory.warnings.append("菜单翻译：未能加载路由器语言包，标题保留原文（\(error.localizedDescription)）")
+                inventory.warnings.append(KitL10n.format("菜单翻译：未能加载路由器语言包，标题保留原文（%@）", error.localizedDescription))
             }
         }
         return inventory
+    }
+
+    /// The session's localization context, for sub-pages that resolve
+    /// router-source display strings (generic-page section/field names)
+    /// after discovery. Never throws: any failure degrades to the
+    /// source context, i.e. strings stay as the router served them.
+    public func localization() async -> LuciLocalization {
+        (try? await caller.localization()) ?? .source
     }
 
     /// Raw discovery inputs that the typed SnapshotParser views discard
@@ -136,11 +149,11 @@ public struct RouterReader: Sendable {
         var data = DiscoveryRawData()
         switch results.0 {
         case .success(let value): data.board = value
-        case .failure(let error): data.warnings.append("发现-硬件信息：\(error.localizedDescription)")
+        case .failure(let error): data.warnings.append(KitL10n.format("发现-硬件信息：%@", error.localizedDescription))
         }
         switch results.1 {
         case .success(let value): data.interfaces = value
-        case .failure(let error): data.warnings.append("发现-接口：\(error.localizedDescription)")
+        case .failure(let error): data.warnings.append(KitL10n.format("发现-接口：%@", error.localizedDescription))
         }
         switch results.2 {
         case .success(let value): data.wireless = value
@@ -158,7 +171,7 @@ public struct RouterReader: Sendable {
             // firmware that grants no service object; only warn when rc
             // could not fill the gap either.
             if case .failure = results.4 {
-                data.warnings.append("发现-服务状态：\(error.localizedDescription)")
+                data.warnings.append(KitL10n.format("发现-服务状态：%@", error.localizedDescription))
             }
         }
         switch results.4 {
@@ -196,7 +209,7 @@ public struct RouterReader: Sendable {
     public func serviceAction(name: String, action: ServiceAction) async throws {
         guard InventoryParser.validIdentifier(name) else { throw ConfigurationError.invalidIdentifier }
         let initList = try await initServiceList()
-        guard initList.contains(where: { $0.name == name }) else { throw OpenWrtKitError.unsupported("此服务不在路由器的启动项目录中。") }
+        guard initList.contains(where: { $0.name == name }) else { throw OpenWrtKitError.unsupported(KitL10n.text("此服务不在路由器的启动项目录中。")) }
         let access = try await caller.call(object: "session", method: "access", parameters: [
             "scope": .string("ubus"), "object": .string("luci"), "function": .string("setInitAction")
         ])
@@ -204,7 +217,7 @@ public struct RouterReader: Sendable {
         let value = try await caller.call(object: "luci", method: "setInitAction", parameters: [
             "name": .string(name), "action": .string(action.rawValue)
         ])
-        guard value["result"].boolValue == true else { throw OpenWrtKitError.unsupported("路由器未确认服务操作成功，请检查日志和当前状态。") }
+        guard value["result"].boolValue == true else { throw OpenWrtKitError.unsupported(KitL10n.text("路由器未确认服务操作成功，请检查日志和当前状态。")) }
     }
 
     public func records(_ kind: RouterRecordKind) async throws -> [JSONValue] {
@@ -247,9 +260,9 @@ public enum RouterRecordKind: String, CaseIterable, Identifiable, Sendable {
     public var id: String { rawValue }
     public var title: String {
         switch self {
-        case .logs: return "系统日志"
-        case .processes: return "运行进程"
-        case .mounts: return "存储挂载"
+        case .logs: return KitL10n.text("系统日志")
+        case .processes: return KitL10n.text("运行进程")
+        case .mounts: return KitL10n.text("存储挂载")
         }
     }
 }
@@ -310,7 +323,7 @@ public enum SnapshotParser {
                 ?? item["ip6addr"].stringValue
                 ?? item["ip6addrs"].arrayValue?.first?.stringValue
             guard let address, !address.isEmpty else { throw OpenWrtKitError.malformedResponse }
-            let lease = DHCPLease(hostname: item["hostname"].stringValue ?? "未命名设备", address: address,
+            let lease = DHCPLease(hostname: item["hostname"].stringValue ?? KitL10n.text("未命名设备"), address: address,
                                   mac: item["macaddr"].stringValue ?? "—",
                                   expires: item["expires"].intValue, duid: item["duid"].stringValue)
             return seen.insert(lease.id).inserted ? lease : nil
@@ -333,7 +346,7 @@ public enum SnapshotParser {
             if networks.isEmpty, let ssid = radio["config"]["ssid"].stringValue { networks = [ssid] }
             let up = radio["up"].boolValue
                 ?? (interfaces.contains { $0["iwinfo"].objectValue != nil } ? true : nil)
-            return WirelessRadio(name: name, up: up, channel: channel ?? "未报告", networks: networks)
+            return WirelessRadio(name: name, up: up, channel: channel ?? KitL10n.text("未报告"), networks: networks)
         }.sorted { $0.name < $1.name }
     }
 
@@ -348,7 +361,7 @@ public enum SnapshotParser {
                 interfaces = reported
             }
             guard interfaces.allSatisfy({ $0.objectValue != nil }) else { throw OpenWrtKitError.malformedResponse }
-            return WirelessRadio(name: name, up: radio["up"].boolValue, channel: radio["config"]["channel"].textValue ?? "未报告",
+            return WirelessRadio(name: name, up: radio["up"].boolValue, channel: radio["config"]["channel"].textValue ?? KitL10n.text("未报告"),
                                  networks: interfaces.compactMap { $0["config"]["ssid"].stringValue })
         }.sorted { $0.name < $1.name }
     }

@@ -56,9 +56,16 @@ final class HotfixRound2Tests: XCTestCase {
     }
 
     func testNegotiationFixedLanguageWins() throws {
+        // Superseded by the localization package's system-first order
+        // (see LocalizationSystemTests): a fixed router language no
+        // longer overrides an English system preference. The fixed
+        // language is now the fallback when the system language has no
+        // catalog on the router.
         let config = try luciConfig(lang: "zh_cn", languages: ["zh_cn"])
+        XCTAssertNil(LuciLanguageNegotiator.effectiveLanguage(
+            luciConfig: config, preferredLanguages: ["en-US"]))
         XCTAssertEqual(LuciLanguageNegotiator.effectiveLanguage(
-            luciConfig: config, preferredLanguages: ["en-US"]), "zh-cn")
+            luciConfig: config, preferredLanguages: ["fr-FR"]), "zh-cn")
     }
 
     func testNegotiationAutoMatchesScriptFormPreference() throws {
