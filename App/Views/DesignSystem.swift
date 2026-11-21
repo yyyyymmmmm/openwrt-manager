@@ -4,9 +4,15 @@ import UIKit
 
 // These tokens are copied from the approved HTML prototype, including dark mode.
 enum AppPalette {
-    static let accent = color(0x087873, 0x74C8C0)
-    static let accentStrong = color(0x056661, 0x8BD4CC)
-    static let accentSoft = color(0xE6F4F2, 0x1C3937)
+    // The accent ramp follows the user's theme (package M; the
+    // catalog lives in the kit as AppThemeCatalog). Every other
+    // token is theme-independent: neutrals and the semantic status
+    // colors below stay fixed across themes, the platform
+    // convention. Call sites keep reading AppPalette.accent &c. —
+    // only the ramp's source changed.
+    static var accent: Color { themedColor { ($0.accent.accentLight, $0.accent.accentDark) } }
+    static var accentStrong: Color { themedColor { ($0.accent.accentStrongLight, $0.accent.accentStrongDark) } }
+    static var accentSoft: Color { themedColor { ($0.accent.accentSoftLight, $0.accent.accentSoftDark) } }
     static let canvas = color(0xF3F4F5, 0x111719)
     static let surface = color(0xFFFFFF, 0x1C2426)
     static let text = color(0x191E20, 0xEFF3F3)
@@ -21,12 +27,34 @@ enum AppPalette {
     static let blue = color(0x32699C, 0xA5C7EB)
     static let blueSoft = color(0xEAF1F8, 0x222F3A)
 
+    /// A themed accent color. The provider re-reads the current
+    /// selection on every resolution, so a theme change needs no
+    /// view-tree rebuild (which would reset navigation, tab and
+    /// app-lock state): the next redraw — a data refresh, a tab
+    /// switch, a light/dark flip — paints the new theme, exactly
+    /// how the light/dark pairs below already propagate.
+    private static func themedColor(_ ramp: @escaping (AppThemeDefinition) -> (light: UInt32, dark: UInt32)) -> Color {
+        Color(uiColor: UIColor { traits in
+            let pair = ramp(AppThemeCatalog.definition(for: AppThemeSelection.current))
+            return uiColor(hex: traits.userInterfaceStyle == .dark ? pair.dark : pair.light)
+        })
+    }
+
+    /// One theme's own accent pair, independent of the current
+    /// selection — the theme picker's swatches.
+    static func swatchColor(for theme: AppThemeDefinition) -> Color {
+        color(theme.accent.accentLight, theme.accent.accentDark)
+    }
+
+    private static func uiColor(hex: UInt32) -> UIColor {
+        UIColor(red: Double((hex >> 16) & 255) / 255,
+                green: Double((hex >> 8) & 255) / 255,
+                blue: Double(hex & 255) / 255, alpha: 1)
+    }
+
     private static func color(_ light: UInt32, _ dark: UInt32) -> Color {
         Color(uiColor: UIColor { traits in
-            let hex = traits.userInterfaceStyle == .dark ? dark : light
-            return UIColor(red: Double((hex >> 16) & 255) / 255,
-                           green: Double((hex >> 8) & 255) / 255,
-                           blue: Double(hex & 255) / 255, alpha: 1)
+            uiColor(hex: traits.userInterfaceStyle == .dark ? dark : light)
         })
     }
 }

@@ -23,6 +23,15 @@ App/Views/AppSettingsView.swift :: AppTextSize.compact.rawValue
 # Selection storage and comparison for the text-size preference;
 # rows display the localized size title instead.
 App/Views/AppSettingsView.swift :: size.rawValue
+# @AppStorage persisted default for the theme preference; the
+# palette resolves the stored value through the kit catalog and
+# rows display the kit-resolved theme name instead.
+App/Models/AppPreferences.swift :: AppThemeCatalog.defaultID.rawValue
+# Same storage default as above, held by the settings views.
+App/Views/AppSettingsView.swift :: AppThemeCatalog.defaultID.rawValue
+# Selection storage and comparison for the theme preference;
+# rows display the kit-resolved theme name instead.
+App/Views/AppSettingsView.swift :: theme.id.rawValue
 # Composes an Identifiable id for in-flight service actions only;
 # never rendered.
 App/Views/SystemTab.swift :: action.rawValue
