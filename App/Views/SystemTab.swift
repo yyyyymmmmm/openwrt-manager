@@ -678,6 +678,9 @@ struct BackupRestoreView: View {
         statusText = nil
         errorText = nil
         defer { isCreating = false }
+        RouterTaskActivityController.shared.start(
+            routerName: profile.name, taskTitle: L10n.string("创建配置备份"),
+            phase: L10n.string("正在生成并下载备份…"))
         do {
             if store.snapshot == nil { await store.refresh() }
             let operations = BackupRestoreFlow.standardOperations(files: files)
@@ -700,6 +703,8 @@ struct BackupRestoreView: View {
             let fileName = BackupFileNaming.fileName(routerName: profile.name, at: manifest.createdAt)
             try library.save(data: created.data, manifest: manifest, fileName: fileName)
             statusText = L10n.format("备份已保存：%@", fileName)
+            RouterTaskActivityController.shared.finish(
+                phase: L10n.string("备份已保存到本机。"), succeeded: true)
             EventLogStore.shared.append(
                 category: .operation, kind: .backupRestore,
                 title: L10n.string("创建配置备份"),
@@ -708,6 +713,8 @@ struct BackupRestoreView: View {
                 routerID: routerID)
         } catch {
             errorText = FriendlyError.message(error)
+            RouterTaskActivityController.shared.finish(
+                phase: L10n.string("备份创建失败。"), succeeded: false)
             EventLogStore.shared.append(
                 category: .operation, kind: .backupRestore,
                 title: L10n.string("创建配置备份失败"),
@@ -829,6 +836,9 @@ struct RestorePreviewView: View {
     private func runRestore() async {
         guard let profile = store.activeProfile, let files = store.fileClient else { return }
         resultText = nil
+        RouterTaskActivityController.shared.start(
+            routerName: profile.name, taskTitle: L10n.string("恢复配置备份"),
+            phase: L10n.string("正在备份当前配置…"))
         do {
             let data = try library.data(for: entry)
             var operations = BackupRestoreFlow.standardOperations(files: files)
@@ -846,14 +856,21 @@ struct RestorePreviewView: View {
                 operations: operations,
                 onStep: { step in
                     Task { @MainActor in
-                        if let text = Self.stepText(step) { phase = .running(text) }
+                        if let text = Self.stepText(step) {
+                            phase = .running(text)
+                            RouterTaskActivityController.shared.update(phase: text)
+                        }
                     }
                 })
             if result.reconnected {
                 phase = .succeeded(L10n.string("恢复完成，路由器已重新连接。"))
+                RouterTaskActivityController.shared.finish(
+                    phase: L10n.string("恢复完成，路由器已重新连接。"), succeeded: true)
                 await store.refresh()
             } else {
                 phase = .failed(L10n.string("恢复已执行，但等待超时后路由器仍未恢复连接。请检查电源与网络后手动刷新。"))
+                RouterTaskActivityController.shared.finish(
+                    phase: L10n.string("恢复已执行，但路由器仍未恢复连接。"), succeeded: false)
             }
             resultText = L10n.format("恢复前的当前配置已备份在路由器：%@", result.preRestoreSnapshotPath)
             EventLogStore.shared.append(
@@ -863,6 +880,8 @@ struct RestorePreviewView: View {
                 routerID: profile.id.uuidString)
         } catch {
             phase = .failed(FriendlyError.message(error))
+            RouterTaskActivityController.shared.finish(
+                phase: L10n.string("恢复失败。"), succeeded: false)
             EventLogStore.shared.append(
                 category: .operation, kind: .backupRestore,
                 title: L10n.string("恢复配置备份失败"),
@@ -1070,18 +1089,30 @@ private struct FirmwareUpgradeSection: View {
         guard let operations = operations() else { return }
         working = true
         defer { working = false }
+        RouterTaskActivityController.shared.start(
+            routerName: store.activeProfile?.name ?? L10n.string("路由器"),
+            taskTitle: L10n.string("固件升级"),
+            phase: stepText(.upgrading))
         do {
             let reconnected = try await UpgradeFlow.finish(
                 secondConfirmation: secondConfirmation, operations: operations) { newStep in
-                Task { @MainActor in step = newStep }
+                Task { @MainActor in
+                    step = newStep
+                    RouterTaskActivityController.shared.update(phase: stepText(newStep))
+                }
             }
             outcome = reconnected
                 ? "升级完成，路由器已重新连接并通过验证。"
                 : "升级已执行，但自动重连验证未在预期时间内通过，请稍后手动刷新核对。"
+            RouterTaskActivityController.shared.finish(
+                phase: reconnected ? stepText(.succeeded) : L10n.string("升级已执行，但路由器仍未恢复连接。"),
+                succeeded: reconnected)
             if reconnected { await store.refresh() }
         } catch {
             step = .failed(FriendlyError.message(error))
             outcome = FriendlyError.message(error)
+            RouterTaskActivityController.shared.finish(
+                phase: L10n.string("升级失败。"), succeeded: false)
         }
     }
 

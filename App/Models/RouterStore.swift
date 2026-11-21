@@ -339,6 +339,13 @@ final class RouterStore {
             recordActivity(L10n.string("首次读取完成"), detail: L10n.string("概览、租约、无线和服务状态已读取。"), category: .refresh)
         }
         hasLoaded = true
+        // Widget summary (package D): publish what this refresh
+        // already fetched — the widget adds no router traffic.
+        if let snapshot, let activeProfile {
+            WidgetBridge.publish(summary: .build(routerName: activeProfile.name,
+                                                 snapshot: snapshot,
+                                                 leases: leases, services: services))
+        }
     }
 
     func disconnect() {

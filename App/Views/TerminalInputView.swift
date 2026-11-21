@@ -18,12 +18,23 @@ final class TerminalInputView: UIView, UIKeyInput, UITextInput {
     /// Byte sink: the live SSH session in production, a recorder under
     /// the DEBUG UI-test seed.
     var onSend: ((Data) -> Void)?
+    /// Grid-size sink (package D): fired whenever the laid-out size or
+    /// the font size implies a different column/row count, so the
+    /// view layer can resize the parser and the PTY together.
+    var onResize: ((Int, Int) -> Void)?
+    /// Paste sink (package D): clipboard text arrives here from the
+    /// edit menu; the view layer encodes it (bracketed when the
+    /// remote program asked for it) — this view stays byte-honest.
+    var onPaste: ((String) -> Void)?
 
     private let scrollView = UIScrollView()
     private let label = UILabel()
     private var composingText = ""
     private var composingSelection = NSRange(location: 0, length: 0)
     private var scrollPending = false
+    private var displayedText = ""
+    private var fontSize: CGFloat = 12
+    private var lastReportedGrid: (columns: Int, rows: Int)?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -34,11 +45,61 @@ final class TerminalInputView: UIView, UIKeyInput, UITextInput {
                            green: Double((hex >> 8) & 255) / 255,
                            blue: Double(hex & 255) / 255, alpha: 1)
         }
-        label.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        label.font = .monospacedSystemFont(ofSize: fontSize, weight: .regular)
         label.numberOfLines = 0
         scrollView.addSubview(label)
         addSubview(scrollView)
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(refocus)))
+        // Pinch zooms the terminal font (the Termius/Blink gesture);
+        // the grid is recomputed from the new cell size in layout.
+        let pinch = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
+        addGestureRecognizer(pinch)
+        // Long-press offers the native edit menu (copy the screen,
+        // paste the clipboard) — the platform's own text-interaction
+        // shape, adapted to a surface that is not itself a document.
+        addInteraction(UIEditMenuInteraction(delegate: self))
+        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+        addGestureRecognizer(longPress)
+    }
+
+    @objc private func handlePinch(_ gesture: UIPinchGestureRecognizer) {
+        guard gesture.state == .changed || gesture.state == .ended else { return }
+        let candidate = min(max(fontSize * gesture.scale, 9), 22)
+        gesture.scale = 1
+        guard abs(candidate - fontSize) > 0.1 else { return }
+        fontSize = candidate
+        label.font = .monospacedSystemFont(ofSize: fontSize, weight: .regular)
+        setNeedsLayout()
+    }
+
+    @objc private func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+        guard gesture.state == .began else { return }
+        becomeFirstResponder()
+        let location = gesture.location(in: self)
+        for interaction in interactions {
+            if let menu = interaction as? UIEditMenuInteraction {
+                menu.presentEditMenu(with: .init(identifier: nil, sourcePoint: location, arrowDirection: .down))
+            }
+        }
+    }
+
+    // MARK: Edit-menu actions (copy the screen / paste the clipboard)
+
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        switch action {
+        case #selector(copy(_:)): return !displayedText.isEmpty
+        case #selector(paste(_:)): return UIPasteboard.general.hasStrings
+        default: return super.canPerformAction(action, withSender: sender)
+        }
+    }
+
+    @objc override func copy(_ sender: Any?) {
+        UIPasteboard.general.string = displayedText
+    }
+
+    @objc override func paste(_ sender: Any?) {
+        guard let text = UIPasteboard.general.string, !text.isEmpty else { return }
+        onPaste?(text)
     }
 
     @available(*, unavailable)
@@ -49,6 +110,7 @@ final class TerminalInputView: UIView, UIKeyInput, UITextInput {
     @objc private func refocus() { becomeFirstResponder() }
 
     func display(_ text: String) {
+        displayedText = text
         label.text = text
         scrollPending = true
         setNeedsLayout()
@@ -67,6 +129,23 @@ final class TerminalInputView: UIView, UIKeyInput, UITextInput {
             let y = max(0, scrollView.contentSize.height - scrollView.bounds.height)
             scrollView.setContentOffset(CGPoint(x: 0, y: y), animated: false)
         }
+        reportGridSizeIfChanged()
+    }
+
+    /// The grid implied by the current bounds and font metrics. The
+    /// cell width is the advance of a monospace "M"; the cell height
+    /// is the font's line height. Reported only on change so rotation
+    /// and pinch produce exactly one resize per settled size.
+    private func reportGridSizeIfChanged() {
+        guard bounds.width > 0, bounds.height > 0 else { return }
+        let cellWidth = ("M" as NSString).size(withAttributes: [.font: label.font as Any]).width
+        let grid = TerminalGeometry.gridSize(viewWidth: Double(bounds.width - 16),
+                                             viewHeight: Double(bounds.height - 16),
+                                             cellWidth: Double(cellWidth),
+                                             cellHeight: Double(label.font.lineHeight))
+        if let last = lastReportedGrid, last == grid { return }
+        lastReportedGrid = grid
+        onResize?(grid.columns, grid.rows)
     }
 
     private func send(_ data: Data) {
@@ -339,22 +418,49 @@ final class TerminalTextRange: UITextRange {
     var endOffset: Int { (endPosition as? TerminalTextPosition)?.offset ?? 0 }
 }
 
+extension TerminalInputView: UIEditMenuInteractionDelegate {
+    func editMenuInteraction(_ interaction: UIEditMenuInteraction,
+                             menuFor configuration: UIEditMenuConfiguration,
+                             suggestedActions: [UIMenuElement]) -> UIMenu? {
+        var actions: [UIMenuElement] = []
+        if canPerformAction(#selector(copy(_:)), withSender: nil) {
+            actions.append(UIAction(title: L10n.string("复制屏幕内容"),
+                                    image: UIImage(systemName: "doc.on.doc")) { [weak self] _ in
+                self?.copy(nil)
+            })
+        }
+        if canPerformAction(#selector(paste(_:)), withSender: nil) {
+            actions.append(UIAction(title: L10n.string("粘贴"),
+                                    image: UIImage(systemName: "doc.on.clipboard")) { [weak self] _ in
+                self?.paste(nil)
+            })
+        }
+        return actions.isEmpty ? nil : UIMenu(children: actions)
+    }
+}
+
 /// SwiftUI shell for TerminalInputView: pushes the rendered screen in,
 /// forwards focus requests (surface appearance, key-bar taps) down.
 struct TerminalSurfaceView: UIViewRepresentable {
     let text: String
     let focusToken: Int
     let onSend: (Data) -> Void
+    var onResize: ((Int, Int) -> Void)?
+    var onPaste: ((String) -> Void)?
 
     func makeUIView(context: Context) -> TerminalInputView {
         let view = TerminalInputView()
         view.onSend = onSend
+        view.onResize = onResize
+        view.onPaste = onPaste
         DispatchQueue.main.async { view.becomeFirstResponder() }
         return view
     }
 
     func updateUIView(_ view: TerminalInputView, context: Context) {
         view.onSend = onSend
+        view.onResize = onResize
+        view.onPaste = onPaste
         view.display(text)
         if context.coordinator.lastFocusToken != focusToken {
             context.coordinator.lastFocusToken = focusToken

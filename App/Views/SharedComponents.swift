@@ -197,7 +197,10 @@ struct RealtimeChartView: View {
             .pickerStyle(.segmented)
             if points.isEmpty {
                 EmptyStateView(title: "暂无实时数据", message: "轮询引擎正在采集，稍后将显示曲线。", symbol: "chart.line.uptrend.xyaxis")
-                    .frame(height: 120)
+                    // minHeight, not height (package D AX pass): at
+                    // accessibility text sizes the two-line message
+                    // must be free to grow past the chart's 120pt.
+                    .frame(minHeight: 120)
             } else {
                 Chart {
                     ForEach(points) { point in

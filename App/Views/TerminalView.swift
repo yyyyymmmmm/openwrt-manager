@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import OpenWrtKit
 import OpenWrtSSH
 
@@ -32,6 +33,12 @@ struct TerminalView: View {
     @State private var changedNotice: (trusted: String, presented: String)?
     @State private var receiveTask: Task<Void, Never>?
     @State private var focusToken = 0
+    /// The grid the surface currently lays out at (package D): starts
+    /// at the classic 80×24 and follows the surface's own reports —
+    /// rotation, split view and pinch-zoom all resize the parser and
+    /// the PTY together, never one without the other.
+    @State private var gridColumns = 80
+    @State private var gridRows = 24
     #if DEBUG
     @State private var stubbedBytes = Data()
     #endif
@@ -186,7 +193,8 @@ struct TerminalView: View {
 
     private var terminalSurface: some View {
         VStack(spacing: AppSpacing.sm) {
-            TerminalSurfaceView(text: renderedText, focusToken: focusToken, onSend: sendToShell)
+            TerminalSurfaceView(text: renderedText, focusToken: focusToken, onSend: sendToShell,
+                                onResize: handleResize, onPaste: handlePaste)
                 .frame(maxHeight: .infinity)
                 .background(AppPalette.surface, in: RoundedRectangle(cornerRadius: AppRadius.md))
                 .accessibilityIdentifier("terminalSurface")
@@ -204,13 +212,36 @@ struct TerminalView: View {
         }
     }
 
+    /// The key bar (package D): the Termius/Blink set — modifiers and
+    /// navigation keys a soft keyboard cannot produce — in a
+    /// horizontally scrolling strip so large Dynamic Type sizes never
+    /// squeeze keys off the ends. Paste and copy ride the same strip.
     private var keyBar: some View {
-        HStack(spacing: AppSpacing.sm) {
-            ForEach([("esc", TerminalInput.Key.escape), ("ctrl+c", .control("C")),
-                     ("tab", .tab), ("回车", .enter), ("↑", .arrowUp), ("↓", .arrowDown),
-                     ("←", .arrowLeft), ("→", .arrowRight)], id: \.0) { label, key in
-                Button(label) {
-                    sendToShell(TerminalInput.data(for: key))
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: AppSpacing.sm) {
+                ForEach([("esc", TerminalInput.Key.escape), ("ctrl+c", .control("C")),
+                         ("ctrl+d", .control("D")), ("ctrl+z", .control("Z")),
+                         ("ctrl+l", .control("L")), ("tab", .tab), ("回车", .enter),
+                         ("↑", .arrowUp), ("↓", .arrowDown),
+                         ("←", .arrowLeft), ("→", .arrowRight),
+                         ("home", .home), ("end", .end),
+                         ("PgUp", .pageUp), ("PgDn", .pageDown), ("del", .delete)],
+                        id: \.0) { label, key in
+                    Button(label) {
+                        sendToShell(TerminalInput.data(for: key))
+                        focusToken += 1
+                    }
+                    .buttonStyle(.bordered)
+                    .font(AppTypography.metadata)
+                }
+                Button("粘贴") {
+                    if let text = UIPasteboard.general.string, !text.isEmpty { handlePaste(text) }
+                    focusToken += 1
+                }
+                .buttonStyle(.bordered)
+                .font(AppTypography.metadata)
+                Button("复制") {
+                    UIPasteboard.general.string = renderedText
                     focusToken += 1
                 }
                 .buttonStyle(.bordered)
@@ -219,9 +250,27 @@ struct TerminalView: View {
         }
     }
 
+    /// One resize path for every trigger (rotation, split view,
+    /// pinch): parser and PTY move together or not at all.
+    private func handleResize(columns: Int, rows: Int) {
+        guard columns != gridColumns || rows != gridRows else { return }
+        gridColumns = columns
+        gridRows = rows
+        var copy = parser
+        copy.resize(columns: columns, rows: rows)
+        parser = copy
+        session?.resize(columns: columns, rows: rows)
+    }
+
+    /// Pastes take the bracketed encoding when the remote program
+    /// enabled mode 2004, the plain committed-text encoding otherwise.
+    private func handlePaste(_ text: String) {
+        sendToShell(TerminalInput.data(forPaste: text, bracketed: parser.bracketedPasteEnabled))
+    }
+
     private var renderedText: String {
         let scrollback = parser.screen.scrollback.map { row in
-            String(row.map(\.character)).trimmingCharacters(in: .whitespaces)
+            TerminalScreen.text(forRow: row)
         }
         return (scrollback + [parser.screen.visibleText]).joined(separator: "\n")
     }
@@ -271,7 +320,7 @@ struct TerminalView: View {
                 host: host, port: 22, username: profile.username, password: loginPassword,
                 policy: policy)
             session = established
-            let stream = try await established.openShell(columns: 80, rows: 24)
+            let stream = try await established.openShell(columns: gridColumns, rows: gridRows)
             // The fingerprint exists only once the handshake has
             // completed, which openShell guarantees: read it now, not
             // right after connect (that produced the empty label).

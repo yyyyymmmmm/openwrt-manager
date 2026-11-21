@@ -8,6 +8,13 @@ struct RootView: View {
     @State private var monitoring = MonitoringService()
     @State private var appLock = AppLockController()
     @State private var sshTrust = SSHTrustStore.shared
+    /// App Intents requests (package D): shortcuts record their ask
+    /// on this bridge and open the app; the app executes through its
+    /// own channels — refresh directly, reboot only after the
+    /// in-app confirmation below.
+    @ObservedObject private var intentBridge = RouterIntentBridge.shared
+    @State private var showingIntentRebootConfirm = false
+    @State private var intentActionError: String?
 
     var body: some View {
         ZStack {
@@ -36,6 +43,37 @@ struct RootView: View {
         }
         .sheet(isPresented: Binding(get: { store.pendingConfiguration != nil }, set: { _ in })) {
             PendingConfigurationView().interactiveDismissDisabled()
+        }
+        .onChange(of: intentBridge.refreshRequested) { _, requested in
+            guard requested else { return }
+            intentBridge.refreshRequested = false
+            Task { await store.refresh() }
+        }
+        .onChange(of: intentBridge.rebootRequested) { _, requested in
+            guard requested else { return }
+            intentBridge.rebootRequested = false
+            if store.hasConnection {
+                showingIntentRebootConfirm = true
+            } else {
+                intentActionError = L10n.string("尚未连接路由器，无法执行重启。请先在 App 中连接路由器。")
+            }
+        }
+        .alert("快捷指令请求重启路由器", isPresented: $showingIntentRebootConfirm) {
+            Button("立即重启", role: .destructive) {
+                Task {
+                    do { try await store.rebootRouter() }
+                    catch { intentActionError = FriendlyError.message(error) }
+                }
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("请求来自快捷指令。重启期间全屋网络将中断数分钟，正在进行的连接会断开。")
+        }
+        .alert("快捷指令执行失败", isPresented: Binding(
+            get: { intentActionError != nil }, set: { if !$0 { intentActionError = nil } })) {
+            Button("好", role: .cancel) { intentActionError = nil }
+        } message: {
+            Text(intentActionError ?? "")
         }
         .task(id: store.connectionID) {
             guard store.hasConnection else { return }
@@ -97,6 +135,11 @@ private struct RouterTabs: View {
                 .tabItem { Label("设置", systemImage: "slider.horizontal.3") }
                 .tag(4)
         }
+        // iPad form (package D): sidebarAdaptable is the platform's
+        // own answer — a sidebar on regular-width iPad (portrait and
+        // landscape), the familiar tab bar on iPhone — instead of a
+        // hand-rolled split view duplicating the tab shell.
+        .tabViewStyle(.sidebarAdaptable)
         .tint(AppPalette.accent)
     }
 }
