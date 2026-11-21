@@ -524,6 +524,12 @@ extension RouterStore {
         sessionManager.map { FileClient(caller: $0) }
     }
 
+    /// Dedicated-service data plane (package F): ddns, appfilter and
+    /// Wake-on-LAN reads/actions on the live session.
+    var dedicatedClient: DedicatedServiceClient? {
+        sessionManager.map { DedicatedServiceClient(caller: $0) }
+    }
+
     /// One fresh login attempt against the active router — the
     /// reconnection probe for the upgrade flow. Builds a throwaway
     /// transport so the (presumed dead) live session is untouched.

@@ -13821,7 +13821,1435 @@
           }
         }
       }
-    }
+    },
+      "%lld 次": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "%lld 次"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "%lld times"
+            }
+          }
+        }
+      },
+      "%lld 秒": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "%lld 秒"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "%lld s"
+            }
+          }
+        }
+      },
+      "KMS 服务器": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "KMS 服务器"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "KMS Server"
+            }
+          }
+        }
+      },
+      "Open-Box 配置": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Open-Box 配置"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Open-Box Configuration"
+            }
+          }
+        }
+      },
+      "上次更新": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "上次更新"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Last Update"
+            }
+          }
+        }
+      },
+      "下次更新": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "下次更新"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Next Update"
+            }
+          }
+        }
+      },
+      "下次检查": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "下次检查"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Next Check"
+            }
+          }
+        }
+      },
+      "保存后写入路由器配置并重启 vlmcsd 服务生效。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "保存后写入路由器配置并重启 vlmcsd 服务生效。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Saving writes the router configuration and restarts the vlmcsd service to take effect."
+            }
+          }
+        }
+      },
+      "全局状态": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "全局状态"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Global State"
+            }
+          }
+        }
+      },
+      "分类规则": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "分类规则"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Category Rules"
+            }
+          }
+        }
+      },
+      "发送": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "发送"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Send"
+            }
+          }
+        }
+      },
+      "发送魔术包": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "发送魔术包"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Send Magic Packet"
+            }
+          }
+        }
+      },
+      "可用程序": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "可用程序"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Available Programs"
+            }
+          }
+        }
+      },
+      "向「%@」发送魔术包？": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "向「%@」发送魔术包？"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Send a magic packet to “%@”?"
+            }
+          }
+        }
+      },
+      "启用 KMS 服务": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "启用 KMS 服务"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Enable KMS Service"
+            }
+          }
+        }
+      },
+      "启用应用过滤": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "启用应用过滤"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Enable App Filtering"
+            }
+          }
+        }
+      },
+      "唤醒": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "唤醒"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Wake"
+            }
+          }
+        }
+      },
+      "唤醒任意设备": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "唤醒任意设备"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Wake Any Device"
+            }
+          }
+        }
+      },
+      "唤醒命令失败（代码 %lld）。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "唤醒命令失败（代码 %lld）。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "The wake command failed (code %lld)."
+            }
+          }
+        }
+      },
+      "唤醒命令失败：%@": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "唤醒命令失败：%@"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "The wake command failed: %@"
+            }
+          }
+        }
+      },
+      "唤醒密码（可选）": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "唤醒密码（可选）"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Wake Password (Optional)"
+            }
+          }
+        }
+      },
+      "唤醒目标": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "唤醒目标"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Wake Targets"
+            }
+          }
+        }
+      },
+      "在下方添加常唤醒的设备，或直接输入 MAC 地址唤醒任意设备。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "在下方添加常唤醒的设备，或直接输入 MAC 地址唤醒任意设备。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Add frequently woken devices below, or enter a MAC address to wake any device directly."
+            }
+          }
+        }
+      },
+      "域名": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "域名"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Domain"
+            }
+          }
+        }
+      },
+      "已关闭": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "已关闭"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Off"
+            }
+          }
+        }
+      },
+      "已安装": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "已安装"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Installed"
+            }
+          }
+        }
+      },
+      "已开启": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "已开启"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "On"
+            }
+          }
+        }
+      },
+      "已登录": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "已登录"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Logged In"
+            }
+          }
+        }
+      },
+      "已禁用": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "已禁用"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Disabled"
+            }
+          }
+        }
+      },
+      "已设置（不显示）": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "已设置（不显示）"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Set (not shown)"
+            }
+          }
+        }
+      },
+      "已重启 DDNS 服务，状态已重新读取。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "已重启 DDNS 服务，状态已重新读取。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "The DDNS service has been restarted and its state re-read."
+            }
+          }
+        }
+      },
+      "广播发送": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "广播发送"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Send as Broadcast"
+            }
+          }
+        }
+      },
+      "应用过滤": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "应用过滤"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "App Filtering"
+            }
+          }
+        }
+      },
+      "强制更新将重启 DDNS 服务，所有条目立即重新上报当前 IP。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "强制更新将重启 DDNS 服务，所有条目立即重新上报当前 IP。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Forcing an update restarts the DDNS service; every entry immediately re-reports the current IP."
+            }
+          }
+        }
+      },
+      "强制更新（重启服务）": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "强制更新（重启服务）"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Force Update (Restart Service)"
+            }
+          }
+        }
+      },
+      "当前 IP": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "当前 IP"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Current IP"
+            }
+          }
+        }
+      },
+      "当前连接数": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "当前连接数"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Current Connections"
+            }
+          }
+        }
+      },
+      "总开关写入路由器配置，保存后重启应用过滤服务生效。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "总开关写入路由器配置，保存后重启应用过滤服务生效。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "The master switch is written to the router configuration; saving restarts the app filter service to take effect."
+            }
+          }
+        }
+      },
+      "接口（可选，如 br-lan）": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "接口（可选，如 br-lan）"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Interface (optional, e.g. br-lan)"
+            }
+          }
+        }
+      },
+      "暂无 DDNS 条目": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "暂无 DDNS 条目"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "No DDNS Entries"
+            }
+          }
+        }
+      },
+      "暂无分类数据": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "暂无分类数据"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "No Category Data"
+            }
+          }
+        }
+      },
+      "暂无唤醒目标": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "暂无唤醒目标"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "No Wake Targets"
+            }
+          }
+        }
+      },
+      "暂无统计（过滤关闭或尚无命中时为空）。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "暂无统计（过滤关闭或尚无命中时为空）。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "No statistics yet (empty while filtering is off or nothing has matched)."
+            }
+          }
+        }
+      },
+      "更新日志": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "更新日志"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Update Log"
+            }
+          }
+        }
+      },
+      "服务列表更新于": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "服务列表更新于"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Service List Updated"
+            }
+          }
+        }
+      },
+      "服务商": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "服务商"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Provider"
+            }
+          }
+        }
+      },
+      "未在配置中识别到总开关的位置，开关为只读。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "未在配置中识别到总开关的位置，开关为只读。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "The master switch was not located in the configuration; it is read-only."
+            }
+          }
+        }
+      },
+      "未安装": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "未安装"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Not Installed"
+            }
+          }
+        }
+      },
+      "未登录": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "未登录"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Not Logged In"
+            }
+          }
+        }
+      },
+      "未能读取应用过滤数据，请稍后重试。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "未能读取应用过滤数据，请稍后重试。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "App filtering data could not be read. Please try again later."
+            }
+          }
+        }
+      },
+      "未能读取过滤状态。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "未能读取过滤状态。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "The filtering state could not be read."
+            }
+          }
+        }
+      },
+      "未识别到分类规则的配置存储位置，规则为只读（上方开关状态来自路由器实时规则）。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "未识别到分类规则的配置存储位置，规则为只读（上方开关状态来自路由器实时规则）。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Where category rules are stored in the configuration was not recognised; rules are read-only (the states above come from the router's live rule set)."
+            }
+          }
+        }
+      },
+      "未运行": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "未运行"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Not Running"
+            }
+          }
+        }
+      },
+      "条目启用": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "条目启用"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Entry Enabled"
+            }
+          }
+        }
+      },
+      "正在发送…": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "正在发送…"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Sending…"
+            }
+          }
+        }
+      },
+      "正在读取 KMS 配置…": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "正在读取 KMS 配置…"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Loading KMS configuration…"
+            }
+          }
+        }
+      },
+      "正在读取动态 DNS…": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "正在读取动态 DNS…"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Loading dynamic DNS…"
+            }
+          }
+        }
+      },
+      "正在读取应用过滤…": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "正在读取应用过滤…"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Loading app filtering…"
+            }
+          }
+        }
+      },
+      "正在读取网络唤醒…": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "正在读取网络唤醒…"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Loading Wake-on-LAN…"
+            }
+          }
+        }
+      },
+      "正在验证": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "正在验证"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Verifying"
+            }
+          }
+        }
+      },
+      "此固件未向 App 会话开放 vlmcsd 配置的读取（rpcd 未授权或配置不存在）。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "此固件未向 App 会话开放 vlmcsd 配置的读取（rpcd 未授权或配置不存在）。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "This firmware does not grant the app session read access to the vlmcsd configuration (not authorised by rpcd, or the configuration does not exist)."
+            }
+          }
+        }
+      },
+      "没有可用的唤醒程序。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "没有可用的唤醒程序。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "No wake program is available."
+            }
+          }
+        }
+      },
+      "添加目标": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "添加目标"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Add Target"
+            }
+          }
+        }
+      },
+      "激活设置": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "激活设置"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Activation Settings"
+            }
+          }
+        }
+      },
+      "编辑配置": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "编辑配置"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Edit Configuration"
+            }
+          }
+        }
+      },
+      "网络唤醒": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "网络唤醒"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Wake-on-LAN"
+            }
+          }
+        }
+      },
+      "自动激活": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "自动激活"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Auto-Activation"
+            }
+          }
+        }
+      },
+      "订阅、流量统计、规则集与节点诊断由 Open-Box 面板在登录后提供，其接口返回结构尚未验证，本页暂不展示，也不会保存你的面板密码。节点切换已在上方代理组中提供。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "订阅、流量统计、规则集与节点诊断由 Open-Box 面板在登录后提供，其接口返回结构尚未验证，本页暂不展示，也不会保存你的面板密码。节点切换已在上方代理组中提供。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Subscriptions, traffic statistics, rule sets and node diagnostics are provided by the Open-Box panel after login; their response shapes are not yet verified, so this page does not show them yet and never stores your panel password. Node switching is available in the proxy groups above."
+            }
+          }
+        }
+      },
+      "订阅与面板数据": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "订阅与面板数据"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Subscriptions & Panel Data"
+            }
+          }
+        }
+      },
+      "访问统计": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "访问统计"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Visit Statistics"
+            }
+          }
+        }
+      },
+      "请填写名称与完整的 MAC 地址（如 00:11:22:33:44:55）。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "请填写名称与完整的 MAC 地址（如 00:11:22:33:44:55）。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Enter a name and a full MAC address (e.g. 00:11:22:33:44:55)."
+            }
+          }
+        }
+      },
+      "路由器上未安装 etherwake 或 wakeonlan，无法发送魔术包。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "路由器上未安装 etherwake 或 wakeonlan，无法发送魔术包。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Neither etherwake nor wakeonlan is installed on the router, so no magic packet can be sent."
+            }
+          }
+        }
+      },
+      "路由器上还没有配置动态 DNS 服务条目，可在编辑配置中新增。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "路由器上还没有配置动态 DNS 服务条目，可在编辑配置中新增。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "No dynamic DNS entries are configured on the router yet; add one in the configuration editor."
+            }
+          }
+        }
+      },
+      "路由器侧配置（openbox）": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "路由器侧配置（openbox）"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Router-Side Configuration (openbox)"
+            }
+          }
+        }
+      },
+      "路由器未返回应用分类目录。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "路由器未返回应用分类目录。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "The router returned no app category catalogue."
+            }
+          }
+        }
+      },
+      "过滤状态": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "过滤状态"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Filtering State"
+            }
+          }
+        }
+      },
+      "过滤设置": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "过滤设置"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Filtering Settings"
+            }
+          }
+        }
+      },
+      "运行一次": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "运行一次"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Run Once"
+            }
+          }
+        }
+      },
+      "运行中（PID %lld）": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "运行中（PID %lld）"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Running (PID %lld)"
+            }
+          }
+        }
+      },
+      "运行进程": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "运行进程"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Process"
+            }
+          }
+        }
+      },
+      "重启并更新": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "重启并更新"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Restart & Update"
+            }
+          }
+        }
+      },
+      "高级编辑（含默认程序）": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "高级编辑（含默认程序）"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Advanced Editing (incl. Default Program)"
+            }
+          }
+        }
+      },
+      "魔术包已发送（%@）。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "魔术包已发送（%@）。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Magic packet sent (%@)."
+            }
+          }
+        }
+      },
+      "默认程序": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "默认程序"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Default Program"
+            }
+          }
+        }
+      }
   },
   "version": "1.0"
 }

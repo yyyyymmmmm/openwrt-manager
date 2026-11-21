@@ -87,7 +87,7 @@ struct StatusDot: View {
 
 struct OpenBoxView: View {
     @Environment(RouterStore.self) private var store
-    @State private var state: LoadState<(OpenBoxServiceStatus, String?, [OpenBoxProxy])> = .loading
+    @State private var state: LoadState<(OpenBoxServiceStatus, String?, [OpenBoxProxy], Int?, Bool?)> = .loading
     @State private var panelPassword = ""
     @State private var needsLogin = false
     @State private var switchTarget: (group: String, node: String)?
@@ -109,7 +109,7 @@ struct OpenBoxView: View {
                             .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                     }
                 }
-            case .loaded(let (status, version, proxies)):
+            case .loaded(let (status, version, proxies, connections, authenticated)):
                 Section {
                     SummaryBanner(summary: SummaryEngine.openBox(
                         coreRunning: status.coreRunning, groups: proxies.count))
@@ -119,6 +119,10 @@ struct OpenBoxView: View {
                     LabeledContent("内核", value: status.coreRunning.map { $0 ? L10n.string("运行中") : L10n.string("已停止") } ?? L10n.string("未知"))
                     LabeledContent("面板", value: status.panelRunning.map { $0 ? L10n.string("运行中") : L10n.string("已停止") } ?? L10n.string("未知"))
                     if let version { LabeledContent("内核版本", value: version) }
+                    if let connections {
+                        LabeledContent("当前连接数", value: String(connections))
+                    }
+                    LabeledContent("面板登录", value: authenticated.map { $0 ? L10n.string("已登录") : L10n.string("未登录") } ?? L10n.string("未知"))
                     if status.needsRestart == true {
                         Label("有待重启生效的变更", systemImage: "exclamationmark.triangle")
                             .foregroundStyle(AppPalette.orange)
@@ -161,6 +165,20 @@ struct OpenBoxView: View {
                 Section("路由器侧状态") {
                     LabeledContent("init.d", value: service.initNames.joined(separator: L10n.string("、")))
                     LabeledContent("开机自启", value: service.enabled.map { $0 ? L10n.string("已启用") : L10n.string("未启用") } ?? L10n.string("未知"))
+                }
+                if case .loaded = state {
+                    Section("订阅与面板数据") {
+                        Text("订阅、流量统计、规则集与节点诊断由 Open-Box 面板在登录后提供，其接口返回结构尚未验证，本页暂不展示，也不会保存你的面板密码。节点切换已在上方代理组中提供。")
+                            .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                        NavigationLink {
+                            UCIConfigView(title: "Open-Box 配置", configNames: ["openbox"])
+                        } label: {
+                            Label("路由器侧配置（openbox）", systemImage: "list.bullet.rectangle")
+                        }
+                    }
+                }
+                if let core = service.initNames.first(where: { $0 == "openbox" }) ?? service.initNames.first {
+                    ServiceActionsSection(serviceName: core)
                 }
             }
         }
@@ -221,7 +239,12 @@ struct OpenBoxView: View {
             async let status = client.serviceStatus()
             async let version = client.kernelVersion()
             async let proxies = client.proxies()
-            state = .loaded((try await status, try await version, try await proxies))
+            let loaded = (try await status, try await version, try await proxies)
+            // Best-effort extras: a missing connections or auth-status
+            // answer never fails the page.
+            let connections = try? await client.connectionCount()
+            let authenticated = try? await client.authenticated()
+            state = .loaded((loaded.0, loaded.1, loaded.2, connections ?? nil, authenticated ?? nil))
         } catch let error as OpenWrtKitError where error == .permissionDenied {
             needsLogin = true
             state = .failed("面板需要登录后才能读取数据。")

@@ -55,6 +55,10 @@ struct PageDestination: View {
             case "openbox": OpenBoxView()
             case "homeproxy": HomeProxyView()
             case "mosdns": MosDNSView()
+            case "ddns": DDNSView()
+            case "appfilter": AppFilterView()
+            case "wol": WolView()
+            case "vlmcsd": VLMCSDView()
             default: GenericServiceView(page: page)
             }
         case .serviceGeneric:

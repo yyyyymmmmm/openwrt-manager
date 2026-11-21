@@ -15,6 +15,8 @@ enum ConfigReloadMap {
         case "uhttpd": return ["uhttpd"]
         case "upnpd": return ["miniupnpd"]
         case "ddns": return ["ddns"]
+        case "appfilter": return ["appfilter"]
+        case "vlmcsd": return ["vlmcsd"]
         default: return []
         }
     }
