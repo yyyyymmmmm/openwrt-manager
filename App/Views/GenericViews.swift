@@ -44,6 +44,12 @@ struct UCIConfigView: View {
                     EmptyStateView(title: "无配置数据",
                                    message: unavailableHint ?? "路由器上没有对应的配置内容。")
                 } else {
+                    Section {
+                        SummaryBanner(summary: SummaryEngine.genericConfig(
+                            sections: rendered.count,
+                            rows: rendered.reduce(0) { $0 + $1.1.rows.count }))
+                            .summaryRow()
+                    }
                     ForEach(rendered, id: \.1.id) { name, section in
                         Section(configurations.count > 1 ? "\(name) · \(section.title)" : section.title) {
                             ForEach(section.rows) { row in
@@ -119,6 +125,10 @@ struct GenericServiceView: View {
         Group {
             if let service {
                 List {
+                    Section {
+                        SummaryBanner(summary: SummaryEngine.serviceState(running: service.running))
+                            .summaryRow()
+                    }
                     Section {
                         Label("通用页：此服务暂无专用页面，以下为状态与配置的结构化只读视图。", systemImage: "info.circle")
                             .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)

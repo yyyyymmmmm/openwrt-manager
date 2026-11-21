@@ -17,6 +17,7 @@ enum AppPalette {
     static let orange = color(0x855A12, 0xEDC77F)
     static let orangeSoft = color(0xFAF0DC, 0x382D1B)
     static let red = color(0xB52F35, 0xF19A9C)
+    static let redSoft = color(0xFBEAEA, 0x3A1F22)
     static let blue = color(0x32699C, 0xA5C7EB)
     static let blueSoft = color(0xEAF1F8, 0x222F3A)
 

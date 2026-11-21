@@ -18,6 +18,16 @@ struct SystemTabScreen: View {
                 Section {
                     RouterChromeHeader(showingRouterPicker: $showingRouterPicker)
                 }
+                if let snapshot = store.snapshot {
+                    Section {
+                        SummaryBanner(summary: SummaryEngine.system(
+                            uptime: snapshot.system.uptime,
+                            storagePercent: snapshot.system.storageUsed.flatMap {
+                                HealthRating.percent(used: $0, total: snapshot.system.storageTotal ?? 0)
+                            }))
+                            .summaryRow()
+                    }
+                }
                 if pages.isEmpty {
                     EmptyStateView(title: "暂无系统页面", message: "发现完成后，这里会按这台路由器实际的系统菜单生成入口。", symbol: "gearshape.slash")
                 } else {
@@ -63,6 +73,12 @@ struct PackagesView: View {
 
     var body: some View {
         List {
+            if store.inventory.packagesRead {
+                Section {
+                    SummaryBanner(summary: SummaryEngine.packages(installed: store.inventory.packages.count))
+                        .summaryRow()
+                }
+            }
             AppSearchField(prompt: "搜索软件包", text: $query)
                 .listRowInsets(EdgeInsets())
             if !store.inventory.packagesRead {
@@ -102,6 +118,12 @@ struct StartupView: View {
             if store.inventory.initServices.isEmpty {
                 EmptyStateView(title: "无启动项数据", message: "路由器未返回 init.d 服务清单。")
             } else {
+                Section {
+                    SummaryBanner(summary: SummaryEngine.startup(
+                        enabled: store.inventory.initServices.filter { $0.enabled == true }.count,
+                        total: store.inventory.initServices.count))
+                        .summaryRow()
+                }
                 Section("init.d 服务（\(store.inventory.initServices.count)）") {
                     ForEach(store.inventory.initServices) { service in
                         HStack {
@@ -152,7 +174,28 @@ struct CrontabView: View {
                 if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     EmptyStateView(title: "暂无计划任务", message: "root 的 crontab 为空。", symbol: "calendar.badge.clock")
                 } else {
-                    Section("/etc/crontabs/root") {
+                    let entries = CronHumanizer.entries(in: text)
+                    Section {
+                        SummaryBanner(summary: SummaryEngine.crontab(entries: entries.count))
+                            .summaryRow()
+                    }
+                    if entries.isEmpty {
+                        EmptyStateView(title: "没有可识别的计划任务", message: "文件里只有注释或环境设置，原文在下方原始数据中。", symbol: "calendar.badge.clock")
+                    } else {
+                        Section {
+                            ForEach(Array(entries.enumerated()), id: \.offset) { _, entry in
+                                VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                                    Text(entry.schedule).font(AppTypography.rowTitle)
+                                    Text(entry.command).font(AppTypography.secondary)
+                                        .foregroundStyle(AppPalette.muted)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                        } header: {
+                            TermLabel(text: "计划任务", term: "计划任务")
+                        }
+                    }
+                    RawDataSection {
                         Text(text).font(AppTypography.metadata.monospaced()).textSelection(.enabled)
                     }
                 }
@@ -180,9 +223,19 @@ struct MountsView: View {
     var body: some View {
         List {
             if let snapshot = store.snapshot, let total = snapshot.system.storageTotal {
+                if let percent = snapshot.system.storageUsed.flatMap({ HealthRating.percent(used: $0, total: total) }) {
+                    Section {
+                        SummaryBanner(summary: SummaryEngine.storage(percent: percent))
+                            .summaryRow()
+                    }
+                }
                 Section("根文件系统") {
                     LabeledContent("已用", value: FormatHelpers.bytes(snapshot.system.storageUsed ?? 0))
                     LabeledContent("总计", value: FormatHelpers.bytes(total))
+                    if let percent = snapshot.system.storageUsed.flatMap({ HealthRating.percent(used: $0, total: total) }) {
+                        RatedRow(title: "占用", value: String(format: "%.0f%%", percent),
+                                 grade: HealthRating.usageGrade(percent: percent))
+                    }
                 }
             }
             switch state {
@@ -191,7 +244,7 @@ struct MountsView: View {
             case .failed(let message):
                 ErrorStateView(message: message) { Task { await load() } }
             case .loaded(let mounts):
-                Section("挂载点") {
+                Section {
                     if mounts.isEmpty {
                         EmptyStateView(title: "无挂载数据", message: "路由器未返回挂载点列表。")
                     } else {
@@ -204,6 +257,8 @@ struct MountsView: View {
                             }
                         }
                     }
+                } header: {
+                    TermLabel(text: "挂载点", term: "挂载点")
                 }
             }
         }
@@ -236,6 +291,7 @@ struct OnlineUpgradeView: View {
                 } else if let snapshot = store.snapshot {
                     LabeledContent("固件", value: snapshot.system.firmware)
                 }
+                TermLabel(text: "固件", term: "固件")
             }
             switch state {
             case .loading:

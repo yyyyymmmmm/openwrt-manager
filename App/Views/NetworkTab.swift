@@ -17,6 +17,18 @@ struct NetworkTabScreen: View {
                 Section {
                     RouterChromeHeader(showingRouterPicker: $showingRouterPicker)
                 }
+                if let capability = store.capability {
+                    Section {
+                        SummaryBanner(summary: SummaryEngine.network(
+                            upstreamUp: capability.upstream.flatMap { upstream in
+                                capability.interfaces.first { $0.name == upstream.interfaceName }?.up
+                            },
+                            interfacesUp: capability.interfaces.filter { $0.up == true }.count,
+                            interfacesTotal: capability.interfaces.count,
+                            leaseCount: store.leases.count))
+                            .summaryRow()
+                    }
+                }
                 if pages.isEmpty {
                     EmptyStateView(title: "暂无网络页面", message: "发现完成后，这里会按这台路由器实际的网络菜单生成入口。", symbol: "network.slash")
                 } else {
@@ -74,20 +86,16 @@ struct InterfacesView: View {
                 if interfaces.isEmpty {
                     EmptyStateView(title: "无接口数据", message: "路由器未报告任何接口。")
                 } else {
-                    ForEach(interfaces, id: \.name) { iface in
-                        Section(iface.name) {
-                            LabeledContent("状态", value: iface.up == true ? L10n.string("已连接") : L10n.string("未连接"))
-                            if let proto = iface.proto { LabeledContent("协议", value: proto) }
-                            if let device = iface.l3Device ?? iface.device { LabeledContent("设备", value: device) }
-                            ForEach(iface.ipv4, id: \.self) { address in
-                                LabeledContent("IPv4", value: address)
-                            }
-                            ForEach(iface.ipv6, id: \.self) { address in
-                                LabeledContent("IPv6", value: address)
-                            }
-                            ForEach(iface.dns, id: \.self) { server in
-                                LabeledContent("DNS", value: server)
-                            }
+                    Section {
+                        SummaryBanner(summary: SummaryEngine.interfaces(
+                            up: interfaces.filter { $0.up == true }.count, total: interfaces.count))
+                            .summaryRow()
+                    }
+                    Section {
+                        ForEach(interfaces, id: \.name) { iface in
+                            InterfaceCard(iface: iface)
+                                .listRowInsets(EdgeInsets())
+                                .listRowBackground(Color.clear)
                         }
                     }
                 }
@@ -118,6 +126,53 @@ struct InterfacesView: View {
     }
 }
 
+/// One interface as a phone card (package E, standard 5): name and
+/// state first, addresses prominent, the rest quiet — the desktop
+/// table's information, re-laid for a small screen.
+private struct InterfaceCard: View {
+    let iface: CollectedRouterSnapshot.InterfaceState
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            HStack(spacing: AppSpacing.sm) {
+                Text(iface.name).font(AppTypography.rowTitle)
+                Spacer()
+                StatusBadge(title: iface.up == true ? L10n.string("已连接") : L10n.string("未连接"),
+                            good: iface.up == true)
+            }
+            ForEach(iface.ipv4, id: \.self) { address in
+                Text(address).font(AppTypography.reading.weight(.semibold)).monospacedDigit()
+            }
+            if let proto = iface.proto { detailRow("协议", proto) }
+            if let device = iface.l3Device ?? iface.device { detailRow("设备", device) }
+            ForEach(iface.ipv6, id: \.self) { address in
+                HStack(spacing: AppSpacing.sm) {
+                    TermLabel(text: "IPv6", term: "IPv6")
+                        .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                    Spacer(minLength: AppSpacing.sm)
+                    Text(address).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                        .multilineTextAlignment(.trailing)
+                }
+            }
+            ForEach(iface.dns, id: \.self) { server in
+                detailRow("DNS", server)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AppSpacing.md)
+        .background(AppPalette.surface, in: RoundedRectangle(cornerRadius: AppRadius.md))
+    }
+
+    private func detailRow(_ label: String, _ value: String) -> some View {
+        HStack(spacing: AppSpacing.sm) {
+            Text(L10n.key(label)).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+            Spacer(minLength: AppSpacing.sm)
+            Text(value).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                .multilineTextAlignment(.trailing)
+        }
+    }
+}
+
 // MARK: - Static routes
 
 struct StaticRoutesView: View {
@@ -139,21 +194,37 @@ struct DHCPView: View {
 
     var body: some View {
         List {
-            Section("已分配租约") {
+            Section {
+                SummaryBanner(summary: SummaryEngine.dhcp(leaseCount: store.leases.count))
+                    .summaryRow()
+            }
+            Section {
                 if store.leases.isEmpty {
                     EmptyStateView(title: "暂无租约", message: "当前没有已分配的 DHCP 租约。")
                 } else {
                     ForEach(store.leases) { lease in
-                        HStack {
-                            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                            HStack(alignment: .firstTextBaseline, spacing: AppSpacing.sm) {
                                 Text(lease.hostname).font(AppTypography.rowTitle)
-                                Text(lease.mac).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                                Spacer(minLength: AppSpacing.sm)
+                                Text(lease.address).font(AppTypography.rowTitle).monospacedDigit()
                             }
-                            Spacer()
-                            Text(lease.address).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                            HStack(spacing: AppSpacing.sm) {
+                                Text(lease.mac).font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
+                                Spacer()
+                                // LuCI reports remaining seconds; only
+                                // plausible remainders are shown, so an
+                                // absolute timestamp is never misread.
+                                if let expires = lease.expires, expires >= 0, expires <= 7 * 86400 {
+                                    Text(L10n.format("剩余 %@", FormatHelpers.uptime(TimeInterval(expires))))
+                                        .font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
+                                }
+                            }
                         }
                     }
                 }
+            } header: {
+                TermLabel(text: "已分配租约", term: "DHCP 租约")
             }
             switch state {
             case .loading:
@@ -265,7 +336,13 @@ struct NetworkDiagnosticsView: View {
                 ErrorStateView(message: error)
             }
             if let output {
-                Section("结果") {
+                if tool == 0 {
+                    Section {
+                        SummaryBanner(summary: pingSummary(output))
+                            .summaryRow()
+                    }
+                }
+                RawDataSection(title: "原始输出") {
                     Text(output).font(AppTypography.metadata.monospaced())
                         .textSelection(.enabled)
                 }
@@ -273,6 +350,18 @@ struct NetworkDiagnosticsView: View {
         }
         .navigationTitle("网络诊断")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// A one-line verdict over the raw ping output; the output itself
+    /// stays available in the raw-data section below.
+    private func pingSummary(_ output: String) -> PageSummary {
+        if output.contains("100% packet loss") {
+            return PageSummary(headline: L10n.string("目标不可达：探测都没有回应"), tone: .bad)
+        }
+        if output.contains("0% packet loss") {
+            return PageSummary(headline: L10n.string("目标可达：探测全部有回应"), tone: .good)
+        }
+        return PageSummary(headline: L10n.string("查询完成，详细结果见原始输出"), tone: .neutral)
     }
 
     private func run() async {
@@ -355,6 +444,12 @@ struct FirewallConfigView: View {
             case .loaded(let configuration):
                 if let configuration {
                     let sections = GenericPageModel.sections(from: configuration, localizer: localization)
+                    Section {
+                        SummaryBanner(summary: SummaryEngine.genericConfig(
+                            sections: sections.count,
+                            rows: sections.reduce(0) { $0 + $1.rows.count }))
+                            .summaryRow()
+                    }
                     ForEach(Self.groupTitles, id: \.type) { group in
                         let groupSections = sections.filter { $0.type == group.type }
                         if !groupSections.isEmpty {
@@ -428,7 +523,12 @@ struct BandwidthView: View {
                 ErrorStateView(message: message) { Task { await load() } }
             case .loaded(let report):
                 if let report, !report.isEmpty {
-                    Section("流量分布") {
+                    Section {
+                        SummaryBanner(summary: PageSummary(
+                            headline: L10n.string("已读取流量分布报表，原始数据在下方"), tone: .neutral))
+                            .summaryRow()
+                    }
+                    RawDataSection {
                         Text(report).font(AppTypography.metadata.monospaced()).textSelection(.enabled)
                     }
                 } else {
@@ -463,6 +563,15 @@ struct WirelessView: View {
 
     var body: some View {
         List {
+            if !store.radios.isEmpty {
+                Section {
+                    SummaryBanner(summary: SummaryEngine.wireless(
+                        radiosOn: store.radios.filter { $0.up == true }.count,
+                        radiosTotal: store.radios.count,
+                        networkCount: store.radios.reduce(0) { $0 + $1.networks.count }))
+                        .summaryRow()
+                }
+            }
             if let wireless = store.capability?.wireless, wireless.present {
                 ForEach(wireless.radios, id: \.name) { radio in
                     Section(radio.name) {
@@ -470,17 +579,30 @@ struct WirelessView: View {
                         if let disabled = radio.disabled {
                             LabeledContent("禁用", value: disabled ? L10n.string("是") : L10n.string("否"))
                         }
-                        if let band = radio.band { LabeledContent("频段", value: band) }
+                        if let band = radio.band {
+                            HStack {
+                                TermLabel(text: "频段", term: "频段")
+                                Spacer()
+                                Text(band).foregroundStyle(AppPalette.muted)
+                            }
+                        }
                     }
                 }
             }
             if !store.radios.isEmpty {
-                Section("网络") {
+                Section {
                     ForEach(store.radios) { radio in
                         ForEach(radio.networks, id: \.self) { ssid in
-                            LabeledContent(radio.name, value: ssid)
+                            HStack(spacing: AppSpacing.sm) {
+                                Image(systemName: "wifi").foregroundStyle(AppPalette.accent)
+                                Text(ssid).font(AppTypography.rowTitle)
+                                Spacer()
+                                Text(radio.name).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                            }
                         }
                     }
+                } header: {
+                    TermLabel(text: "无线网络", term: "SSID")
                 }
             }
             Section {

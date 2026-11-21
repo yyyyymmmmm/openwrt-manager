@@ -18,6 +18,15 @@ struct ServicesTabScreen: View {
                 Section {
                     RouterChromeHeader(showingRouterPicker: $showingRouterPicker)
                 }
+                if let services = store.capability?.services, !services.isEmpty {
+                    Section {
+                        SummaryBanner(summary: SummaryEngine.services(
+                            running: services.filter { $0.running == true }.count,
+                            stopped: services.filter { $0.running == false }.count,
+                            unknown: services.filter { $0.running == nil }.count))
+                            .summaryRow()
+                    }
+                }
                 if let openbox = pages.first(where: { $0.serviceKey == "openbox" }),
                    let service = store.capability?.services.first(where: { $0.key == "openbox" }) {
                     Section("Open-Box") {
@@ -101,6 +110,11 @@ struct OpenBoxView: View {
                     }
                 }
             case .loaded(let (status, version, proxies)):
+                Section {
+                    SummaryBanner(summary: SummaryEngine.openBox(
+                        coreRunning: status.coreRunning, groups: proxies.count))
+                        .summaryRow()
+                }
                 Section("内核与面板") {
                     LabeledContent("内核", value: status.coreRunning.map { $0 ? L10n.string("运行中") : L10n.string("已停止") } ?? L10n.string("未知"))
                     LabeledContent("面板", value: status.panelRunning.map { $0 ? L10n.string("运行中") : L10n.string("已停止") } ?? L10n.string("未知"))
@@ -229,6 +243,10 @@ struct HomeProxyView: View {
     var body: some View {
         List {
             if let service {
+                Section {
+                    SummaryBanner(summary: SummaryEngine.serviceState(running: service.running))
+                        .summaryRow()
+                }
                 Section("服务状态") {
                     LabeledContent("运行状态", value: service.running.map { $0 ? L10n.string("运行中") : L10n.string("已停止") } ?? L10n.string("未知"))
                     if service.running == nil, let note = service.statusNote {
@@ -275,6 +293,10 @@ struct MosDNSView: View {
     var body: some View {
         List {
             if let service {
+                Section {
+                    SummaryBanner(summary: SummaryEngine.serviceState(running: service.running))
+                        .summaryRow()
+                }
                 Section("服务状态") {
                     LabeledContent("运行状态", value: service.running.map { $0 ? L10n.string("运行中") : L10n.string("已停止") } ?? L10n.string("未知"))
                     if service.running == nil, let note = service.statusNote {

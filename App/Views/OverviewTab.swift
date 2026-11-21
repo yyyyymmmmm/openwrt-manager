@@ -57,19 +57,46 @@ struct OverviewTabScreen: View {
         }
     }
 
+    /// The page's opening verdict (package E, standard 1): generated
+    /// by the kit's rules from the same numbers the cards below show.
+    private func overviewSummary(_ system: SystemSnapshot) -> PageSummary {
+        let upstreamUp = store.capability?.upstream.flatMap { upstream in
+            store.capability?.interfaces.first { $0.name == upstream.interfaceName }?.up
+        }
+        return SummaryEngine.overview(
+            upstreamUp: upstreamUp,
+            memoryPercent: system.memoryUsed.flatMap { HealthRating.percent(used: $0, total: system.memoryTotal ?? 0) },
+            storagePercent: system.storageUsed.flatMap { HealthRating.percent(used: $0, total: system.storageTotal ?? 0) },
+            onlineDevices: store.leases.isEmpty ? nil : store.leases.count)
+    }
+
+    private func usage(of used: Int64?, total: Int64?) -> (fraction: Double?, grade: HealthGrade) {
+        guard let used, let total,
+              let fraction = HealthRating.fraction(used: used, total: total) else { return (nil, .unknown) }
+        return (fraction, HealthRating.usageGrade(percent: fraction * 100))
+    }
+
     @ViewBuilder
     private var homeSection: some View {
         if let snapshot = store.snapshot {
+            Section {
+                SummaryBanner(summary: overviewSummary(snapshot.system))
+                    .summaryRow()
+            }
             Section("系统") {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: AppSpacing.sm) {
                     StatusCard(title: "设备", value: snapshot.system.model,
                                detail: snapshot.system.hostname, symbol: "router")
                     StatusCard(title: "固件", value: snapshot.system.firmware,
                                detail: "内核 \(snapshot.system.kernel)", symbol: "gear")
-                    StatusCard(title: "内存", value: FormatHelpers.percent(used: snapshot.system.memoryUsed, total: snapshot.system.memoryTotal) ?? "—",
-                               detail: memoryDetail(snapshot.system), symbol: "memorychip")
-                    StatusCard(title: "存储", value: FormatHelpers.percent(used: snapshot.system.storageUsed, total: snapshot.system.storageTotal) ?? "—",
-                               detail: storageDetail(snapshot.system), symbol: "internaldrive")
+                    RatedMetricCard(title: "内存", value: FormatHelpers.percent(used: snapshot.system.memoryUsed, total: snapshot.system.memoryTotal) ?? "—",
+                                    detail: memoryDetail(snapshot.system), symbol: "memorychip",
+                                    fraction: usage(of: snapshot.system.memoryUsed, total: snapshot.system.memoryTotal).fraction,
+                                    grade: usage(of: snapshot.system.memoryUsed, total: snapshot.system.memoryTotal).grade)
+                    RatedMetricCard(title: "存储", value: FormatHelpers.percent(used: snapshot.system.storageUsed, total: snapshot.system.storageTotal) ?? "—",
+                                    detail: storageDetail(snapshot.system), symbol: "internaldrive",
+                                    fraction: usage(of: snapshot.system.storageUsed, total: snapshot.system.storageTotal).fraction,
+                                    grade: usage(of: snapshot.system.storageUsed, total: snapshot.system.storageTotal).grade)
                 }
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
@@ -77,7 +104,8 @@ struct OverviewTabScreen: View {
                     LabeledContent("运行时间", value: FormatHelpers.uptime(uptime))
                 }
                 if let load = snapshot.system.loadAverage.first {
-                    LabeledContent("系统负载", value: String(format: "%.2f", load))
+                    RatedRow(title: "系统负载", value: String(format: "%.2f", load),
+                             grade: HealthRating.loadGrade(load: load, cores: nil))
                 }
             }
         } else if store.isRefreshing || !store.hasLoaded {
@@ -94,7 +122,11 @@ struct OverviewTabScreen: View {
                     LabeledContent("设备", value: device)
                 }
                 if let nexthop = upstream.nexthop {
-                    LabeledContent("网关", value: nexthop)
+                    HStack {
+                        TermLabel(text: "网关", term: "网关")
+                        Spacer()
+                        Text(nexthop).foregroundStyle(AppPalette.muted)
+                    }
                 }
                 if let address = iface?.ipv4.first {
                     LabeledContent("IPv4 地址", value: address)
@@ -169,6 +201,11 @@ struct RoutesStatusView: View {
             case .failed(let message):
                 ErrorStateView(message: message) { Task { await load() } }
             case .loaded(let (interfaces, neighbors)):
+                Section {
+                    SummaryBanner(summary: SummaryEngine.interfaces(
+                        up: interfaces.filter { $0.up == true }.count, total: interfaces.count))
+                        .summaryRow()
+                }
                 Section("活跃路由") {
                     let routes = interfaces.flatMap { iface in iface.routes.map { (iface.name, $0) } }
                     if routes.isEmpty {
@@ -196,7 +233,7 @@ struct RoutesStatusView: View {
                                         .foregroundStyle(AppPalette.muted)
                                 }
                                 Spacer()
-                                if let state = neighbor.state { StatusBadge(title: state) }
+                                if let state = neighbor.state { StatusBadge(title: Self.neighborStateLabel(state)) }
                             }
                         }
                     }
@@ -217,6 +254,22 @@ struct RoutesStatusView: View {
             state = .loaded((try await interfaces, try await neighbors))
         } catch { state = .failed(FriendlyError.message(error)) }
     }
+
+    /// Neighbor states are protocol enums from the router; like every
+    /// status vocabulary they get an app-side human mapping, with the
+    /// raw value kept for anything unrecognized.
+    static func neighborStateLabel(_ state: String) -> String {
+        switch state {
+        case "REACHABLE": return L10n.string("可达")
+        case "STALE": return L10n.string("可能过期")
+        case "FAILED": return L10n.string("不可达")
+        case "INCOMPLETE": return L10n.string("解析中")
+        case "DELAY", "PROBE": return L10n.string("探测中")
+        case "PERMANENT": return L10n.string("固定")
+        case "NOARP": return L10n.string("免 ARP")
+        default: return state
+        }
+    }
 }
 
 struct FirewallStatusView: View {
@@ -234,6 +287,12 @@ struct FirewallStatusView: View {
                 if tables.isEmpty {
                     EmptyStateView(title: "无 nftables 数据", message: "路由器未返回规则集，可能未使用 nftables。", symbol: "shield.slash")
                 } else {
+                    Section {
+                        SummaryBanner(summary: SummaryEngine.firewall(
+                            tables: tables.count,
+                            chains: tables.reduce(0) { $0 + $1.chains.count }))
+                            .summaryRow()
+                    }
                     ForEach(tables) { table in
                         Section("\(table.family) · \(table.name)") {
                             ForEach(table.chains) { chain in
@@ -245,6 +304,9 @@ struct FirewallStatusView: View {
                                 }
                             }
                         }
+                    }
+                    Section {
+                        TermLabel(text: "nftables", term: "nftables")
                     }
                 }
             }
@@ -284,6 +346,12 @@ struct LogsView: View {
                 if entries.isEmpty {
                     EmptyStateView(title: "暂无日志", message: "路由器未返回日志记录。", symbol: "doc.text.magnifyingglass")
                 } else {
+                    Section {
+                        SummaryBanner(summary: SummaryEngine.logs(
+                            total: entries.count,
+                            errors: entries.filter { ($0.priority ?? 99) <= 3 }.count))
+                            .summaryRow()
+                    }
                     ForEach(entries) { entry in
                         VStack(alignment: .leading, spacing: AppSpacing.xs) {
                             Text(entry.message).font(AppTypography.secondary)
@@ -329,7 +397,15 @@ struct ProcessesView: View {
                 if processes.isEmpty {
                     EmptyStateView(title: "无进程数据", message: "路由器未返回进程列表。")
                 } else {
-                    ForEach(processes) { process in
+                    let sorted = processes.sorted { ($0.cpuPercent ?? -1) > ($1.cpuPercent ?? -1) }
+                    Section {
+                        SummaryBanner(summary: SummaryEngine.processes(
+                            total: sorted.count,
+                            topName: sorted.first?.command,
+                            topCPU: sorted.first?.cpuPercent))
+                            .summaryRow()
+                    }
+                    ForEach(sorted) { process in
                         HStack {
                             VStack(alignment: .leading, spacing: AppSpacing.xs) {
                                 Text(process.command).font(AppTypography.rowTitle).lineLimit(1)
@@ -364,6 +440,16 @@ struct RealtimeView: View {
 
     var body: some View {
         List {
+            if let latest = store.realtimeSamples.last, let total = latest.totalRate {
+                Section {
+                    SummaryBanner(summary: PageSummary(
+                        headline: L10n.format("当前下载 %@ · 上传 %@",
+                                              FormatHelpers.rate(total.rxBytesPerSecond),
+                                              FormatHelpers.rate(total.txBytesPerSecond)),
+                        tone: .neutral))
+                        .summaryRow()
+                }
+            }
             Section {
                 RealtimeChartView(samples: store.realtimeSamples)
                     .listRowInsets(EdgeInsets())
@@ -414,6 +500,11 @@ struct WireGuardStatusView: View {
                 let wgInterfaces = store.capability?.interfaces.filter {
                     $0.proto == "wireguard" || $0.name.hasPrefix("wg")
                 } ?? []
+                Section {
+                    SummaryBanner(summary: SummaryEngine.wireguard(
+                        up: wgInterfaces.filter { $0.up == true }.count, total: wgInterfaces.count))
+                        .summaryRow()
+                }
                 Section("接口") {
                     if wgInterfaces.isEmpty {
                         EmptyStateView(title: "无 WireGuard 接口", message: "接口列表中未发现 WireGuard 接口。", symbol: "lock.shield")
@@ -430,6 +521,9 @@ struct WireGuardStatusView: View {
                             LabeledContent(section.title, value: L10n.format("%lld 项", section.rows.count))
                         }
                     }
+                }
+                Section {
+                    TermLabel(text: "WireGuard", term: "WireGuard")
                 }
             }
         }
@@ -455,10 +549,21 @@ struct ChannelAnalysisView: View {
             if store.radios.isEmpty {
                 EmptyStateView(title: "无无线数据", message: "路由器未报告无线电信息。", symbol: "wifi.slash")
             } else {
+                Section {
+                    SummaryBanner(summary: SummaryEngine.wireless(
+                        radiosOn: store.radios.filter { $0.up == true }.count,
+                        radiosTotal: store.radios.count,
+                        networkCount: store.radios.reduce(0) { $0 + $1.networks.count }))
+                        .summaryRow()
+                }
                 ForEach(store.radios) { radio in
                     Section(radio.name) {
                         LabeledContent("状态", value: radio.up == true ? L10n.string("启用") : L10n.string("未启用"))
-                        LabeledContent("信道", value: radio.channel)
+                        HStack {
+                            TermLabel(text: "信道", term: "信道")
+                            Spacer()
+                            Text(radio.channel).foregroundStyle(AppPalette.muted)
+                        }
                         ForEach(radio.networks, id: \.self) { ssid in
                             LabeledContent("网络", value: ssid)
                         }
