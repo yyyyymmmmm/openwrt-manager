@@ -175,7 +175,7 @@ struct PackagesView: View {
                         .disabled(installName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || working)
                     }
                     Button {
-                        pending = PendingPackageAction(action: .update)
+                        pending = PendingPackageAction(action: .update, packages: [])
                     } label: {
                         Label("刷新软件源", systemImage: "arrow.clockwise")
                     }

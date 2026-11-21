@@ -65,11 +65,11 @@ extension RouterStore {
                 if packages.isEmpty {
                     // Bulk upgrade: verified when the upgradable list
                     // actually shrank (or was already empty).
-                    verified = upgradableBefore.map { (check?.lines.count ?? 0) < $0 || (check?.lines.isEmpty ?? false) }
+                    verified = upgradableBefore.map { check.lines.count < $0 || check.lines.isEmpty }
                 } else {
                     let names = inventory.packages.map(\.name)
                     verified = packages.allSatisfy { name in
-                        !(check?.lines ?? []).contains {
+                        !check.lines.contains {
                             UpgradableNameExtractor.packageName(inLine: $0, installed: names) == name
                         }
                     }
