@@ -78,7 +78,7 @@ final class TerminalInputView: UIView, UIKeyInput, UITextInput {
         let location = gesture.location(in: self)
         for interaction in interactions {
             if let menu = interaction as? UIEditMenuInteraction {
-                menu.presentEditMenu(with: .init(identifier: nil, sourcePoint: location, arrowDirection: .down))
+                menu.presentEditMenu(with: .init(identifier: nil, sourcePoint: location))
             }
         }
     }
