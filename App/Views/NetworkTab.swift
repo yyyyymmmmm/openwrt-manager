@@ -390,25 +390,41 @@ struct NetworkDiagnosticsView: View {
     }
 }
 
-// MARK: - Speed test (read-only results area)
+// MARK: - Speed test (component check only — no execution channel yet)
 
+/// Honest placeholder (audit F3): the app has no speed-test
+/// execution channel, so this page says exactly that. Detection is
+/// per-component and factual — an init.d service named for iperf
+/// means the iPerf3 service, and netspeedtest is reported as its
+/// own component. The previous version OR-ed the netspeedtest menu
+/// into the iPerf3 verdict, reporting a component that was not
+/// there; that mislabel is removed, along with the fake "results"
+/// framing.
 struct SpeedTestView: View {
     @Environment(RouterStore.self) private var store
-    @State private var state: LoadState<Bool> = .loading
+    @State private var state: LoadState<Components> = .loading
+
+    private struct Components {
+        var iperf3Service: Bool
+        var netspeedtestService: Bool
+    }
 
     var body: some View {
         List {
             switch state {
             case .loading:
-                ProgressView("正在检查测速服务…")
+                ProgressView("正在检查测速组件…")
             case .failed(let message):
                 ErrorStateView(message: message) { Task { await load() } }
-            case .loaded(let iperfPresent):
-                Section("iPerf3") {
-                    LabeledContent("服务检出", value: iperfPresent ? L10n.string("已检出") : L10n.string("未检出"))
+            case .loaded(let components):
+                Section("路由器上的测速组件") {
+                    LabeledContent("iPerf3 服务", value: components.iperf3Service ? L10n.string("已检出") : L10n.string("未检出"))
+                    LabeledContent("netspeedtest 组件", value: components.netspeedtestService ? L10n.string("已检出") : L10n.string("未检出"))
+                    Text("检出只说明路由器装有对应组件，不代表 App 能执行测速。")
+                        .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                 }
-                Section("测速结果") {
-                    EmptyStateView(title: "暂无测速结果", message: "本期为只读展示：测速执行将在后续版本提供，历史结果会显示在这里。", symbol: "gauge.with.dots.needle.67percent")
+                Section {
+                    EmptyStateView(title: "App 内测速暂不可用", message: "当前版本尚未接入测速的执行通道，无法在 App 内发起测速，也没有历史结果可显示。", symbol: "gauge.with.dots.needle.67percent")
                 }
             }
         }
@@ -422,8 +438,9 @@ struct SpeedTestView: View {
         state = .loading
         do {
             let services = try await client.serviceList()
-            state = .loaded(services.contains { $0.name.contains("iperf") }
-                            || (store.capability?.menuNode("admin/network/netspeedtest") != nil))
+            state = .loaded(Components(
+                iperf3Service: services.contains { $0.name.contains("iperf") },
+                netspeedtestService: services.contains { $0.name.contains("netspeedtest") }))
         } catch { state = .failed(FriendlyError.message(error)) }
     }
 }
@@ -558,8 +575,11 @@ struct BandwidthView: View {
     private func load() async {
         guard let client = store.readClient else { state = .failed("未连接路由器。"); return }
         state = .loading
+        // A refused or failing nlbw call is a failure state, not
+        // "no data yet" (audit U9): only a successful empty report
+        // may present as empty.
         do { state = .loaded(try await client.exec(command: "/usr/sbin/nlbw", arguments: ["-c", "json"])) }
-        catch { state = .loaded(nil) }
+        catch { state = .failed(FriendlyError.message(error)) }
     }
 }
 

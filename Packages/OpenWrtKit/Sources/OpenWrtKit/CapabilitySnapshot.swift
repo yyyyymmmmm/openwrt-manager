@@ -256,6 +256,15 @@ extension CollectedRouterSnapshot {
 /// here is derived from one CollectedRouterSnapshot by the pure rules in
 /// DiscoveryRules; nothing is matched by package name and no menu path is
 /// hardcoded as present.
+/// The nature of a resolved upstream interface (audit U7): a real
+/// WAN port, or — on bypass routers — the LAN interface itself
+/// carrying the default route. Presentation classification only;
+/// see DiscoveryRules.upstreamNature.
+public enum UpstreamNature: String, Equatable, Sendable {
+    case wan
+    case local
+}
+
 public struct CapabilitySnapshot: Equatable, Sendable {
     public struct Firmware: Equatable, Sendable {
         public var distribution: String?
@@ -471,6 +480,25 @@ public enum DiscoveryRules {
                                                l3Device: chosen.l3Device, nexthop: route.nexthop, isIPv6: isIPv6)
         }
         return find(target: "0.0.0.0", isIPv6: false) ?? find(target: "::", isIPv6: true)
+    }
+
+    /// What kind of thing the resolved upstream is, for presentation
+    /// only (audit U7): cycling a true WAN interface briefly drops
+    /// the internet and leaves the LAN alone, while on a bypass
+    /// router the "upstream" IS the LAN interface — cycling it drops
+    /// the LAN side too, and the copy must say so. This classifies
+    /// the already-resolved upstream; it never takes part in
+    /// resolving it (the no-name-matching rule above stands). The
+    /// LAN verdict rests on measured shapes: the upstream rides the
+    /// br-lan bridge (the bypass router at 192.168.31.167, measured
+    /// 2026-11-21), or the interface is the lan interface itself.
+    public static func upstreamNature(of upstream: CapabilitySnapshot.Upstream,
+                                      interfaces: [CollectedRouterSnapshot.InterfaceState]) -> UpstreamNature {
+        let match = interfaces.first { $0.name == upstream.interfaceName }
+        let devices = [upstream.device, upstream.l3Device, match?.device, match?.l3Device].compactMap { $0 }
+        if devices.contains(where: { $0 == "br-lan" || $0.hasPrefix("br-lan.") }) { return .local }
+        if upstream.interfaceName == "lan" { return .local }
+        return .wan
     }
 
     /// Menu leaf -> init.d names for the entries no discovery signal

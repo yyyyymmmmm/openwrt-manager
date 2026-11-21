@@ -417,6 +417,13 @@ final class RouterStore {
     /// state; a contradiction is reported, never hidden.
     func performServiceAction(name: String, action: ServiceAction) async throws {
         guard !isMutating, pendingConfiguration == nil, let reader else { throw ConfigurationError.busy }
+        // Core-service protection (audit F1), enforced at this
+        // single door as well as in the UI: no surface may stop a
+        // core service or turn off its autostart — the action would
+        // travel over the very channel it destroys.
+        if ServiceProtection.isBlocked(action: action, forServiceNamed: name) {
+            throw AppFailure.storage(L10n.format("「%@」是核心服务，不提供「%@」操作：执行后可能同时失去手机与电脑的管理通道，只能到路由器跟前恢复。", name, action.title))
+        }
         isMutating = true
         defer { isMutating = false }
         let transaction = ServiceActionTransaction(
@@ -485,13 +492,23 @@ final class RouterStore {
     /// upstream interface down/up through the same session channel as
     /// every other action. Callers verify recovery by refreshing and
     /// watching the interface state; the call itself only dials.
+    /// The activity record follows the upstream's nature (audit
+    /// U7): on a bypass router the cycled interface is the LAN
+    /// interface itself, and the record must not call it a WAN dial.
     func redialWAN() async throws {
         guard !isMutating, pendingConfiguration == nil, let sessionManager else { throw ConfigurationError.busy }
         guard let upstream = capability?.upstream else {
             throw AppFailure.storage(L10n.string("未发现上游接口，无法重拨。"))
         }
         try await SystemControlClient(caller: sessionManager).restartInterface(name: upstream.interfaceName)
-        recordActivity(L10n.string("已重拨 WAN"), detail: L10n.format("接口 %@ 已重新拨号，等待恢复连接。", upstream.interfaceName), isWarning: true, category: .session)
+        let isLocalUpstream = capability.map {
+            DiscoveryRules.upstreamNature(of: upstream, interfaces: $0.interfaces) == .local
+        } ?? false
+        if isLocalUpstream {
+            recordActivity(L10n.string("已重启上游接口"), detail: L10n.format("接口 %@ 已重启，等待恢复连接。", upstream.interfaceName), isWarning: true, category: .session)
+        } else {
+            recordActivity(L10n.string("已重拨 WAN"), detail: L10n.format("接口 %@ 已重新拨号，等待恢复连接。", upstream.interfaceName), isWarning: true, category: .session)
+        }
     }
 
     func records(_ kind: RouterRecordKind) async throws -> [JSONValue] {

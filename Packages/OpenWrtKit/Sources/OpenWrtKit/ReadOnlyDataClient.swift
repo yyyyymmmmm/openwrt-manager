@@ -1,5 +1,27 @@
 import Foundation
 
+/// The package manager an OpenWrt build ships (audit F2): opkg on
+/// older builds, apk on current ones. The raw value is the tool's
+/// own name — device-side vocabulary, shown as-is.
+public enum PackageManager: String, Equatable, Sendable {
+    case opkg
+    case apk
+}
+
+/// One update check's honest outcome: which manager answered and
+/// the upgradable-package lines it reported (device data, verbatim).
+/// An empty lines array means the check ran and found nothing —
+/// distinct from the check being impossible, which
+/// ReadOnlyDataClient.upgradablePackages reports as nil.
+public struct UpgradablePackages: Equatable, Sendable {
+    public var manager: PackageManager
+    public var lines: [String]
+    public init(manager: PackageManager, lines: [String]) {
+        self.manager = manager
+        self.lines = lines
+    }
+}
+
 /// The L3 read-only data plane (spec section 1). Every read the phase-1
 /// pages need goes through here on top of UbusCalling, so session renewal
 /// and transport stay single-sourced. Nothing in this type writes.
@@ -252,6 +274,34 @@ public struct ReadOnlyDataClient: Sendable {
             throw OpenWrtKitError.unsupported(KitL10n.format("路由器未返回 %@ 的输出。", command))
         }
         return output
+    }
+
+    // MARK: Package update check (online upgrade page)
+
+    /// Detects the router's package manager and lists upgradable
+    /// packages (audit F2). OpenWrt builds ship exactly one manager:
+    /// opkg (older / 24.x) or apk (25.x, e.g. the bypass router at
+    /// 192.168.31.167, measured 2026-11-21: /usr/bin/apk present,
+    /// opkg absent). The probe order keeps opkg first — the page's
+    /// historical behaviour — and falls to apk only when opkg does
+    /// not answer. Returns nil when neither manager answers, which
+    /// the UI must present as "cannot check", never as "no updates".
+    /// Once a manager is detected, a failing list command throws:
+    /// a failed check is a failure state, not an empty conclusion.
+    public func upgradablePackages() async throws -> UpgradablePackages? {
+        if (try? await exec(command: "/bin/opkg", arguments: ["--version"])) != nil {
+            let output = try await exec(command: "/bin/opkg", arguments: ["list-upgradable"])
+            return UpgradablePackages(manager: .opkg, lines: Self.outputLines(output))
+        }
+        if (try? await exec(command: "/usr/bin/apk", arguments: ["--version"])) != nil {
+            let output = try await exec(command: "/usr/bin/apk", arguments: ["list", "--upgradable"])
+            return UpgradablePackages(manager: .apk, lines: Self.outputLines(output))
+        }
+        return nil
+    }
+
+    private static func outputLines(_ output: String) -> [String] {
+        output.split(whereSeparator: \.isNewline).map(String.init)
     }
 
     private func capture<T: Sendable>(_ operation: @Sendable () async throws -> T) async -> Result<T, Error> {

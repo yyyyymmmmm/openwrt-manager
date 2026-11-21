@@ -108,10 +108,31 @@ struct PackagesView: View {
     }
 }
 
-// MARK: - Startup items (read-only)
+// MARK: - Startup items
 
+/// Autostart toggles with the same discipline as the service page
+/// (audit U1): every swipe goes behind a confirmation, the outcome
+/// is echoed on the page, and failures are shown — never swallowed.
+/// Core services (audit F1) cannot have their autostart turned off
+/// here either; enabling stays available as the recovery direction.
 struct StartupView: View {
     @Environment(RouterStore.self) private var store
+    @State private var pendingToggle: PendingToggle?
+    @State private var feedback: String?
+    @State private var working = false
+
+    private struct PendingToggle: Identifiable {
+        let serviceName: String
+        let action: ServiceAction // .enable or .disable only
+        var id: String { serviceName + "/" + action.rawValue }
+    }
+
+    private var pendingTitle: String {
+        guard let pendingToggle else { return "" }
+        return pendingToggle.action == .disable
+            ? L10n.format("确认关闭「%@」的开机自启？", pendingToggle.serviceName)
+            : L10n.format("确认启用「%@」的开机自启？", pendingToggle.serviceName)
+    }
 
     var body: some View {
         List {
@@ -128,32 +149,73 @@ struct StartupView: View {
                     ForEach(store.inventory.initServices) { service in
                         HStack {
                             Text(service.name).font(AppTypography.rowTitle)
+                            if ServiceProtection.isCoreService(service.name) {
+                                StatusBadge(title: "核心保护")
+                            }
                             Spacer()
                             StatusBadge(title: service.enabled == true ? "自启" : service.enabled == false ? "不自启" : "未知",
                                         good: service.enabled == true)
                         }
                         .swipeActions(edge: .trailing) {
                             if service.enabled == true {
-                                Button("关闭自启") {
-                                    Task { try? await store.performServiceAction(name: service.name, action: .disable) }
+                                if !ServiceProtection.isCoreService(service.name) {
+                                    Button("关闭自启") {
+                                        pendingToggle = PendingToggle(serviceName: service.name, action: .disable)
+                                    }
                                 }
                             } else if service.enabled == false {
                                 Button("启用自启") {
-                                    Task { try? await store.performServiceAction(name: service.name, action: .enable) }
+                                    pendingToggle = PendingToggle(serviceName: service.name, action: .enable)
                                 }
                                 .tint(AppPalette.accent)
                             }
                         }
                     }
                 }
+                if working {
+                    Section { HStack { ProgressView(); Text("正在执行…") } }
+                }
+                if let feedback {
+                    Section {
+                        Text(feedback).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                    }
+                }
             }
             Section {
-                Text("启停与脚本编辑将在写操作阶段提供，本页为只读视图。")
+                Text("滑动可开关普通服务的开机自启，操作前会再次确认。核心服务（如 rpcd、network、dnsmasq）的关闭自启已禁用：关掉它们可能让你同时失去手机与电脑的管理通道。")
                     .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
             }
         }
         .navigationTitle("启动项")
         .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog(
+            pendingTitle,
+            isPresented: Binding(get: { pendingToggle != nil }, set: { if !$0 { pendingToggle = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button(pendingToggle?.action.title ?? "确认") {
+                if let toggle = pendingToggle { Task { await run(toggle) } }
+                pendingToggle = nil
+            }
+            Button("取消", role: .cancel) { pendingToggle = nil }
+        } message: {
+            if let pendingToggle {
+                Text(pendingToggle.action == .disable
+                     ? L10n.string("关闭后，该服务不再随开机自动启动；当前正在运行的服务不会被停止。")
+                     : L10n.string("开启后，该服务会在路由器每次开机时自动启动。"))
+            }
+        }
+    }
+
+    private func run(_ toggle: PendingToggle) async {
+        working = true
+        defer { working = false }
+        do {
+            try await store.performServiceAction(name: toggle.serviceName, action: toggle.action)
+            feedback = L10n.format("已执行%@，状态已重新读取。", toggle.action.title)
+        } catch {
+            feedback = FriendlyError.message(error)
+        }
     }
 }
 
@@ -209,8 +271,18 @@ struct CrontabView: View {
     private func load() async {
         guard let client = store.readClient else { state = .failed("未连接路由器。"); return }
         state = .loading
+        // A missing crontab file means "no jobs", not a read failure
+        // (audit U9): distinguish by listing the directory rather
+        // than trusting error codes. Every other failure — permission
+        // denied, transport, a read that errors — is a real failure
+        // state with a retry, never a fake empty page.
+        if let entries = try? await client.fileList(path: "/etc/crontabs"),
+           !entries.contains(where: { $0["name"].stringValue == "root" }) {
+            state = .loaded("")
+            return
+        }
         do { state = .loaded(try await client.fileRead(path: "/etc/crontabs/root")) }
-        catch { state = .loaded("") }
+        catch { state = .failed(FriendlyError.message(error)) }
     }
 }
 
@@ -278,7 +350,11 @@ struct MountsView: View {
 
 struct OnlineUpgradeView: View {
     @Environment(RouterStore.self) private var store
-    @State private var state: LoadState<[String]> = .loading
+    /// The check's outcome: a result from the router's package
+    /// manager, or nil when the router has no usable manager at
+    /// all — presented as "cannot check", never as "no updates"
+    /// (audit F2).
+    @State private var state: LoadState<UpgradablePackages?> = .loading
 
     var body: some View {
         List {
@@ -298,14 +374,19 @@ struct OnlineUpgradeView: View {
                 ProgressView("正在检查可更新软件包…")
             case .failed(let message):
                 ErrorStateView(message: message) { Task { await load() } }
-            case .loaded(let upgradable):
+            case .loaded(let check):
                 Section("可更新软件包") {
-                    if upgradable.isEmpty {
-                        EmptyStateView(title: "暂无可更新项", message: "按路由器现有的软件包列表，没有可更新的软件包（列表未刷新时以路由器为准）。", symbol: "checkmark.circle")
-                    } else {
-                        ForEach(upgradable, id: \.self) { line in
-                            Text(line).font(AppTypography.secondary)
+                    if let check {
+                        LabeledContent("包管理器", value: check.manager.rawValue)
+                        if check.lines.isEmpty {
+                            EmptyStateView(title: "暂无可更新项", message: "已向路由器查询，当前没有可更新的软件包（列表未刷新时以路由器为准）。", symbol: "checkmark.circle")
+                        } else {
+                            ForEach(check.lines, id: \.self) { line in
+                                Text(line).font(AppTypography.secondary)
+                            }
                         }
+                    } else {
+                        EmptyStateView(title: "无法检查更新", message: "这台路由器未检测到可用的软件包管理器（opkg 或 apk），App 无法为它检查更新。", symbol: "questionmark.circle")
                     }
                 }
             }
@@ -323,13 +404,11 @@ struct OnlineUpgradeView: View {
     private func load() async {
         guard let client = store.readClient else { state = .failed("未连接路由器。"); return }
         state = .loading
-        do {
-            let output = try await client.exec(command: "/bin/opkg", arguments: ["list-upgradable"])
-            state = .loaded(output.split(whereSeparator: \.isNewline).map(String.init))
-        } catch {
-            // apk-based builds have no opkg; treat as "no data" not an error.
-            state = .loaded([])
-        }
+        // The kit detects opkg vs apk and reports "no manager" as
+        // nil; a detected manager whose query fails throws, so the
+        // page shows a true failure state with retry (audit F2).
+        do { state = .loaded(try await client.upgradablePackages()) }
+        catch { state = .failed(FriendlyError.message(error)) }
     }
 }
 

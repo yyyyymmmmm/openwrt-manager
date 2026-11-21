@@ -15249,6 +15249,652 @@
             }
           }
         }
+      },
+      "「%@」是核心服务，不提供「%@」操作：执行后可能同时失去手机与电脑的管理通道，只能到路由器跟前恢复。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "「%@」是核心服务，不提供「%@」操作：执行后可能同时失去手机与电脑的管理通道，只能到路由器跟前恢复。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "%@ is a core service; the “%@” action is not offered: running it could cut off both phone and computer management access, recoverable only at the router itself."
+            }
+          }
+        }
+      },
+      "「%@」是核心服务，重启期间相关功能会短暂中断，服务随后会自动恢复。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "「%@」是核心服务，重启期间相关功能会短暂中断，服务随后会自动恢复。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "%@ is a core service: related features pause briefly during the restart, and the service recovers automatically afterwards."
+            }
+          }
+        }
+      },
+      "上游接口已恢复": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "上游接口已恢复"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Upstream Interface Recovered"
+            }
+          }
+        }
+      },
+      "上游接口已恢复连接。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "上游接口已恢复连接。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "The upstream interface is connected again."
+            }
+          }
+        }
+      },
+      "停止后，依赖「%@」的功能将不可用，直到你重新启动它。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "停止后，依赖「%@」的功能将不可用，直到你重新启动它。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "After it stops, features that depend on %@ stay unavailable until you start it again."
+            }
+          }
+        }
+      },
+      "关闭后，该服务不再随开机自动启动；当前正在运行的服务不会被停止。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "关闭后，该服务不再随开机自动启动；当前正在运行的服务不会被停止。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "After this, the service no longer starts automatically at boot; a currently running service is not stopped."
+            }
+          }
+        }
+      },
+      "包管理器": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "包管理器"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Package Manager"
+            }
+          }
+        }
+      },
+      "已从概览页发起上游接口重启，等待核对。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "已从概览页发起上游接口重启，等待核对。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Upstream interface restart started from the overview page; waiting to verify."
+            }
+          }
+        }
+      },
+      "已向路由器查询，当前没有可更新的软件包（列表未刷新时以路由器为准）。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "已向路由器查询，当前没有可更新的软件包（列表未刷新时以路由器为准）。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "The router was queried: there are currently no updatable packages (if the package lists have not been refreshed, the router's own view prevails)."
+            }
+          }
+        }
+      },
+      "已重启上游接口": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "已重启上游接口"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Upstream Interface Restarted"
+            }
+          }
+        }
+      },
+      "开启后，该服务会在路由器每次开机时自动启动。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "开启后，该服务会在路由器每次开机时自动启动。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "After this, the service starts automatically every time the router boots."
+            }
+          }
+        }
+      },
+      "当前版本尚未接入测速的执行通道，无法在 App 内发起测速，也没有历史结果可显示。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "当前版本尚未接入测速的执行通道，无法在 App 内发起测速，也没有历史结果可显示。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "This version has no speed-test execution channel yet, so a test cannot be started in the app and there are no past results to show."
+            }
+          }
+        }
+      },
+      "接口 %@ 已重启，等待恢复连接。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "接口 %@ 已重启，等待恢复连接。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Interface %@ has been restarted; waiting for the connection to recover."
+            }
+          }
+        }
+      },
+      "无法检查更新": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "无法检查更新"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Cannot Check for Updates"
+            }
+          }
+        }
+      },
+      "核心保护": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "核心保护"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Core"
+            }
+          }
+        }
+      },
+      "核心服务保护：「%@」是 App 与电脑管理页面的共同后端。停止或关闭自启会让你同时失去手机与电脑的管理通道，只能到路由器跟前恢复，因此这两项操作已禁用；启动与重启不受影响。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "核心服务保护：「%@」是 App 与电脑管理页面的共同后端。停止或关闭自启会让你同时失去手机与电脑的管理通道，只能到路由器跟前恢复，因此这两项操作已禁用；启动与重启不受影响。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Core service protection: %@ is the shared backend of this app and the computer management pages. Stopping it or disabling its autostart would cut off both phone and computer management access, recoverable only at the router itself, so those two actions are disabled; starting and restarting are unaffected."
+            }
+          }
+        }
+      },
+      "核心服务保护：「%@」是路由器的防火墙。停止或关闭自启会让防火墙规则失效、暴露内网，因此这两项操作已禁用；启动与重启不受影响。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "核心服务保护：「%@」是路由器的防火墙。停止或关闭自启会让防火墙规则失效、暴露内网，因此这两项操作已禁用；启动与重启不受影响。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Core service protection: %@ is the router's firewall. Stopping it or disabling its autostart would void the firewall rules and expose the LAN, so those two actions are disabled; starting and restarting are unaffected."
+            }
+          }
+        }
+      },
+      "核心服务保护：「%@」负责全网的域名解析与地址分配。停止或关闭自启会让设备无法上网、拿不到地址，因此这两项操作已禁用；启动与重启不受影响。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "核心服务保护：「%@」负责全网的域名解析与地址分配。停止或关闭自启会让设备无法上网、拿不到地址，因此这两项操作已禁用；启动与重启不受影响。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Core service protection: %@ handles name resolution and address assignment for the whole LAN. Stopping it or disabling its autostart would leave devices without internet access or addresses, so those two actions are disabled; starting and restarting are unaffected."
+            }
+          }
+        }
+      },
+      "核心服务保护：「%@」负责整台路由器的网络连接。停止或关闭自启会让全网断网且无法远程恢复，因此这两项操作已禁用；启动与重启不受影响。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "核心服务保护：「%@」负责整台路由器的网络连接。停止或关闭自启会让全网断网且无法远程恢复，因此这两项操作已禁用；启动与重启不受影响。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Core service protection: %@ carries the router's entire network connectivity. Stopping it or disabling its autostart would take the whole network down with no remote recovery, so those two actions are disabled; starting and restarting are unaffected."
+            }
+          }
+        }
+      },
+      "检出只说明路由器装有对应组件，不代表 App 能执行测速。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "检出只说明路由器装有对应组件，不代表 App 能执行测速。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Detection only shows that the router has the component installed; it does not mean the app can run a speed test."
+            }
+          }
+        }
+      },
+      "正在检查测速组件…": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "正在检查测速组件…"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Checking speed-test components…"
+            }
+          }
+        }
+      },
+      "正在重启上游接口…": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "正在重启上游接口…"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Restarting the upstream interface…"
+            }
+          }
+        }
+      },
+      "滑动可开关普通服务的开机自启，操作前会再次确认。核心服务（如 rpcd、network、dnsmasq）的关闭自启已禁用：关掉它们可能让你同时失去手机与电脑的管理通道。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "滑动可开关普通服务的开机自启，操作前会再次确认。核心服务（如 rpcd、network、dnsmasq）的关闭自启已禁用：关掉它们可能让你同时失去手机与电脑的管理通道。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Swipe to toggle autostart for regular services; each change asks for confirmation first. Disabling autostart is blocked for core services (such as rpcd, network and dnsmasq): turning them off could cost you both phone and computer management access at once."
+            }
+          }
+        }
+      },
+      "确认关闭「%@」的开机自启？": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "确认关闭「%@」的开机自启？"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Disable Autostart for “%@”?"
+            }
+          }
+        }
+      },
+      "确认后将立即启动该服务。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "确认后将立即启动该服务。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "The service starts immediately after you confirm."
+            }
+          }
+        }
+      },
+      "确认启用「%@」的开机自启？": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "确认启用「%@」的开机自启？"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Enable Autostart for “%@”?"
+            }
+          }
+        }
+      },
+      "等待上游接口恢复…": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "等待上游接口恢复…"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Waiting for the upstream interface to recover…"
+            }
+          }
+        }
+      },
+      "等待超时，上游接口尚未恢复。请检查线路，或到接口页确认状态。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "等待超时，上游接口尚未恢复。请检查线路，或到接口页确认状态。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Timed out: the upstream interface has not recovered yet. Check the cabling, or confirm the state on the Interfaces page."
+            }
+          }
+        }
+      },
+      "路由器上的测速组件": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "路由器上的测速组件"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Speed-Test Components on the Router"
+            }
+          }
+        }
+      },
+      "这台路由器未检测到可用的软件包管理器（opkg 或 apk），App 无法为它检查更新。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "这台路由器未检测到可用的软件包管理器（opkg 或 apk），App 无法为它检查更新。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "No usable package manager (opkg or apk) was detected on this router, so the app cannot check it for updates."
+            }
+          }
+        }
+      },
+      "这台路由器没有独立的 WAN 口，上游接口就是局域网接口（%@）。重启它会让经这台路由器上网的设备短暂断网（通常 10–60 秒），你与这台路由器的连接也会短暂中断。完成后 App 会核对接口是否恢复。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "这台路由器没有独立的 WAN 口，上游接口就是局域网接口（%@）。重启它会让经这台路由器上网的设备短暂断网（通常 10–60 秒），你与这台路由器的连接也会短暂中断。完成后 App 会核对接口是否恢复。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "This router has no separate WAN port: the upstream interface is the LAN interface (%@). Restarting it briefly cuts internet access for devices routed through this router (usually 10–60 seconds), and your connection to this router drops briefly too. The app verifies the interface afterwards."
+            }
+          }
+        }
+      },
+      "重启上游接口": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "重启上游接口"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Restart Upstream Interface"
+            }
+          }
+        }
+      },
+      "重启上游接口？": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "重启上游接口？"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Restart the Upstream Interface?"
+            }
+          }
+        }
+      },
+      "重启接口": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "重启接口"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Restart Interface"
+            }
+          }
+        }
+      },
+      "重启期间服务会短暂中断，随后自动恢复。": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "重启期间服务会短暂中断，随后自动恢复。"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "The service pauses briefly during the restart and recovers automatically afterwards."
+            }
+          }
+        }
+      },
+      "App 内测速暂不可用": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "App 内测速暂不可用"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "In-App Speed Test Unavailable"
+            }
+          }
+        }
+      },
+      "iPerf3 服务": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "iPerf3 服务"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "iPerf3 Service"
+            }
+          }
+        }
+      },
+      "netspeedtest 组件": {
+        "extractionState": "manual",
+        "localizations": {
+          "zh-Hans": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "netspeedtest 组件"
+            }
+          },
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "netspeedtest Component"
+            }
+          }
+        }
       }
   },
   "version": "1.0"

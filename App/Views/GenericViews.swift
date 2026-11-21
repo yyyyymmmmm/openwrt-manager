@@ -170,7 +170,11 @@ struct GenericServiceView: View {
 
 /// Service actions for one init.d service, each behind a confirmation and
 /// executed through the store's service-action transaction (snapshot ->
-/// perform -> re-read -> verify).
+/// perform -> re-read -> verify). Core services (audit F1) lose the
+/// destructive pair — stop and disable-autostart are not offered at
+/// all, and the section states why in place; every confirmation
+/// spells out the action's impact (audit U8) instead of asking a
+/// bare "are you sure".
 struct ServiceActionsSection: View {
     @Environment(RouterStore.self) private var store
     let serviceName: String
@@ -178,9 +182,15 @@ struct ServiceActionsSection: View {
     @State private var result: String?
     @State private var working = false
 
+    private var impact: ServiceImpact? { ServiceProtection.impact(forServiceNamed: serviceName) }
+
+    private var offeredActions: [ServiceAction] {
+        ServiceAction.allCases.filter { !ServiceProtection.isBlocked(action: $0, forServiceNamed: serviceName) }
+    }
+
     var body: some View {
         Section("操作") {
-            ForEach(ServiceAction.allCases) { action in
+            ForEach(offeredActions) { action in
                 Button {
                     pendingAction = action
                 } label: {
@@ -191,6 +201,14 @@ struct ServiceActionsSection: View {
             if working { HStack { ProgressView(); Text("正在执行…") } }
             if let result {
                 Text(result).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+            }
+            if let impact {
+                Label {
+                    Text(coreProtectionNote(impact))
+                } icon: {
+                    Image(systemName: "lock.shield")
+                }
+                .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
             }
         }
         .confirmationDialog(
@@ -203,6 +221,46 @@ struct ServiceActionsSection: View {
                 pendingAction = nil
             }
             Button("取消", role: .cancel) { pendingAction = nil }
+        } message: {
+            if let pendingAction {
+                Text(confirmationMessage(for: pendingAction))
+            }
+        }
+    }
+
+    /// What the action will actually do, in impact terms (U8). The
+    /// four core categories carry their own consequences; standard
+    /// services get the honest generic version of the same facts.
+    private func confirmationMessage(for action: ServiceAction) -> String {
+        switch action {
+        case .start:
+            return L10n.string("确认后将立即启动该服务。")
+        case .stop:
+            return L10n.format("停止后，依赖「%@」的功能将不可用，直到你重新启动它。", serviceName)
+        case .restart:
+            if impact != nil {
+                return L10n.format("「%@」是核心服务，重启期间相关功能会短暂中断，服务随后会自动恢复。", serviceName)
+            }
+            return L10n.string("重启期间服务会短暂中断，随后自动恢复。")
+        case .enable:
+            return L10n.string("开启后，该服务会在路由器每次开机时自动启动。")
+        case .disable:
+            return L10n.string("关闭后，该服务不再随开机自动启动；当前正在运行的服务不会被停止。")
+        }
+    }
+
+    /// Why stop / disable-autostart are missing for a core service,
+    /// stated where the buttons would have been — never silently.
+    private func coreProtectionNote(_ impact: ServiceImpact) -> String {
+        switch impact {
+        case .management:
+            return L10n.format("核心服务保护：「%@」是 App 与电脑管理页面的共同后端。停止或关闭自启会让你同时失去手机与电脑的管理通道，只能到路由器跟前恢复，因此这两项操作已禁用；启动与重启不受影响。", serviceName)
+        case .network:
+            return L10n.format("核心服务保护：「%@」负责整台路由器的网络连接。停止或关闭自启会让全网断网且无法远程恢复，因此这两项操作已禁用；启动与重启不受影响。", serviceName)
+        case .dns:
+            return L10n.format("核心服务保护：「%@」负责全网的域名解析与地址分配。停止或关闭自启会让设备无法上网、拿不到地址，因此这两项操作已禁用；启动与重启不受影响。", serviceName)
+        case .firewall:
+            return L10n.format("核心服务保护：「%@」是路由器的防火墙。停止或关闭自启会让防火墙规则失效、暴露内网，因此这两项操作已禁用；启动与重启不受影响。", serviceName)
         }
     }
 

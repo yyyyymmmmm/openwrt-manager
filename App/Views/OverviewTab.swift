@@ -536,8 +536,10 @@ struct WireGuardStatusView: View {
         guard let client = store.readClient else { state = .failed("未连接路由器。"); return }
         state = .loading
         localization = await client.localization()
+        // A failed configuration read is a failure state (audit
+        // U9), not a silently config-less page.
         do { state = .loaded(try await client.configuration("wireguard")) }
-        catch { state = .loaded(nil) }
+        catch { state = .failed(FriendlyError.message(error)) }
     }
 }
 

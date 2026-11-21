@@ -199,6 +199,15 @@ struct QuickActionsSection: View {
         }
     }
 
+    /// The redial action's copy follows the upstream's nature
+    /// (audit U7): on a bypass router there is no WAN port — the
+    /// upstream is the LAN interface itself, so the action is named
+    /// and explained as an interface restart with LAN impact.
+    private var isLocalUpstream: Bool {
+        guard let capability = store.capability, let upstream = capability.upstream else { return false }
+        return DiscoveryRules.upstreamNature(of: upstream, interfaces: capability.interfaces) == .local
+    }
+
     private var wirelessPresent: Bool { store.capability?.wireless.present == true }
 
     private var wifiEnabled: Bool {
@@ -220,7 +229,7 @@ struct QuickActionsSection: View {
             Button {
                 confirmRedial = true
             } label: {
-                Label("重拨 WAN", systemImage: "arrow.triangle.2.circlepath")
+                Label(isLocalUpstream ? "重启上游接口" : "重拨 WAN", systemImage: "arrow.triangle.2.circlepath")
             }
             .disabled(busy || store.capability?.upstream == nil)
 
@@ -261,11 +270,15 @@ struct QuickActionsSection: View {
         } message: {
             Text("全家网络将中断约 2–5 分钟，所有设备的连接都会断开。发送后 App 会自动等待路由器恢复并重新读取状态。")
         }
-        .confirmationDialog("重新拨号 WAN？", isPresented: $confirmRedial, titleVisibility: .visible) {
-            Button("重拨") { runRedial() }
+        .confirmationDialog(isLocalUpstream ? "重启上游接口？" : "重新拨号 WAN？", isPresented: $confirmRedial, titleVisibility: .visible) {
+            Button(isLocalUpstream ? "重启接口" : "重拨") { runRedial() }
             Button("取消", role: .cancel) {}
         } message: {
-            Text("外网会短暂中断（通常 10–60 秒），局域网不受影响。完成后 App 会核对 WAN 是否恢复连接。")
+            if isLocalUpstream {
+                Text(L10n.format("这台路由器没有独立的 WAN 口，上游接口就是局域网接口（%@）。重启它会让经这台路由器上网的设备短暂断网（通常 10–60 秒），你与这台路由器的连接也会短暂中断。完成后 App 会核对接口是否恢复。", store.capability?.upstream?.interfaceName ?? ""))
+            } else {
+                Text("外网会短暂中断（通常 10–60 秒），局域网不受影响。完成后 App 会核对 WAN 是否恢复连接。")
+            }
         }
         .sheet(isPresented: $showingWiFiConfirm) {
             if let wifiPlan {
@@ -324,10 +337,12 @@ struct QuickActionsSection: View {
     // MARK: Redial + verification
 
     private func runRedial() {
-        phase = .working(L10n.string("正在重拨…"))
+        let local = isLocalUpstream
+        phase = .working(local ? L10n.string("正在重启上游接口…") : L10n.string("正在重拨…"))
         errorText = nil
-        EventLogStore.shared.append(category: .operation, kind: .quickAction, title: L10n.string("重拨 WAN"),
-                                    detail: L10n.string("已从概览页发起重拨，等待核对。"),
+        EventLogStore.shared.append(category: .operation, kind: .quickAction,
+                                    title: local ? L10n.string("重启上游接口") : L10n.string("重拨 WAN"),
+                                    detail: local ? L10n.string("已从概览页发起上游接口重启，等待核对。") : L10n.string("已从概览页发起重拨，等待核对。"),
                                     routerID: routerID)
         Task {
             do {
@@ -336,20 +351,22 @@ struct QuickActionsSection: View {
                 phase = .failed(FriendlyError.message(error))
                 return
             }
-            phase = .waiting(L10n.string("等待 WAN 恢复…"))
+            phase = .waiting(local ? L10n.string("等待上游接口恢复…") : L10n.string("等待 WAN 恢复…"))
             for _ in 0..<20 {
                 try? await Task.sleep(for: .seconds(6))
                 await store.refresh()
                 if let upstream = store.capability?.upstream,
                    store.snapshot?.interfaces.first(where: { $0.name == upstream.interfaceName })?.up == true {
-                    phase = .done(L10n.string("WAN 已恢复连接。"))
-                    EventLogStore.shared.append(category: .operation, kind: .quickAction, title: L10n.string("重拨完成"),
-                                                detail: L10n.string("WAN 接口已恢复连接。"),
+                    phase = .done(local ? L10n.string("上游接口已恢复连接。") : L10n.string("WAN 已恢复连接。"))
+                    EventLogStore.shared.append(category: .operation, kind: .quickAction,
+                                                title: local ? L10n.string("上游接口已恢复") : L10n.string("重拨完成"),
+                                                detail: local ? L10n.string("上游接口已恢复连接。") : L10n.string("WAN 接口已恢复连接。"),
                                                 routerID: routerID)
                     return
                 }
             }
-            phase = .failed(L10n.string("等待超时，WAN 尚未恢复。请检查线路，或到接口页确认状态。"))
+            phase = .failed(local ? L10n.string("等待超时，上游接口尚未恢复。请检查线路，或到接口页确认状态。")
+                                  : L10n.string("等待超时，WAN 尚未恢复。请检查线路，或到接口页确认状态。"))
         }
     }
 
