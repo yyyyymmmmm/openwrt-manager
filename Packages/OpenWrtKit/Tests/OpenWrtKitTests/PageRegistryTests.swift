@@ -57,9 +57,10 @@ final class PageRegistryTests: XCTestCase {
         let services = pages(tabs, .services)
         XCTAssertEqual(services.count, 14)
         let dedicated = services.filter { if case .serviceDedicated = $0.kind { return true }; return false }
-        XCTAssertEqual(Set(dedicated.compactMap(\.serviceKey)), ["openbox", "homeproxy", "mosdns"])
+        XCTAssertEqual(Set(dedicated.compactMap(\.serviceKey)),
+                       ["openbox", "homeproxy", "mosdns", "ddns", "appfilter", "wol", "vlmcsd"])
         let generic = services.filter(\.isGenericFallback)
-        XCTAssertEqual(generic.count, 11)
+        XCTAssertEqual(generic.count, 7)
         // WOL's UCI config is named etherwake, not wol.
         XCTAssertEqual(services.first { $0.serviceKey == "wol" }?.configNames, ["etherwake"])
         // No page may be keyed by a package name.

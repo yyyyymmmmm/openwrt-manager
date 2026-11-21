@@ -69,8 +69,11 @@ public struct TabDescriptor: Identifiable, Equatable, Sendable {
 }
 
 public enum PageRegistry {
-    /// Services with dedicated pages (spec 3.3 P0).
-    public static let dedicatedServiceKeys: Set<String> = ["openbox", "homeproxy", "mosdns"]
+    /// Services with dedicated pages (spec 3.3 P0; package F added the
+    /// four whose channels the gap inventory verified end to end).
+    public static let dedicatedServiceKeys: Set<String> = [
+        "openbox", "homeproxy", "mosdns", "ddns", "appfilter", "wol", "vlmcsd"
+    ]
 
     /// Service key -> UCI config name where they differ. socat's LuCI
     /// configuration lives in luci_socat (the plain "socat" file is the

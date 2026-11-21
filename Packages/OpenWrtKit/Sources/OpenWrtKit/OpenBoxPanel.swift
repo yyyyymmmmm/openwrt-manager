@@ -93,6 +93,19 @@ public enum OpenBoxParser {
     public static func connectionCount(_ value: JSONValue) -> Int? {
         value["connections"].arrayValue?.count
     }
+
+    /// GET /api/auth/status — the panel's login state probe (the one
+    /// panel endpoint verified reachable without authentication). The
+    /// flag has travelled under several key names across builds.
+    public static func authenticated(_ value: JSONValue) -> Bool? {
+        for key in ["authenticated", "loggedIn", "logged_in", "isAuthenticated", "login"] {
+            if let flag = value[key].boolValue { return flag }
+        }
+        if let status = value["status"].stringValue {
+            return status == "authenticated" || status == "logged_in"
+        }
+        return nil
+    }
 }
 
 /// Thin read-only HTTP client for the panel. Authentication uses the
@@ -153,6 +166,18 @@ public struct OpenBoxPanelClient: Sendable {
 
     public func groups() async throws -> [OpenBoxProxy] {
         OpenBoxParser.groups(try await get("api/openbox/groups"))
+    }
+
+    /// Live connection count through the panel's Clash-API proxy.
+    public func connectionCount() async throws -> Int? {
+        OpenBoxParser.connectionCount(try await get("api/controller/connections"))
+    }
+
+    /// Whether the panel currently considers this session logged in.
+    /// Reachable without credentials; used to label the page's panel
+    /// state honestly instead of guessing from read failures.
+    public func authenticated() async throws -> Bool? {
+        OpenBoxParser.authenticated(try await get("api/auth/status"))
     }
 
     private func check(_ response: URLResponse) throws {
