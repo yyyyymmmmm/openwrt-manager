@@ -1,5 +1,6 @@
 import Foundation
 import LocalAuthentication
+import OpenWrtKit
 
 // MARK: - Credential gate (package K)
 //
@@ -37,19 +38,73 @@ enum CredentialGate {
     /// Runs one system authentication prompt and reports the
     /// outcome. Never throws: every failure mode is a value the
     /// caller can route on.
+    ///
+    /// Every non-authorized path records the system's own reason in
+    /// the diagnostics log (package N): until that existed, a prompt
+    /// that never appeared — the missing-usage-description build —
+    /// was indistinguishable from a user who kept cancelling.
     static func authorize(reason: String) async -> Outcome {
         let context = LAContext()
         var evaluationError: NSError?
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &evaluationError) else {
+            let status = BiometricAvailability.probe(
+                canEvaluate: false,
+                errorCode: laErrorCode(evaluationError),
+                biometry: biometryKind(context.biometryType))
+            AppDiagnostics.record(
+                .error, L10n.string("身份验证不可用，未弹出系统验证"),
+                metadata: ["reason": status.diagnosticToken, "source": "credential-gate"])
             return .unavailable
         }
         do {
             let success = try await context.evaluatePolicy(
                 .deviceOwnerAuthentication, localizedReason: reason)
+            if !success {
+                AppDiagnostics.record(
+                    .error, L10n.string("身份验证失败"),
+                    metadata: ["reason": "evaluate-returned-false", "source": "credential-gate"])
+            }
             return success ? .authorized : .refused
         } catch {
+            AppDiagnostics.record(
+                .error, L10n.string("身份验证失败"),
+                metadata: ["reason": BiometricAvailability.failureToken(errorCode: laErrorCode(error)),
+                           "source": "credential-gate"])
             return .refused
         }
+    }
+
+    /// Read-only probe for the settings security section: what the
+    /// system would do if a prompt were requested right now. No
+    /// prompt is shown; `biometryType` is read after the
+    /// can-evaluate call, the order LAContext documents it for.
+    static func currentStatus() -> BiometricAvailability {
+        let context = LAContext()
+        var evaluationError: NSError?
+        let canEvaluate = context.canEvaluatePolicy(
+            .deviceOwnerAuthentication, error: &evaluationError)
+        return BiometricAvailability.probe(
+            canEvaluate: canEvaluate,
+            errorCode: laErrorCode(evaluationError),
+            biometry: biometryKind(context.biometryType))
+    }
+
+    private static func biometryKind(_ type: LABiometryType) -> BiometryKind {
+        switch type {
+        case .faceID: return .faceID
+        case .touchID: return .touchID
+        case .opticID: return .opticID
+        default: return .none
+        }
+    }
+
+    /// LAError.Code raw value out of whatever the framework handed
+    /// back; a non-LAError keeps its NSError code so the log still
+    /// carries a number instead of nothing.
+    private static func laErrorCode(_ error: Error?) -> Int? {
+        guard let error else { return nil }
+        if let laError = error as? LAError { return laError.code.rawValue }
+        return (error as NSError).code
     }
 
     /// The one localized reason every credential spend shows, so the

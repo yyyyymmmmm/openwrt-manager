@@ -35,3 +35,10 @@ App/Views/AppSettingsView.swift :: theme.id.rawValue
 # Composes an Identifiable id for in-flight service actions only;
 # never rendered.
 App/Views/SystemTab.swift :: action.rawValue
+# LAError code fed to the kit's BiometricAvailability mapping,
+# which turns it into a stable diagnostics token; the raw number
+# itself is never rendered (package N).
+App/Infrastructure/CredentialGate.swift :: laError.code.rawValue
+# Same mapping as above, for App lock authentication failures
+# (package N).
+App/Infrastructure/Management.swift :: (error as? LAError)?.code.rawValue

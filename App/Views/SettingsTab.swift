@@ -78,6 +78,7 @@ struct SettingsTabScreen: View {
                 }
                 Section("安全") {
                     AppLockToggleRow()
+                    BiometricStatusRow()
                     NavigationLink {
                         SSHTrustSettingsView()
                     } label: {

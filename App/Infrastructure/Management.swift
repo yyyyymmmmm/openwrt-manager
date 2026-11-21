@@ -252,11 +252,33 @@ final class AppLockController {
             if success {
                 isLocked = false
                 hasUnlockedThisLaunch = true
+            } else {
+                recordAuthFailure(nil, action: "unlock")
             }
         } catch {
             // Cancelled or failed: remain locked, no error surface —
             // the lock screen's retry button is the whole story.
+            // The reason still lands in the diagnostics log
+            // (package N), where an export can tell a cancel from
+            // a lockout from a prompt that could never appear.
+            recordAuthFailure(error, action: "unlock")
         }
+    }
+
+    /// Package N: App lock authentication failures used to vanish
+    /// into empty catches, exactly like the credential gate's did.
+    /// The token is the kit's stable rendering of the LAError code
+    /// — never the error's localized text, never any credential.
+    private func recordAuthFailure(_ error: Error?, action: String) {
+        let token: String
+        if let error {
+            let code = (error as? LAError)?.code.rawValue ?? (error as NSError).code
+            token = BiometricAvailability.failureToken(errorCode: code)
+        } else {
+            token = "evaluate-returned-false"
+        }
+        AppDiagnostics.record(.error, L10n.string("App 锁身份验证失败"),
+                              metadata: ["reason": token, "action": action])
     }
 
     /// Turning the lock on requires a successful authentication
@@ -273,7 +295,10 @@ final class AppLockController {
                 hasUnlockedThisLaunch = true
                 return true
             }
-        } catch { }
+            recordAuthFailure(nil, action: "enable")
+        } catch {
+            recordAuthFailure(error, action: "enable")
+        }
         return false
     }
 
@@ -296,7 +321,10 @@ final class AppLockController {
                 disable()
                 return true
             }
-        } catch { }
+            recordAuthFailure(nil, action: "disable")
+        } catch {
+            recordAuthFailure(error, action: "disable")
+        }
         return false
     }
 

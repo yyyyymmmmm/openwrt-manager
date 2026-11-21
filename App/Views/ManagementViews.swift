@@ -330,6 +330,35 @@ struct AppLockToggleRow: View {
     }
 }
 
+/// Read-only biometric status (package N): what the system would
+/// do if a prompt were requested right now, in human words. It
+/// sits directly under the App lock switch so "why didn't Face ID
+/// appear" has its answer on the same screen — available, not
+/// enrolled, locked out, or passcode-only — instead of sending
+/// the user to guess or to type a password and wonder.
+struct BiometricStatusRow: View {
+    @State private var status: BiometricAvailability?
+
+    var body: some View {
+        LabeledContent {
+            Group {
+                if let status {
+                    // Kit-localized already (KitL10n); shown verbatim.
+                    Text(status.statusLine)
+                } else {
+                    Text("正在检测…")
+                }
+            }
+            .font(AppTypography.secondary)
+            .foregroundStyle(AppPalette.muted)
+            .multilineTextAlignment(.trailing)
+        } label: {
+            Label("Face ID 状态", systemImage: "faceid")
+        }
+        .task { status = CredentialGate.currentStatus() }
+    }
+}
+
 /// The locked face of the app: brand + one action, nothing else.
 /// No router names, no lists, no values — the root content is not
 /// rendered at all while this is up.

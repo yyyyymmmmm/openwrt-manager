@@ -20,6 +20,8 @@
     <true/>
     <key>NSLocalNetworkUsageDescription</key>
     <string>查找并管理你所在 Wi-Fi 中的路由器。</string>
+    <key>NSFaceIDUsageDescription</key>
+    <string>用于验证身份后自动填入已保存的路由器密码。</string>
     <key>UIBackgroundModes</key>
     <array>
         <string>fetch</string>
