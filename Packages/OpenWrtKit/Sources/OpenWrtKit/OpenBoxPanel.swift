@@ -122,12 +122,28 @@ public struct OpenBoxPanelClient: Sendable {
     }
 
     public func login(password: String) async throws {
+        _ = try await loginReturningState(password: password)
+    }
+
+    /// POST /api/auth/login — the frontend's own login call: JSON
+    /// {password}, cookie session (credentials: same-origin). A wrong
+    /// password is answered with code ACCESS_PASSWORD_INVALID, which
+    /// the caller must be able to tell apart from an unreachable
+    /// panel; success returns the panel's auth-state JSON.
+    public func loginReturningState(password: String) async throws -> OpenBoxAuthState {
         var request = URLRequest(url: baseURL.appendingPathComponent("api/auth/login"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.httpBody = try JSONEncoder().encode(["password": password])
-        let (_, response) = try await session.data(for: request)
+        let (data, response) = try await session.data(for: request)
+        let value = try? JSONDecoder().decode(JSONValue.self, from: data)
+        if let code = value.flatMap({ OpenBoxParser.accessCode($0) }) {
+            if code == "ACCESS_PASSWORD_INVALID" { throw OpenBoxPanelError.invalidPassword }
+            if code == "ACCESS_PASSWORD_REQUIRED" { throw OpenWrtKitError.permissionDenied }
+        }
         try check(response)
+        return OpenBoxParser.authState(value ?? .null)
     }
 
     public func get(_ path: String) async throws -> JSONValue {
@@ -184,5 +200,150 @@ public struct OpenBoxPanelClient: Sendable {
         guard let http = response as? HTTPURLResponse else { throw OpenWrtKitError.malformedResponse }
         if http.statusCode == 401 || http.statusCode == 403 { throw OpenWrtKitError.permissionDenied }
         guard (200..<300).contains(http.statusCode) else { throw OpenWrtKitError.http(http.statusCode) }
+    }
+}
+
+// MARK: - Authenticated data plane (package F+)
+
+extension OpenBoxPanelClient {
+    private func url(_ path: String) -> URL {
+        URL(string: "\(baseURL.absoluteString)/\(path)")!
+    }
+
+    private func queryValue(_ raw: String) -> String {
+        var allowed = CharacterSet.urlQueryAllowed
+        allowed.remove(charactersIn: "&=+")
+        return raw.addingPercentEncoding(withAllowedCharacters: allowed) ?? raw
+    }
+
+    /// encodeURIComponent-equivalent for one path segment.
+    private func segment(_ raw: String) -> String {
+        var allowed = CharacterSet.urlPathAllowed
+        allowed.remove(charactersIn: "/?&")
+        return raw.addingPercentEncoding(withAllowedCharacters: allowed) ?? raw
+    }
+
+    /// One authenticated request. The panel answers a dead session
+    /// with code ACCESS_PASSWORD_REQUIRED (not always with a 401), so
+    /// the code is checked on every response, whatever the status.
+    private func send(_ method: String, _ path: String, body: JSONValue? = nil) async throws -> JSONValue {
+        var request = URLRequest(url: url(path))
+        request.httpMethod = method
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.timeoutInterval = 20
+        if let body {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONEncoder().encode(body)
+        }
+        let (data, response) = try await session.data(for: request)
+        let value = try? JSONDecoder().decode(JSONValue.self, from: data)
+        if let code = value.flatMap({ OpenBoxParser.accessCode($0) }),
+           code == "ACCESS_PASSWORD_REQUIRED" {
+            throw OpenWrtKitError.permissionDenied
+        }
+        try check(response)
+        return value ?? .null
+    }
+
+    /// GET /api/auth/status in its full shape.
+    public func authState() async throws -> OpenBoxAuthState {
+        OpenBoxParser.authState(try await get("api/auth/status"))
+    }
+
+    public func subscriptions() async throws -> [OpenBoxSubscription] {
+        OpenBoxParser.subscriptions(try await send("GET", "api/openbox/subscriptions"))
+    }
+
+    /// POST /api/openbox/subscriptions with the form's JSON object.
+    public func createSubscription(name: String, url: String) async throws {
+        _ = try await send("POST", "api/openbox/subscriptions",
+                           body: .object(["name": .string(name), "url": .string(url)]))
+    }
+
+    /// PATCH /api/openbox/subscriptions/<id> with the changed fields.
+    public func updateSubscription(id: String, name: String, url: String, enabled: Bool) async throws {
+        _ = try await send("PATCH", "api/openbox/subscriptions/\(segment(id))",
+                           body: .object(["name": .string(name), "url": .string(url),
+                                          "enabled": .bool(enabled)]))
+    }
+
+    public func deleteSubscription(id: String) async throws {
+        _ = try await send("DELETE", "api/openbox/subscriptions/\(segment(id))")
+    }
+
+    public func refreshSubscription(id: String) async throws -> OpenBoxRefreshOutcome {
+        OpenBoxParser.refreshOutcome(
+            try await send("POST", "api/openbox/subscriptions/\(segment(id))/refresh",
+                           body: .object([:])))
+    }
+
+    /// GET /api/openbox/traffic/day?day=yyyy-MM-dd&limit=n
+    public func trafficDay(day: String, limit: Int = 50) async throws -> OpenBoxTrafficSummary {
+        OpenBoxParser.trafficSummary(
+            try await send("GET", "api/openbox/traffic/day?day=\(queryValue(day))&limit=\(limit)"))
+    }
+
+    /// GET /api/openbox/traffic/month?month=yyyy-MM
+    public func trafficMonth(month: String) async throws -> OpenBoxTrafficSummary {
+        OpenBoxParser.trafficSummary(
+            try await send("GET", "api/openbox/traffic/month?month=\(queryValue(month))"))
+    }
+
+    /// GET /api/openbox/traffic/usage — overall totals.
+    public func trafficUsage() async throws -> OpenBoxTrafficSummary {
+        OpenBoxParser.trafficSummary(try await send("GET", "api/openbox/traffic/usage"))
+    }
+
+    /// GET /api/openbox/policies/entries — the routing policy list.
+    public func policyEntries() async throws -> [JSONValue] {
+        OpenBoxParser.entries(try await send("GET", "api/openbox/policies/entries"))
+    }
+
+    /// GET /api/openbox/rulesets/entries?tag=<tag>&offset=0&limit=n —
+    /// the panel refuses a request without a tag, so a tag is a
+    /// required parameter here, exactly as in the frontend.
+    public func rulesetEntries(tag: String, limit: Int = 50) async throws -> [JSONValue] {
+        OpenBoxParser.entries(try await send(
+            "GET", "api/openbox/rulesets/entries?tag=\(queryValue(tag))&offset=0&limit=\(limit)"))
+    }
+
+    /// GET /api/openbox/node-quality — per-node quality as the panel
+    /// reports it; unrecognised fields stay in each entry's raw form.
+    public func nodeQuality() async throws -> [OpenBoxNodeQuality] {
+        OpenBoxParser.nodeQuality(try await send("GET", "api/openbox/node-quality"))
+    }
+
+    /// POST /api/openbox/nodes/latency — asks the panel to measure
+    /// node latency; results land in node-quality afterwards.
+    public func triggerNodeLatency() async throws {
+        _ = try await send("POST", "api/openbox/nodes/latency", body: .object([:]))
+    }
+
+    // MARK: Session cookie custody
+    //
+    // The panel session is a cookie in the shared cookie storage.
+    // The app persists the cookie pairs in the Keychain (never in
+    // files or logs) and hands them back here on the next launch.
+
+    public func sessionCookies() -> [(name: String, value: String)] {
+        (HTTPCookieStorage.shared.cookies(for: baseURL) ?? []).map { ($0.name, $0.value) }
+    }
+
+    public func restoreSessionCookies(_ cookies: [(name: String, value: String)]) {
+        guard let host = baseURL.host else { return }
+        for pair in cookies {
+            let properties: [HTTPCookiePropertyKey: Any] = [
+                .domain: host, .path: "/", .name: pair.name, .value: pair.value,
+            ]
+            if let cookie = HTTPCookie(properties: properties) {
+                HTTPCookieStorage.shared.setCookie(cookie)
+            }
+        }
+    }
+
+    public func clearSessionCookies() {
+        for cookie in HTTPCookieStorage.shared.cookies(for: baseURL) ?? [] {
+            HTTPCookieStorage.shared.deleteCookie(cookie)
+        }
     }
 }
