@@ -1,0 +1,40 @@
+{
+  "sourceLanguage": "zh-Hans",
+  "strings": {
+    "NSFaceIDUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用于验证身份后自动填入已保存的路由器密码。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verify your identity to autofill your saved router password."
+          }
+        }
+      }
+    },
+    "NSLocalNetworkUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查找并管理你所在 Wi-Fi 中的路由器。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find and manage routers on your Wi-Fi network."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

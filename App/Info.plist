@@ -20,6 +20,16 @@
     <true/>
     <key>NSLocalNetworkUsageDescription</key>
     <string>查找并管理你所在 Wi-Fi 中的路由器。</string>
+    <key>NSFaceIDUsageDescription</key>
+    <string>用于验证身份后自动填入已保存的路由器密码。</string>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>fetch</string>
+    </array>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>app.openwrtmanager.ios.monitoring-refresh</string>
+    </array>
     <key>NSBonjourServices</key>
     <array>
         <string>_http._tcp</string>
@@ -39,9 +49,18 @@
         <key>UIImageRespectsSafeAreaInsets</key>
         <true/>
     </dict>
+    <key>NSSupportsLiveActivities</key>
+    <true/>
     <key>UISupportedInterfaceOrientations</key>
     <array>
         <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
         <string>UIInterfaceOrientationLandscapeLeft</string>
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>

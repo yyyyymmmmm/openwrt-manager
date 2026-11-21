@@ -1,0 +1,63 @@
+import Foundation
+import Security
+
+/// The Open-Box panel credential for one router profile (package F+,
+/// user decision 2026-11-21: the panel gets a real in-app login).
+/// The panel password and the panel session cookies live ONLY here,
+/// in the Keychain, under a service separate from the router login —
+/// never in files, logs, diagnostics or the operation log. Deleting
+/// the profile's entry forgets both.
+struct PanelCredential: Codable {
+    var password: String?
+    var cookies: [PanelCookie] = []
+}
+
+struct PanelCookie: Codable {
+    var name: String
+    var value: String
+}
+
+struct PanelCredentialStore {
+    private let service = "app.openwrt.manager.panel-credentials.v1"
+
+    func read(id: UUID) throws -> PanelCredential? {
+        var query = baseQuery(id)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if status == errSecItemNotFound { return nil }
+        guard status == errSecSuccess, let data = result as? Data else { throw error(status) }
+        do { return try JSONDecoder().decode(PanelCredential.self, from: data) }
+        catch { throw AppFailure.storage(L10n.string("保存的面板凭据无法读取，请重新登录面板。")) }
+    }
+
+    func save(_ credential: PanelCredential, id: UUID) throws {
+        let data = try JSONEncoder().encode(credential)
+        let query = baseQuery(id)
+        let updated = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        if updated == errSecSuccess { return }
+        guard updated == errSecItemNotFound else { throw error(updated) }
+        var item = query
+        item[kSecValueData as String] = data
+        item[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        let status = SecItemAdd(item as CFDictionary, nil)
+        guard status == errSecSuccess else { throw error(status) }
+    }
+
+    func delete(id: UUID) throws {
+        let status = SecItemDelete(baseQuery(id) as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else { throw error(status) }
+    }
+
+    private func baseQuery(_ id: UUID) -> [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword,
+         kSecAttrService as String: service,
+         kSecAttrAccount as String: id.uuidString]
+    }
+
+    private func error(_ status: OSStatus) -> AppFailure {
+        // No credential contents appear in errors or logs.
+        .storage(L10n.format("无法访问钥匙串（%lld），请解锁设备后重试。", Int(status)))
+    }
+}

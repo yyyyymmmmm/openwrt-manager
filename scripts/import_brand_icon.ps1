@@ -8,13 +8,14 @@ Add-Type -AssemblyName System.Drawing
 $repository = Split-Path $PSScriptRoot -Parent
 $assets = Join-Path $repository 'App/Assets.xcassets'
 $sourceRoot = Join-Path $repository 'design/brand'
-$expectedHash = 'B25A07F1262B1CE81F2DA7C25DEC31022A364BCE8B8B934B3D4E225227FC61B4'
+$expectedHash = 'D1C476EA7EC01433DE18B934ACC70469951215463C67312549838072333286BA'
 New-Item -ItemType Directory -Path $sourceRoot -Force | Out-Null
 $archive = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path -LiteralPath $ArchivePath).Path)
 try {
     foreach ($source in @(
-        @{ Entry = 'zhifi-final/zhifi-icon-1024.png'; Name = 'zirox-icon-1024.png' },
-        @{ Entry = 'zhifi-final/zhifi-icon.svg'; Name = 'zirox-icon.svg' }
+        @{ Entry = 'final-router/zirox-appicon-1024.png'; Name = 'zirox-appicon-1024.png' },
+        @{ Entry = 'final-router/zirox-appicon-1024.svg'; Name = 'zirox-appicon-1024.svg' },
+        @{ Entry = 'final-router/zirox-mark.svg'; Name = 'zirox-mark.svg' }
     )) {
         $entry = $archive.GetEntry($source.Entry)
         if ($null -eq $entry) { throw "Missing supplied icon: $($source.Entry)" }
@@ -22,7 +23,7 @@ try {
     }
 } finally { $archive.Dispose() }
 
-$sourcePath = Join-Path $sourceRoot 'zirox-icon-1024.png'
+$sourcePath = Join-Path $sourceRoot 'zirox-appicon-1024.png'
 if ((Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash -ne $expectedHash) {
     throw 'The source PNG does not match the user-approved icon.'
 }

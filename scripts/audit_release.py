@@ -82,10 +82,478 @@ def main():
     parser.add_argument("--repository", type=Path, default=Path(__file__).resolve().parent.parent)
     parser.add_argument("--ipa", type=Path)
     args = parser.parse_args()
-    result = {"production_sources_checked": audit_sources(args.repository.resolve())}
+    result = {"production_sources_checked": audit_sources(args.repository.resolve()),
+              "localization": audit_localization(args.repository.resolve()),
+              "english_literals": audit_english_literals(args.repository.resolve()),
+              "rawvalue_display": audit_rawvalue_display(args.repository.resolve()),
+              "hardcoded_colors": audit_hardcoded_colors(args.repository.resolve()),
+              "semantic_fills": audit_semantic_fills(args.repository.resolve())}
     if args.ipa:
         result["ipa"] = audit_ipa(args.ipa.resolve())
     print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+
+# ---------------------------------------------------------------------------
+# Localization audit (localization system package, 2026-11-21)
+#
+# The rule being enforced: every user-visible string in the app follows
+# the system language, and that only stays true if new copy enters the
+# localization system instead of landing as a bare literal. A Chinese
+# literal is "in the system" when its normalized form is a key of
+# App/Localizable.xcstrings (SwiftUI literal call sites localize
+# automatically through the catalog; String-producing code resolves the
+# same keys through L10n), or — in the kit — when it is passed to
+# KitL10n and present in the English table, or is a FieldCatalog label
+# present in the table. Anything else fails the audit. Legitimate
+# exceptions (literals matched against device data, never displayed
+# raw) go in scripts/localization_whitelist.txt, one normalized literal
+# per line, with a comment saying why.
+# ---------------------------------------------------------------------------
+
+import re
+
+CJK_RE = re.compile(r"[\u3000-\u303f\u4e00-\u9fff\uff00-\uffef]")
+SPECIFIER_RE = re.compile(r"%(?:\d+\$)?(?:ll)?[@df]")
+_INT_EXPR_RE = re.compile(
+    r"(Int\(|\.count\b|\bcount\b|errorCode|\.completed\b|\.total\b|editCount|days|hours|minutes|packets|countedRules|\bstatus\b|\bpid\b)")
+
+
+def _specifier_for(expr):
+    return "%lld" if _INT_EXPR_RE.search(expr) else "%@"
+
+
+def iter_swift_literals(text):
+    """Yield (normalized, line) for every string literal in Swift source.
+
+    Interpolations are normalized to format specifiers (%@ / %lld) the
+    same way the compiler forms LocalizedStringKeys; escapes are
+    decoded; strings nested inside interpolations are yielded as
+    literals of their own. Comments are skipped.
+    """
+    results = []
+    i, n = 0, len(text)
+
+    def parse_string(i):
+        # text[i] == '"'; returns (value, exprs, next_index)
+        j = i + 1
+        buf, exprs = [], []
+        while j < n:
+            c = text[j]
+            if c == "\\":
+                nxt = text[j + 1] if j + 1 < n else ""
+                if nxt == "(":
+                    depth, k = 0, j + 1
+                    while k < n:
+                        ch = text[k]
+                        if ch == '"':
+                            inner, _, k2 = parse_string(k)
+                            results.append((inner, text.count("\n", 0, k) + 1))
+                            k = k2
+                            continue
+                        if ch == "(":
+                            depth += 1
+                        elif ch == ")":
+                            depth -= 1
+                            if depth == 0:
+                                break
+                        k += 1
+                    exprs.append(text[j + 2:k])
+                    buf.append("\x01%d\x02" % (len(exprs) - 1))
+                    j = k + 1
+                    continue
+                mapping = {"n": "\n", "t": "\t", "r": "\r", "\\": "\\", '"': '"', "'": "'", "0": "\0"}
+                if nxt == "u":
+                    m = re.match(r"u\{([0-9a-fA-F]+)\}", text[j + 1:])
+                    buf.append(chr(int(m.group(1), 16)))
+                    j += 1 + m.end()
+                    continue
+                buf.append(mapping.get(nxt, nxt))
+                j += 2
+                continue
+            if c == '"':
+                return "".join(buf), exprs, j + 1
+            buf.append(c)
+            j += 1
+        return "".join(buf), exprs, j
+
+    while i < n:
+        if text[i:i + 2] == "//":
+            end = text.find("\n", i)
+            i = end if end >= 0 else n
+        elif text[i:i + 2] == "/*":
+            end = text.find("*/", i + 2)
+            i = end + 2 if end >= 0 else n
+        elif text[i:i + 3] == '"""':
+            end = text.find('"""', i + 3)
+            i = end + 3 if end >= 0 else n
+        elif text[i] == '"':
+            line = text.count("\n", 0, i) + 1
+            value, exprs, i = parse_string(i)
+            parts = re.split(r"\x01(\d+)\x02", value)
+            normalized = parts[0]
+            idx = 1
+            while idx < len(parts):
+                pos = int(parts[idx])
+                normalized += _specifier_for(exprs[pos]) if pos < len(exprs) else "%@"
+                normalized += parts[idx + 1]
+                idx += 2
+            results.append((normalized, line))
+        else:
+            i += 1
+    return results
+
+
+def _load_whitelist(repository):
+    path = repository / "scripts" / "localization_whitelist.txt"
+    entries = set()
+    if path.is_file():
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if line and not line.startswith("#"):
+                entries.add(line)
+    return entries
+
+
+def audit_localization(repository):
+    errors = []
+    whitelist = _load_whitelist(repository)
+
+    catalog_path = repository / "App" / "Localizable.xcstrings"
+    if not catalog_path.is_file():
+        raise ValueError("Missing App/Localizable.xcstrings")
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    keys = set(catalog.get("strings", {}))
+    for key, entry in catalog.get("strings", {}).items():
+        locs = entry.get("localizations", {})
+        for language in ("zh-Hans", "en"):
+            if language not in locs:
+                errors.append(f"catalog key lacks {language}: {key!r}")
+        en_value = locs.get("en", {}).get("stringUnit", {}).get("value", "")
+        if SPECIFIER_RE.findall(key) != SPECIFIER_RE.findall(en_value):
+            errors.append(f"format specifiers differ between key and en value: {key!r}")
+
+    app_literals = 0
+    for source in sorted((repository / "App").rglob("*.swift")):
+        for normalized, line in iter_swift_literals(source.read_text(encoding="utf-8")):
+            if not CJK_RE.search(normalized):
+                continue
+            app_literals += 1
+            if normalized in keys or normalized in whitelist:
+                continue
+            errors.append(
+                f"{source.relative_to(repository)}:{line}: Chinese literal not in "
+                f"Localizable.xcstrings and not whitelisted: {normalized!r}")
+
+    table_path = repository / "Packages/OpenWrtKit/Sources/OpenWrtKit/KitStringsTable.swift"
+    table_keys = set()
+    if table_path.is_file():
+        for normalized, _ in iter_swift_literals(table_path.read_text(encoding="utf-8")):
+            table_keys.add(normalized)
+    kit_literals = 0
+    kit_root = repository / "Packages/OpenWrtKit/Sources"
+    for source in sorted(kit_root.rglob("*.swift")):
+        if source.name in ("KitStringsTable.swift", "KitStrings.swift"):
+            continue
+        text = source.read_text(encoding="utf-8")
+        lines = text.split("\n")
+        for normalized, line in iter_swift_literals(text):
+            if not CJK_RE.search(normalized):
+                continue
+            kit_literals += 1
+            if normalized in whitelist:
+                continue
+            if normalized not in table_keys:
+                errors.append(
+                    f"{source.relative_to(repository)}:{line}: kit Chinese literal missing "
+                    f"from the KitL10n English table and not whitelisted: {normalized!r}")
+                continue
+            # A table entry alone is not enough outside FieldCatalog
+            # (whose labels are data the catalog lookup resolves): the
+            # literal must actually be produced through KitL10n.
+            if source.name != "FieldCatalog.swift":
+                window = "\n".join(lines[max(0, line - 2):line])
+                if "KitL10n." not in window:
+                    errors.append(
+                        f"{source.relative_to(repository)}:{line}: kit Chinese literal is in "
+                        f"the English table but not produced through KitL10n: {normalized!r}")
+
+    if errors:
+        raise ValueError("Localization audit failed:\n" + "\n".join(errors))
+    return {"catalog_keys": len(keys), "app_literals_checked": app_literals,
+            "kit_literals_checked": kit_literals, "kit_english_entries": len(table_keys)}
+
+
+
+# ---------------------------------------------------------------------------
+# English-literal & raw-value audit (package H, 2026-11-21)
+#
+# The localization audit above only sees literals containing CJK: a
+# hard-coded English title ("DHCP and DNS" was the case that shipped)
+# and an enum raw value rendered as text are invisible to it. These
+# two scans close that blind spot.
+#
+# English scan: a pure-ASCII literal containing a space and a real
+# word is presumed to be interface copy bypassing the catalog.
+# Deliberate under-reporting keeps it quiet: single tokens (protocol
+# and product names, keys matched against device data) are out of
+# scope, and number formats whose only words are universal unit
+# symbols ("%@ dBm", "%.1f%% CPU") pass automatically. Genuine
+# exceptions go in scripts/english_literal_whitelist.txt — an exact
+# literal, or "file:<path>" for one whole fixture/data file — each
+# with a comment saying why.
+#
+# Raw-value scan: every ".rawValue" in App sources must be accounted
+# for in scripts/rawvalue_whitelist.txt (path :: line substring, one
+# reason comment each). Whitelisted uses are the ones that never
+# render as text — storage keys, identifiers, log tags. A value that
+# IS displayed must go through a localized mapping instead
+# (PackageManager.displayName is the pattern).
+# ---------------------------------------------------------------------------
+
+ASCII_WORD_RE = re.compile(r"[A-Za-z]{2,}")
+_FORMAT_SPEC_RE = re.compile(r"%(?:\d+\$)?(?:\.\d+)?(?:ll|l)?[@df%]")
+_UNIT_TOKENS = {"dBm", "ms", "CPU", "PID", "B/s", "KB/s", "MB/s", "GB/s"}
+
+
+def _is_unit_format(normalized):
+    """True when every word in the literal is a universal unit symbol
+    once the format specifiers are removed: the numbers are
+    locale-formatted at runtime and the units themselves are not
+    translated in any language, so this is not English copy."""
+    remainder = _FORMAT_SPEC_RE.sub(" ", normalized)
+    tokens = re.findall(r"[A-Za-z]+(?:/[A-Za-z]+)?", remainder)
+    return bool(tokens) and all(token in _UNIT_TOKENS for token in tokens)
+
+
+def _load_english_whitelist(repository):
+    literals, files = set(), set()
+    path = repository / "scripts" / "english_literal_whitelist.txt"
+    if path.is_file():
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("file:"):
+                files.add(line[len("file:"):])
+            else:
+                literals.add(line)
+    return literals, files
+
+
+def audit_english_literals(repository):
+    literals_wl, files_wl = _load_english_whitelist(repository)
+    errors = []
+    checked = 0
+    for source in sorted((repository / "App").rglob("*.swift")):
+        relative = source.relative_to(repository).as_posix()
+        if relative in files_wl:
+            continue
+        for normalized, line in iter_swift_literals(source.read_text(encoding="utf-8")):
+            if CJK_RE.search(normalized) or not normalized.isascii():
+                continue
+            if " " not in normalized or not ASCII_WORD_RE.search(normalized):
+                continue
+            checked += 1
+            if normalized in literals_wl or _is_unit_format(normalized):
+                continue
+            errors.append(
+                f"{relative}:{line}: English literal bypasses "
+                f"Localizable.xcstrings and is not whitelisted: {normalized!r}")
+    if errors:
+        raise ValueError("English-literal audit failed:\n" + "\n".join(errors))
+    return {"english_literals_checked": checked}
+
+
+def _load_rawvalue_whitelist(repository):
+    entries = []
+    path = repository / "scripts" / "rawvalue_whitelist.txt"
+    if path.is_file():
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            file_part, separator, needle = line.partition(" :: ")
+            if separator:
+                entries.append((file_part.strip(), needle.strip()))
+    return entries
+
+
+def audit_rawvalue_display(repository):
+    whitelist = _load_rawvalue_whitelist(repository)
+    errors = []
+    checked = 0
+    for source in sorted((repository / "App").rglob("*.swift")):
+        relative = source.relative_to(repository).as_posix()
+        for number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
+            if ".rawValue" not in line or line.strip().startswith("//"):
+                continue
+            checked += 1
+            if any(relative == path and needle in line for path, needle in whitelist):
+                continue
+            errors.append(
+                f"{relative}:{number}: raw value use is not whitelisted; "
+                f"if it can render as text it needs a localized mapping: {line.strip()!r}")
+    if errors:
+        raise ValueError("Raw-value audit failed:\n" + "\n".join(errors))
+    return {"rawvalue_sites_checked": checked}
+
+
+
+# ---------------------------------------------------------------------------
+# Hardcoded-color audit (package O, 2026-11-21)
+#
+# Package M themed only AppPalette's accent ramp. The AccentColor
+# asset still held the shipped jade and an inner .tint(.accentColor)
+# shadowed the theme tint, so every native control stayed green —
+# invisible to all three scans above, none of which look at colors.
+# This scan keeps color from bypassing the palette/theme again in
+# App and Widget sources: hex literals, literal Color/UIColor
+# component initializers, UIColor.system* colors, and direct
+# system-color member access (.green, .accentColor, …) that is not
+# an AppPalette token. The palette's own definition site and any
+# deliberate exception go in scripts/color_whitelist.txt —
+# "file:<path>" for one whole file, or "path :: line substring" per
+# site, each with a comment saying why. (The kit's AppTheme.swift
+# holds the theme catalog's hex by design and is out of scope: this
+# scan covers the App and Widget targets only.)
+# ---------------------------------------------------------------------------
+
+_COLOR_NAME_RE = re.compile(
+    r"(?<!AppPalette)\.(green|teal|mint|blue|orange|red|purple|pink|yellow|indigo|cyan|accentColor|white|black)\b")
+_COLOR_HEX_RE = re.compile(r"0x[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?\b|\"#[0-9A-Fa-f]{6,8}\"")
+_COLOR_INIT_RE = re.compile(r"\b(?:Color|UIColor)\((?:red|hue):")
+_COLOR_SYSTEM_RE = re.compile(r"\bUIColor\.system[A-Z]")
+
+
+def _load_color_whitelist(repository):
+    files, entries = set(), []
+    path = repository / "scripts" / "color_whitelist.txt"
+    if path.is_file():
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("file:"):
+                files.add(line[len("file:"):])
+                continue
+            file_part, separator, needle = line.partition(" :: ")
+            if separator:
+                entries.append((file_part.strip(), needle.strip()))
+    return files, entries
+
+
+def audit_hardcoded_colors(repository):
+    files_wl, entries = _load_color_whitelist(repository)
+    errors = []
+    checked = 0
+    for root in (repository / "App", repository / "Widget"):
+        if not root.is_dir():
+            continue
+        for source in sorted(root.rglob("*.swift")):
+            relative = source.relative_to(repository).as_posix()
+            if relative in files_wl:
+                continue
+            for number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
+                if line.strip().startswith("//"):
+                    continue
+                if not (_COLOR_NAME_RE.search(line) or _COLOR_HEX_RE.search(line)
+                        or _COLOR_INIT_RE.search(line) or _COLOR_SYSTEM_RE.search(line)):
+                    continue
+                checked += 1
+                if any(relative == path and needle in line for path, needle in entries):
+                    continue
+                errors.append(
+                    f"{relative}:{number}: hardcoded color bypasses AppPalette/AppTheme "
+                    f"and is not whitelisted: {line.strip()!r}")
+    if errors:
+        raise ValueError("Hardcoded-color audit failed:\n" + "\n".join(errors))
+    return {"color_sites_checked": checked}
+
+
+
+# ---------------------------------------------------------------------------
+# Large-area semantic-fill audit (package P, 2026-11-21)
+#
+# Package O classified every green on screen as status semantics and
+# stopped there — but classification ignored visual area. A status
+# green worn as a banner background, a capsule fill or a meter bar
+# stops reading as "status" and becomes the page's main color,
+# whatever the theme says. The doctrine since package P: semantic
+# colors appear at small area only — dots, icons, label glyphs;
+# large-area fills (backgrounds, bars, bands) come from the themed
+# accent ramp or the neutrals. Warning surfaces are the one
+# exemption: the SummaryBanner warning/bad tones, the ReadStatus
+# strip and ErrorStateView wear orange/red soft fills because there
+# the fill itself is the alarm.
+#
+# What a text scan can honestly assert, it asserts here, over the
+# shared components where those fills live:
+#   * InsightComponents.swift / SharedComponents.swift hold no
+#     greenSoft / blueSoft reference, no grade.soft background and
+#     no Capsule filled with grade.tint — the historical offenders
+#     (the good banner's ground, the grade chip's ground, the meter
+#     bar). A Circle filled with grade.tint is the grade dot and
+#     stays legal, so the meter pattern names the Capsule.
+#   * The StatusBadge struct in DesignSystem.swift sources no Soft
+#     token at all — its ground is neutral. The check is scoped to
+#     the struct; the palette's own token definitions live in a
+#     different declaration in the same file and are not read.
+# What the scan cannot assert — that no future one-off view paints
+# a big semantic fill — stays a review rule, written into
+# scripts/color_whitelist.txt beside the scan it extends.
+# ---------------------------------------------------------------------------
+
+_SEMANTIC_FILL_FILES = ("App/Views/InsightComponents.swift",
+                        "App/Views/SharedComponents.swift")
+_SEMANTIC_FILL_RE = re.compile(r"greenSoft|blueSoft|grade\.soft|Capsule\(\)\.fill\(grade\.tint\)")
+
+
+def _struct_block(lines, declaration):
+    """One top-level struct's lines, from its declaration to the
+    closing brace at column zero — enough to scope a check to a
+    single component without parsing Swift."""
+    start = next((i for i, line in enumerate(lines) if line.startswith(declaration)), None)
+    if start is None:
+        return []
+    block = []
+    for line in lines[start:]:
+        block.append(line)
+        if line == "}":
+            break
+    return block
+
+
+def audit_semantic_fills(repository):
+    errors = []
+    checked = 0
+    for relative in _SEMANTIC_FILL_FILES:
+        source = repository / relative
+        if not source.is_file():
+            continue
+        checked += 1
+        for number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
+            if line.strip().startswith("//"):
+                continue
+            if _SEMANTIC_FILL_RE.search(line):
+                errors.append(
+                    f"{relative}:{number}: large-area semantic fill in a shared component "
+                    f"(package P doctrine — fills wear the accent ramp or neutrals): {line.strip()!r}")
+    badge_file = repository / "App/Views/DesignSystem.swift"
+    if badge_file.is_file():
+        checked += 1
+        block = _struct_block(badge_file.read_text(encoding="utf-8").splitlines(),
+                              "struct StatusBadge")
+        for line in block:
+            if line.strip().startswith("//"):
+                continue
+            if "Soft" in line:
+                errors.append(
+                    f"App/Views/DesignSystem.swift: StatusBadge sources a soft fill "
+                    f"(package P doctrine — its ground stays neutral): {line.strip()!r}")
+    if errors:
+        raise ValueError("Semantic-fill audit failed:\n" + "\n".join(errors))
+    return {"semantic_fill_files_checked": checked}
 
 
 if __name__ == "__main__":

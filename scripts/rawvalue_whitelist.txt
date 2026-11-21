@@ -1,0 +1,44 @@
+# Raw-value audit whitelist — see audit_rawvalue_display in
+# audit_release.py. One entry per line:
+# <repository-relative path> :: <substring of the line>. An entry
+# here means: this raw-value use never renders an enum's raw value
+# as interface text, for the reason stated in the comment above it.
+# A value that IS displayed must go through a localized mapping
+# instead (PackageManager.displayName is the pattern).
+
+# Probe-port enum's integer value: builds probe URLs and call
+# arguments; never rendered.
+App/Infrastructure/RouterDiscoveryService.swift :: port.rawValue
+# Stable machine tag in the os.Logger diagnostics mirror — the
+# diagnostics channel's documented convention, not interface copy.
+App/Infrastructure/AppDiagnostics.swift :: event.category.rawValue
+# Component of a local-notification request identifier; never
+# rendered.
+App/Infrastructure/Monitoring.swift :: transition.kind.rawValue
+# @AppStorage persisted default for the text-size preference; rows
+# display the localized size title instead.
+App/Models/AppPreferences.swift :: AppTextSize.compact.rawValue
+# Same storage default as above, held by the settings view.
+App/Views/AppSettingsView.swift :: AppTextSize.compact.rawValue
+# Selection storage and comparison for the text-size preference;
+# rows display the localized size title instead.
+App/Views/AppSettingsView.swift :: size.rawValue
+# @AppStorage persisted default for the theme preference; the
+# palette resolves the stored value through the kit catalog and
+# rows display the kit-resolved theme name instead.
+App/Models/AppPreferences.swift :: AppThemeCatalog.defaultID.rawValue
+# Same storage default as above, held by the settings views.
+App/Views/AppSettingsView.swift :: AppThemeCatalog.defaultID.rawValue
+# Selection storage and comparison for the theme preference;
+# rows display the kit-resolved theme name instead.
+App/Views/AppSettingsView.swift :: theme.id.rawValue
+# Composes an Identifiable id for in-flight service actions only;
+# never rendered.
+App/Views/SystemTab.swift :: action.rawValue
+# LAError code fed to the kit's BiometricAvailability mapping,
+# which turns it into a stable diagnostics token; the raw number
+# itself is never rendered (package N).
+App/Infrastructure/CredentialGate.swift :: laError.code.rawValue
+# Same mapping as above, for App lock authentication failures
+# (package N).
+App/Infrastructure/Management.swift :: (error as? LAError)?.code.rawValue

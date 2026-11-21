@@ -1,3 +1,5 @@
+> **已作废（2026-11-21）**：本文件为 2026-11-20 结构重构前旧档，内容与现状多处不符，不再作为事实来源。现行口径见 [README.md](README.md) 与 [docs/](docs/)；变更历程见 [CHANGELOG.md](CHANGELOG.md)。保留原文仅作历史追溯。
+
 # OpenWrt 路由器管理客户端
 
 <!-- impeccable:product-schema 1 -->
@@ -8,7 +10,7 @@ ios
 
 ## Stack
 
-用户已确认原生 SwiftUI；GitHub Actions 在 macOS runner 编译。协议与模型使用独立 Swift Package。iOS 26 SDK 构建，最低 iOS 17 是本轮实现默认值，旧系统使用相应系统外观。
+用户已确认原生 SwiftUI；GitHub Actions 在 macOS runner 编译。协议与模型使用独立 Swift Package。iOS 26 SDK 构建，最低系统 iOS 26（定版决议：只做 iOS 26 原生，不做旧系统降级兼容）。
 
 ## Users
 

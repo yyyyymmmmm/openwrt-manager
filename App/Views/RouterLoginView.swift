@@ -18,6 +18,13 @@ struct RouterLoginView: View {
 
     let address: String
     let existingProfile: RouterProfile?
+    /// Manual-entry mode (package K): reached when a one-tap switch
+    /// could not spend the saved password — the Face ID check was
+    /// refused or unavailable, so the user types the password here.
+    /// The saved password is then deliberately NOT prefilled: the
+    /// gate would be theatre if cancelling it landed on a form that
+    /// had the password already filled in.
+    let manualPasswordEntry: Bool
 
     @State private var routerName: String
     @State private var username: String
@@ -36,12 +43,14 @@ struct RouterLoginView: View {
         case name, username, password
     }
 
-    init(address: String, existingProfile: RouterProfile?) {
+    init(address: String, existingProfile: RouterProfile?, manualPasswordEntry: Bool = false) {
         self.address = address
         self.existingProfile = existingProfile
+        self.manualPasswordEntry = manualPasswordEntry
         let host = URLComponents(string: address)?.host ?? address
         _routerName = State(initialValue: existingProfile?.name ?? host)
         _username = State(initialValue: existingProfile?.username ?? "root")
+        _rememberPassword = State(initialValue: existingProfile?.rememberPassword ?? false)
     }
 
     var body: some View {
@@ -54,6 +63,12 @@ struct RouterLoginView: View {
                 .font(AppTypography.secondary)
                 .foregroundStyle(address.lowercased().hasPrefix("https:") ? AppPalette.muted : AppPalette.orange)
                 .padding(.top, 12).padding(.bottom, 24)
+            if manualPasswordEntry {
+                Label("身份验证未完成，请手动输入密码。", systemImage: "faceid")
+                    .font(AppTypography.secondary)
+                    .foregroundStyle(AppPalette.orange)
+                    .padding(.bottom, 16)
+            }
             AppGroup {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("用户名").font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
@@ -168,12 +183,16 @@ struct RouterLoginView: View {
         do {
             let credential = try store.credential(for: existingProfile)
             knownFingerprint = credential?.certificateFingerprint
-            if let savedPassword = credential?.password {
+            // Manual-entry mode (package K) loads the fingerprint
+            // only: the password stays in the Keychain until the
+            // user types it, which is the whole point of the
+            // fallback.
+            if !manualPasswordEntry, let savedPassword = credential?.password {
                 password = savedPassword
                 rememberPassword = true
             }
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = FriendlyError.message(error)
         }
     }
 
@@ -187,7 +206,7 @@ struct RouterLoginView: View {
             }
             startConnection(using: knownFingerprint)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = FriendlyError.message(error)
         }
     }
 

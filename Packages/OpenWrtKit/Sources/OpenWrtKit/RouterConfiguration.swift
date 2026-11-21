@@ -40,10 +40,10 @@ public enum ConfigurationEdit: Equatable, Sendable {
 
     public var summary: String {
         switch self {
-        case .add(let section): return "新增 \(section.type) 配置节"
-        case .removeSection(let name): return "删除配置节 \(name)"
-        case .set(let section, let option, _): return "设置 \(section).\(option)"
-        case .removeOption(let section, let option): return "删除 \(section).\(option)"
+        case .add(let section): return KitL10n.format("新增 %@ 配置节", section.type)
+        case .removeSection(let name): return KitL10n.format("删除配置节 %@", name)
+        case .set(let section, let option, _): return KitL10n.format("设置 %@.%@", section, option)
+        case .removeOption(let section, let option): return KitL10n.format("删除 %@.%@", section, option)
         }
     }
 }
@@ -96,13 +96,13 @@ public enum ConfigurationError: LocalizedError, Equatable {
     case invalidIdentifier, invalidValue, changedElsewhere, existingChanges, busy, noChanges, noPending
     public var errorDescription: String? {
         switch self {
-        case .invalidIdentifier: return "配置名称只能包含字母、数字、下划线和连字符，且不能重复。"
-        case .invalidValue: return "配置包含无法写入的值。请使用文本或文本列表。"
-        case .changedElsewhere: return "路由器配置已发生变化。请重新读取后再修改，避免覆盖其他操作。"
-        case .existingChanges: return "当前会话已有未提交修改。请先处理这些修改，再应用本次配置。"
-        case .busy: return "已有配置正在应用或等待确认，请先完成该操作。"
-        case .noChanges: return "没有需要应用的修改。"
-        case .noPending: return "没有等待确认的配置。请重新读取路由器状态。"
+        case .invalidIdentifier: return KitL10n.text("配置名称只能包含字母、数字、下划线和连字符，且不能重复。")
+        case .invalidValue: return KitL10n.text("配置包含无法写入的值。请使用文本或文本列表。")
+        case .changedElsewhere: return KitL10n.text("路由器配置已发生变化。请重新读取后再修改，避免覆盖其他操作。")
+        case .existingChanges: return KitL10n.text("当前会话已有未提交修改。请先处理这些修改，再应用本次配置。")
+        case .busy: return KitL10n.text("已有配置正在应用或等待确认，请先完成该操作。")
+        case .noChanges: return KitL10n.text("没有需要应用的修改。")
+        case .noPending: return KitL10n.text("没有等待确认的配置。请重新读取路由器状态。")
         }
     }
 }
@@ -118,20 +118,20 @@ public struct PendingConfiguration: Equatable, Sendable {
 
 /// A single session owns the staging area. Never commit without rpcd rollback.
 public actor RouterConfigurationClient {
-    private let client: UbusClient
-    private let session: UbusSession
+    private let caller: any UbusCalling
     private var busy = false
     private var pending: PendingConfiguration?
-    public init(client: UbusClient, session: UbusSession) { self.client = client; self.session = session }
+    public init(caller: any UbusCalling) { self.caller = caller }
+    public init(client: UbusClient, session: UbusSession) { self.caller = FixedSessionCaller(client: client, session: session) }
 
     public func read(_ name: String) async throws -> RouterConfiguration {
         guard InventoryParser.validIdentifier(name) else { throw ConfigurationError.invalidIdentifier }
-        let value = try await client.call(session: session, object: "uci", method: "get", parameters: ["config": .string(name)])
+        let value = try await caller.call(object: "uci", method: "get", parameters: ["config": .string(name)])
         return try RouterConfiguration.parse(name: name, value: value)
     }
 
     public func access(config: String, write: Bool) async throws -> Bool {
-        let result = try await client.call(session: session, object: "session", method: "access", parameters: [
+        let result = try await caller.call(object: "session", method: "access", parameters: [
             "scope": .string("uci"), "object": .string(config), "function": .string(write ? "write" : "read")
         ])
         guard let allowed = result["access"].boolValue else { throw OpenWrtKitError.malformedResponse }
@@ -145,12 +145,12 @@ public actor RouterConfigurationClient {
         defer { busy = false }
         guard try await access(config: plan.original.name, write: true) else { throw OpenWrtKitError.permissionDenied }
         for method in ["apply", "confirm", "revert", "rollback"] {
-            let permission = try await client.call(session: session, object: "session", method: "access", parameters: [
+            let permission = try await caller.call(object: "session", method: "access", parameters: [
                 "scope": .string("ubus"), "object": .string("uci"), "function": .string(method)
             ])
             guard permission["access"].boolValue == true else { throw OpenWrtKitError.permissionDenied }
         }
-        let changes = try await client.call(session: session, object: "uci", method: "changes")
+        let changes = try await caller.call(object: "uci", method: "changes")
         guard let existing = changes["changes"].objectValue else { throw OpenWrtKitError.malformedResponse }
         guard existing.isEmpty else { throw ConfigurationError.existingChanges }
         guard try await read(plan.original.name) == plan.original else { throw ConfigurationError.changedElsewhere }
@@ -171,17 +171,17 @@ public actor RouterConfigurationClient {
                 case .removeOption(let section, let option):
                     method = "delete"; parameters["section"] = .string(section); parameters["option"] = .string(option)
                 }
-                _ = try await client.call(session: session, object: "uci", method: method, parameters: parameters)
+                _ = try await caller.call(object: "uci", method: method, parameters: parameters)
             }
         } catch {
             // Only this transaction's config is reverted; pre-existing changes were refused.
-            do { _ = try await client.call(session: session, object: "uci", method: "revert", parameters: config) }
-            catch { throw OpenWrtKitError.unsupported("写入未完成，暂存修改也未能清理。请保持会话并重新检查配置，勿重复提交。") }
+            do { _ = try await caller.call(object: "uci", method: "revert", parameters: config) }
+            catch { throw OpenWrtKitError.unsupported(KitL10n.text("写入未完成，暂存修改也未能清理。请保持会话并重新检查配置，勿重复提交。")) }
             throw error
         }
         let deadline = Date().addingTimeInterval(90)
         do {
-            _ = try await client.call(session: session, object: "uci", method: "apply", parameters: ["rollback": .bool(true), "timeout": .number(90)])
+            _ = try await caller.call(object: "uci", method: "apply", parameters: ["rollback": .bool(true), "timeout": .number(90)])
             let value = PendingConfiguration(config: plan.original.name, deadline: deadline, acknowledged: true)
             pending = value
             return value
@@ -192,9 +192,38 @@ public actor RouterConfigurationClient {
             _ = error
             return value
         } catch {
-            _ = try? await client.call(session: session, object: "uci", method: "revert", parameters: config)
+            _ = try? await caller.call(object: "uci", method: "revert", parameters: config)
             throw error
         }
+    }
+
+    /// The full L4 transaction (spec section 1): the plan was built from a
+    /// pre-change snapshot and previewed by the user; this stages and
+    /// applies it inside rpcd's rollback window, reloads the affected
+    /// services, re-reads the configuration and verifies it matches the
+    /// intended result, and only then confirms. Any failure before the
+    /// confirm rolls the router back to the pre-change state. A failed
+    /// confirm itself leaves the transaction pending (state unknown —
+    /// the caller must resolve it explicitly, never silently).
+    public func execute(plan: ConfigurationPlan, reloadServices: [String] = [],
+                        serviceAction: @escaping @Sendable (String, ServiceAction) async throws -> Void = { _, _ in })
+        async throws -> TransactionReceipt {
+        let pending = try await apply(plan)
+        guard pending.acknowledged else { throw TransactionError.unacknowledged }
+        do {
+            for service in reloadServices {
+                do { try await serviceAction(service, .restart) }
+                catch { throw TransactionError.reloadFailed(service) }
+            }
+            let reread = try await read(plan.original.name)
+            guard reread == plan.edited else { throw TransactionError.verificationFailed(plan.original.name) }
+        } catch {
+            try? await rollback()
+            throw error
+        }
+        try await confirm()
+        return TransactionReceipt(config: plan.original.name, editCount: plan.edits.count,
+                                  reloadedServices: reloadServices, verifiedAt: Date())
     }
 
     public func confirm() async throws {
@@ -202,8 +231,8 @@ public actor RouterConfigurationClient {
         guard let pending, pending.deadline > Date() else { throw ConfigurationError.noPending }
         busy = true
         defer { busy = false }
-        _ = try await client.call(session: session, object: "system", method: "board")
-        _ = try await client.call(session: session, object: "uci", method: "confirm")
+        _ = try await caller.call(object: "system", method: "board")
+        _ = try await caller.call(object: "uci", method: "confirm")
         self.pending = nil
     }
 
@@ -212,7 +241,7 @@ public actor RouterConfigurationClient {
         guard pending != nil else { throw ConfigurationError.noPending }
         busy = true
         defer { busy = false }
-        _ = try await client.call(session: session, object: "uci", method: "rollback")
+        _ = try await caller.call(object: "uci", method: "rollback")
         pending = nil
     }
 
@@ -226,11 +255,11 @@ public enum ServiceAction: String, CaseIterable, Identifiable, Sendable {
     public var id: String { rawValue }
     public var title: String {
         switch self {
-        case .start: return "启动"
-        case .stop: return "停止"
-        case .restart: return "重启"
-        case .enable: return "启用开机启动"
-        case .disable: return "关闭开机启动"
+        case .start: return KitL10n.text("启动")
+        case .stop: return KitL10n.text("停止")
+        case .restart: return KitL10n.text("重启")
+        case .enable: return KitL10n.text("启用开机启动")
+        case .disable: return KitL10n.text("关闭开机启动")
         }
     }
 }

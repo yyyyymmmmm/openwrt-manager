@@ -1,0 +1,1275 @@
+{
+  "device": {
+    "id": "bypass-192.168.31.167",
+    "address": "192.168.31.167",
+    "role": "bypass"
+  },
+  "collected_at": "2026-11-20T22:59:23.483441+08:00",
+  "firmware": {
+    "DISTRIB_ID": "OpenWrt",
+    "DISTRIB_RELEASE": "25.12.5",
+    "DISTRIB_REVISION": "r33051-f5dae5ece4",
+    "DISTRIB_TARGET": "x86/64",
+    "DISTRIB_ARCH": "x86_64",
+    "DISTRIB_DESCRIPTION": "OpenWrt 25.12.5 r33051-f5dae5ece4",
+    "DISTRIB_TAINTS": "busybox override"
+  },
+  "board": {
+    "kernel": "6.18.52",
+    "hostname": "OpenWrt",
+    "system": "Intel(R) N150",
+    "model": "QEMU Standard PC (i440FX + PIIX, 1996)",
+    "board_name": "qemu-standard-pc-i440fx-piix-1996",
+    "rootfs_type": "ext4",
+    "release": {
+      "distribution": "OpenWrt",
+      "version": "25.12.5",
+      "firmware_url": "https://downloads.openwrt.org/",
+      "revision": "r33051-f5dae5ece4",
+      "target": "x86/64",
+      "description": "OpenWrt 25.12.5 r33051-f5dae5ece4"
+    }
+  },
+  "menu_files": [
+    "luci-app-airconnect.json",
+    "luci-app-airplay2.json",
+    "luci-app-argon-config.json",
+    "luci-app-autoreboot.json",
+    "luci-app-commands.json",
+    "luci-app-ddns.json",
+    "luci-app-diskman.json",
+    "luci-app-firewall.json",
+    "luci-app-frpc.json",
+    "luci-app-homeproxy.json",
+    "luci-app-mosdns.json",
+    "luci-app-natmap.json",
+    "luci-app-netspeedtest.json",
+    "luci-app-nlbwmon.json",
+    "luci-app-oaf.json",
+    "luci-app-openbox.json",
+    "luci-app-ota.json",
+    "luci-app-package-manager.json",
+    "luci-app-quickfile.json",
+    "luci-app-ramfree.json",
+    "luci-app-socat.json",
+    "luci-app-sqm.json",
+    "luci-app-ttyd.json",
+    "luci-app-upnp.json",
+    "luci-app-vlmcsd.json",
+    "luci-app-webdav.json",
+    "luci-app-wol.json",
+    "luci-app-zerotier.json",
+    "luci-base.json",
+    "luci-mod-network.json",
+    "luci-mod-status.json",
+    "luci-mod-system.json",
+    "luci-proto-wireguard.json"
+  ],
+  "menu_paths": [
+    "admin",
+    "admin/logout",
+    "admin/menu",
+    "admin/network",
+    "admin/network/dhcp",
+    "admin/network/diagnostics",
+    "admin/network/dns",
+    "admin/network/firewall",
+    "admin/network/firewall/custom",
+    "admin/network/firewall/forwards",
+    "admin/network/firewall/ipsets",
+    "admin/network/firewall/rules",
+    "admin/network/firewall/snats",
+    "admin/network/firewall/zones",
+    "admin/network/netspeedtest",
+    "admin/network/netspeedtest/iperf3",
+    "admin/network/netspeedtest/speedtest",
+    "admin/network/network",
+    "admin/network/nlbw",
+    "admin/network/nlbw/backup",
+    "admin/network/nlbw/config",
+    "admin/network/nlbw/display",
+    "admin/network/remote_addr/*",
+    "admin/network/routes",
+    "admin/network/sqm",
+    "admin/network/switch",
+    "admin/network/upnp",
+    "admin/network/wireless",
+    "admin/services",
+    "admin/services/airconnect",
+    "admin/services/airplay2",
+    "admin/services/appfilter",
+    "admin/services/appfilter/advance",
+    "admin/services/appfilter/app_filter",
+    "admin/services/appfilter/feature",
+    "admin/services/appfilter/time",
+    "admin/services/appfilter/user",
+    "admin/services/appfilter/user_list",
+    "admin/services/ddns",
+    "admin/services/frpc",
+    "admin/services/homeproxy",
+    "admin/services/homeproxy/client",
+    "admin/services/homeproxy/node",
+    "admin/services/homeproxy/server",
+    "admin/services/homeproxy/status",
+    "admin/services/mosdns",
+    "admin/services/mosdns/basic",
+    "admin/services/mosdns/logs",
+    "admin/services/mosdns/rules",
+    "admin/services/mosdns/statistics",
+    "admin/services/mosdns/update",
+    "admin/services/natmap",
+    "admin/services/openbox",
+    "admin/services/socat",
+    "admin/services/vlmcsd",
+    "admin/services/vlmcsd/config",
+    "admin/services/vlmcsd/vlmcsd",
+    "admin/services/webdav",
+    "admin/services/wol",
+    "admin/services/zerotier",
+    "admin/services/zerotier/config",
+    "admin/services/zerotier/interface",
+    "admin/status",
+    "admin/status/channel_analysis",
+    "admin/status/firewall",
+    "admin/status/firewall/iptables",
+    "admin/status/firewall/nftables",
+    "admin/status/iptables",
+    "admin/status/logs",
+    "admin/status/logs/dmesg",
+    "admin/status/logs/syslog",
+    "admin/status/overview",
+    "admin/status/processes",
+    "admin/status/ramfree",
+    "admin/status/realtime",
+    "admin/status/realtime/bandwidth",
+    "admin/status/realtime/connections",
+    "admin/status/realtime/load",
+    "admin/status/realtime/wireless",
+    "admin/status/routes",
+    "admin/status/routesj",
+    "admin/status/wireguard",
+    "admin/system",
+    "admin/system/admin",
+    "admin/system/admin/dropbear",
+    "admin/system/admin/password",
+    "admin/system/admin/repokeys",
+    "admin/system/admin/sshkeys",
+    "admin/system/admin/uhttpd",
+    "admin/system/argon-config",
+    "admin/system/autoreboot",
+    "admin/system/commands",
+    "admin/system/commands/config",
+    "admin/system/commands/dashboard",
+    "admin/system/commands/download/*",
+    "admin/system/commands/run/*",
+    "admin/system/crontab",
+    "admin/system/diskman",
+    "admin/system/diskman/partition",
+    "admin/system/flash",
+    "admin/system/leds",
+    "admin/system/mounts",
+    "admin/system/ota",
+    "admin/system/package-manager",
+    "admin/system/quickfile",
+    "admin/system/reboot",
+    "admin/system/startup",
+    "admin/system/system",
+    "admin/system/ttyd",
+    "admin/system/ttyd/config",
+    "admin/system/ttyd/ttyd",
+    "admin/translations/*",
+    "admin/ubus/*",
+    "admin/uci",
+    "admin/uci/apply_rollback",
+    "admin/uci/apply_unchecked",
+    "admin/uci/confirm",
+    "admin/uci/revert",
+    "admin/vpn",
+    "command/*"
+  ],
+  "menu_tree": {
+    "admin": {
+      "title": "Administration",
+      "order": 10,
+      "file": "luci-base.json"
+    },
+    "admin/logout": {
+      "title": "Log out",
+      "order": 999,
+      "file": "luci-base.json"
+    },
+    "admin/menu": {
+      "title": null,
+      "order": null,
+      "file": "luci-base.json"
+    },
+    "admin/network": {
+      "title": "Network",
+      "order": 50,
+      "file": "luci-base.json"
+    },
+    "admin/network/dhcp": {
+      "title": "DHCP",
+      "order": 40,
+      "file": "luci-mod-network.json"
+    },
+    "admin/network/diagnostics": {
+      "title": "Diagnostics",
+      "order": 50,
+      "file": "luci-mod-network.json"
+    },
+    "admin/network/dns": {
+      "title": "DNS",
+      "order": 45,
+      "file": "luci-mod-network.json"
+    },
+    "admin/network/firewall": {
+      "title": "Firewall",
+      "order": 60,
+      "file": "luci-app-firewall.json"
+    },
+    "admin/network/firewall/custom": {
+      "title": "Custom Rules",
+      "order": 50,
+      "file": "luci-app-firewall.json"
+    },
+    "admin/network/firewall/forwards": {
+      "title": "Port Forwards",
+      "order": 20,
+      "file": "luci-app-firewall.json"
+    },
+    "admin/network/firewall/ipsets": {
+      "title": "IP Sets",
+      "order": 45,
+      "file": "luci-app-firewall.json"
+    },
+    "admin/network/firewall/rules": {
+      "title": "Traffic Rules",
+      "order": 30,
+      "file": "luci-app-firewall.json"
+    },
+    "admin/network/firewall/snats": {
+      "title": "NAT Rules",
+      "order": 40,
+      "file": "luci-app-firewall.json"
+    },
+    "admin/network/firewall/zones": {
+      "title": "General Settings",
+      "order": 10,
+      "file": "luci-app-firewall.json"
+    },
+    "admin/network/netspeedtest": {
+      "title": "SpeedTest",
+      "order": 55,
+      "file": "luci-app-netspeedtest.json"
+    },
+    "admin/network/netspeedtest/iperf3": {
+      "title": "iPerf3 Server",
+      "order": 1,
+      "file": "luci-app-netspeedtest.json"
+    },
+    "admin/network/netspeedtest/speedtest": {
+      "title": "Internet Speedtest",
+      "order": 2,
+      "file": "luci-app-netspeedtest.json"
+    },
+    "admin/network/network": {
+      "title": "Interfaces",
+      "order": 10,
+      "file": "luci-mod-network.json"
+    },
+    "admin/network/nlbw": {
+      "title": "Bandwidth Monitor",
+      "order": 80,
+      "file": "luci-app-nlbwmon.json"
+    },
+    "admin/network/nlbw/backup": {
+      "title": "Backup",
+      "order": 30,
+      "file": "luci-app-nlbwmon.json"
+    },
+    "admin/network/nlbw/config": {
+      "title": "Configuration",
+      "order": 20,
+      "file": "luci-app-nlbwmon.json"
+    },
+    "admin/network/nlbw/display": {
+      "title": "Display",
+      "order": 10,
+      "file": "luci-app-nlbwmon.json"
+    },
+    "admin/network/remote_addr/*": {
+      "title": null,
+      "order": null,
+      "file": "luci-mod-network.json"
+    },
+    "admin/network/routes": {
+      "title": "Routing",
+      "order": 30,
+      "file": "luci-mod-network.json"
+    },
+    "admin/network/sqm": {
+      "title": "SQM QoS",
+      "order": 59,
+      "file": "luci-app-sqm.json"
+    },
+    "admin/network/switch": {
+      "title": "Switch",
+      "order": 20,
+      "file": "luci-mod-network.json"
+    },
+    "admin/network/upnp": {
+      "title": "UPnP IGD & PCP",
+      "order": 62,
+      "file": "luci-app-upnp.json"
+    },
+    "admin/network/wireless": {
+      "title": "Wireless",
+      "order": 15,
+      "file": "luci-mod-network.json"
+    },
+    "admin/services": {
+      "title": "Services",
+      "order": 40,
+      "file": "luci-base.json"
+    },
+    "admin/services/airconnect": {
+      "title": "AirConnect",
+      "order": null,
+      "file": "luci-app-airconnect.json"
+    },
+    "admin/services/airplay2": {
+      "title": "Airplay 2",
+      "order": null,
+      "file": "luci-app-airplay2.json"
+    },
+    "admin/services/appfilter": {
+      "title": "App Filter",
+      "order": null,
+      "file": "luci-app-oaf.json"
+    },
+    "admin/services/appfilter/advance": {
+      "title": "Advanced Settings",
+      "order": 60,
+      "file": "luci-app-oaf.json"
+    },
+    "admin/services/appfilter/app_filter": {
+      "title": "App Filter",
+      "order": 20,
+      "file": "luci-app-oaf.json"
+    },
+    "admin/services/appfilter/feature": {
+      "title": "App Feature",
+      "order": 50,
+      "file": "luci-app-oaf.json"
+    },
+    "admin/services/appfilter/time": {
+      "title": "Time Configuration",
+      "order": 40,
+      "file": "luci-app-oaf.json"
+    },
+    "admin/services/appfilter/user": {
+      "title": "User Configuration",
+      "order": 30,
+      "file": "luci-app-oaf.json"
+    },
+    "admin/services/appfilter/user_list": {
+      "title": "User List",
+      "order": 10,
+      "file": "luci-app-oaf.json"
+    },
+    "admin/services/ddns": {
+      "title": "Dynamic DNS",
+      "order": 59,
+      "file": "luci-app-ddns.json"
+    },
+    "admin/services/frpc": {
+      "title": "frp Client",
+      "order": null,
+      "file": "luci-app-frpc.json"
+    },
+    "admin/services/homeproxy": {
+      "title": "HomeProxy",
+      "order": 10,
+      "file": "luci-app-homeproxy.json"
+    },
+    "admin/services/homeproxy/client": {
+      "title": "Client Settings",
+      "order": 10,
+      "file": "luci-app-homeproxy.json"
+    },
+    "admin/services/homeproxy/node": {
+      "title": "Node Settings",
+      "order": 15,
+      "file": "luci-app-homeproxy.json"
+    },
+    "admin/services/homeproxy/server": {
+      "title": "Server Settings",
+      "order": 20,
+      "file": "luci-app-homeproxy.json"
+    },
+    "admin/services/homeproxy/status": {
+      "title": "Service Status",
+      "order": 30,
+      "file": "luci-app-homeproxy.json"
+    },
+    "admin/services/mosdns": {
+      "title": "MosDNS",
+      "order": 30,
+      "file": "luci-app-mosdns.json"
+    },
+    "admin/services/mosdns/basic": {
+      "title": "Basic Setting",
+      "order": 10,
+      "file": "luci-app-mosdns.json"
+    },
+    "admin/services/mosdns/logs": {
+      "title": "Logs",
+      "order": 30,
+      "file": "luci-app-mosdns.json"
+    },
+    "admin/services/mosdns/rules": {
+      "title": "Rules",
+      "order": 15,
+      "file": "luci-app-mosdns.json"
+    },
+    "admin/services/mosdns/statistics": {
+      "title": "Statistics",
+      "order": 25,
+      "file": "luci-app-mosdns.json"
+    },
+    "admin/services/mosdns/update": {
+      "title": "Geodata Update",
+      "order": 20,
+      "file": "luci-app-mosdns.json"
+    },
+    "admin/services/natmap": {
+      "title": "NATMap",
+      "order": null,
+      "file": "luci-app-natmap.json"
+    },
+    "admin/services/openbox": {
+      "title": "Open-Box",
+      "order": 30,
+      "file": "luci-app-openbox.json"
+    },
+    "admin/services/socat": {
+      "title": "Socat",
+      "order": null,
+      "file": "luci-app-socat.json"
+    },
+    "admin/services/vlmcsd": {
+      "title": "KMS Server",
+      "order": 60,
+      "file": "luci-app-vlmcsd.json"
+    },
+    "admin/services/vlmcsd/config": {
+      "title": "Config File",
+      "order": 20,
+      "file": "luci-app-vlmcsd.json"
+    },
+    "admin/services/vlmcsd/vlmcsd": {
+      "title": "Basic Setting",
+      "order": 10,
+      "file": "luci-app-vlmcsd.json"
+    },
+    "admin/services/webdav": {
+      "title": "WebDAV",
+      "order": null,
+      "file": "luci-app-webdav.json"
+    },
+    "admin/services/wol": {
+      "title": "Wake on LAN",
+      "order": 90,
+      "file": "luci-app-wol.json"
+    },
+    "admin/services/zerotier": {
+      "title": "ZeroTier",
+      "order": 1050,
+      "file": "luci-app-zerotier.json"
+    },
+    "admin/services/zerotier/config": {
+      "title": "Configuration",
+      "order": 10,
+      "file": "luci-app-zerotier.json"
+    },
+    "admin/services/zerotier/interface": {
+      "title": "Interface info",
+      "order": 20,
+      "file": "luci-app-zerotier.json"
+    },
+    "admin/status": {
+      "title": "Status",
+      "order": 10,
+      "file": "luci-base.json"
+    },
+    "admin/status/channel_analysis": {
+      "title": "Channel Analysis",
+      "order": 7,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/firewall": {
+      "title": "Firewall",
+      "order": 3,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/firewall/iptables": {
+      "title": "IPtables Firewall",
+      "order": 2,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/firewall/nftables": {
+      "title": "NFtables Firewall",
+      "order": 1,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/iptables": {
+      "title": "Firewall",
+      "order": 3,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/logs": {
+      "title": "System Log",
+      "order": 4,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/logs/dmesg": {
+      "title": "Kernel Log",
+      "order": 2,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/logs/syslog": {
+      "title": "System Log",
+      "order": 1,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/overview": {
+      "title": "Overview",
+      "order": 1,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/processes": {
+      "title": "Processes",
+      "order": 6,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/ramfree": {
+      "title": "Freeping Memory Cache",
+      "order": 9999,
+      "file": "luci-app-ramfree.json"
+    },
+    "admin/status/realtime": {
+      "title": "Realtime Graphs",
+      "order": 7,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/realtime/bandwidth": {
+      "title": "Bandwidth",
+      "order": 2,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/realtime/connections": {
+      "title": "Connections",
+      "order": 4,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/realtime/load": {
+      "title": "Load",
+      "order": 1,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/realtime/wireless": {
+      "title": "Wireless",
+      "order": 3,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/routes": {
+      "title": "Routing",
+      "order": 2,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/routesj": {
+      "title": "Routing",
+      "order": 2,
+      "file": "luci-mod-status.json"
+    },
+    "admin/status/wireguard": {
+      "title": "WireGuard",
+      "order": 92,
+      "file": "luci-proto-wireguard.json"
+    },
+    "admin/system": {
+      "title": "System",
+      "order": 20,
+      "file": "luci-base.json"
+    },
+    "admin/system/admin": {
+      "title": "Administration",
+      "order": 2,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/admin/dropbear": {
+      "title": "SSH Access",
+      "order": 2,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/admin/password": {
+      "title": "Router Password",
+      "order": 1,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/admin/repokeys": {
+      "title": "Repo Public Keys",
+      "order": 5,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/admin/sshkeys": {
+      "title": "SSH-Keys",
+      "order": 3,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/admin/uhttpd": {
+      "title": "HTTP(S) Access",
+      "order": 4,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/argon-config": {
+      "title": "Argon Config",
+      "order": 85,
+      "file": "luci-app-argon-config.json"
+    },
+    "admin/system/autoreboot": {
+      "title": "Scheduled Reboot",
+      "order": 88,
+      "file": "luci-app-autoreboot.json"
+    },
+    "admin/system/commands": {
+      "title": "Custom Commands",
+      "order": 80,
+      "file": "luci-app-commands.json"
+    },
+    "admin/system/commands/config": {
+      "title": "Configure",
+      "order": 2,
+      "file": "luci-app-commands.json"
+    },
+    "admin/system/commands/dashboard": {
+      "title": "Dashboard",
+      "order": 1,
+      "file": "luci-app-commands.json"
+    },
+    "admin/system/commands/download/*": {
+      "title": null,
+      "order": 4,
+      "file": "luci-app-commands.json"
+    },
+    "admin/system/commands/run/*": {
+      "title": null,
+      "order": 3,
+      "file": "luci-app-commands.json"
+    },
+    "admin/system/crontab": {
+      "title": "Scheduled Tasks",
+      "order": 46,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/diskman": {
+      "title": "Disk Man",
+      "order": 51,
+      "file": "luci-app-diskman.json"
+    },
+    "admin/system/diskman/partition": {
+      "title": null,
+      "order": null,
+      "file": "luci-app-diskman.json"
+    },
+    "admin/system/flash": {
+      "title": "Backup / Flash Firmware",
+      "order": 70,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/leds": {
+      "title": "LED Configuration",
+      "order": 60,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/mounts": {
+      "title": "Mount Points",
+      "order": 50,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/ota": {
+      "title": "OTA",
+      "order": 68,
+      "file": "luci-app-ota.json"
+    },
+    "admin/system/package-manager": {
+      "title": "Software",
+      "order": 30,
+      "file": "luci-app-package-manager.json"
+    },
+    "admin/system/quickfile": {
+      "title": "Quick File Manager",
+      "order": 80,
+      "file": "luci-app-quickfile.json"
+    },
+    "admin/system/reboot": {
+      "title": "Reboot",
+      "order": 90,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/startup": {
+      "title": "Startup",
+      "order": 45,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/system": {
+      "title": "System",
+      "order": 1,
+      "file": "luci-mod-system.json"
+    },
+    "admin/system/ttyd": {
+      "title": "Terminal",
+      "order": 50,
+      "file": "luci-app-ttyd.json"
+    },
+    "admin/system/ttyd/config": {
+      "title": "Config",
+      "order": 2,
+      "file": "luci-app-ttyd.json"
+    },
+    "admin/system/ttyd/ttyd": {
+      "title": "Terminal",
+      "order": 1,
+      "file": "luci-app-ttyd.json"
+    },
+    "admin/translations/*": {
+      "title": null,
+      "order": null,
+      "file": "luci-base.json"
+    },
+    "admin/ubus/*": {
+      "title": null,
+      "order": null,
+      "file": "luci-base.json"
+    },
+    "admin/uci": {
+      "title": null,
+      "order": null,
+      "file": "luci-base.json"
+    },
+    "admin/uci/apply_rollback": {
+      "title": null,
+      "order": null,
+      "file": "luci-base.json"
+    },
+    "admin/uci/apply_unchecked": {
+      "title": null,
+      "order": null,
+      "file": "luci-base.json"
+    },
+    "admin/uci/confirm": {
+      "title": null,
+      "order": null,
+      "file": "luci-base.json"
+    },
+    "admin/uci/revert": {
+      "title": null,
+      "order": null,
+      "file": "luci-base.json"
+    },
+    "admin/vpn": {
+      "title": "VPN",
+      "order": 70,
+      "file": "luci-base.json"
+    },
+    "command/*": {
+      "title": null,
+      "order": null,
+      "file": "luci-app-commands.json"
+    }
+  },
+  "luci_packages": [
+    "luci",
+    "luci-app-airconnect",
+    "luci-app-airplay2",
+    "luci-app-argon-config",
+    "luci-app-autoreboot",
+    "luci-app-commands",
+    "luci-app-ddns",
+    "luci-app-diskman",
+    "luci-app-firewall",
+    "luci-app-frpc",
+    "luci-app-homeproxy",
+    "luci-app-mosdns",
+    "luci-app-natmap",
+    "luci-app-netspeedtest",
+    "luci-app-nlbwmon",
+    "luci-app-oaf",
+    "luci-app-ota",
+    "luci-app-package-manager",
+    "luci-app-quickfile",
+    "luci-app-ramfree",
+    "luci-app-socat",
+    "luci-app-sqm",
+    "luci-app-ttyd",
+    "luci-app-upnp",
+    "luci-app-vlmcsd",
+    "luci-app-webdav",
+    "luci-app-wol",
+    "luci-app-zerotier",
+    "luci-base",
+    "luci-i18n-airconnect-zh-cn",
+    "luci-i18n-airplay2-zh-cn",
+    "luci-i18n-argon-config-zh-cn",
+    "luci-i18n-autoreboot-zh-cn",
+    "luci-i18n-base-zh-cn",
+    "luci-i18n-commands-zh-cn",
+    "luci-i18n-ddns-zh-cn",
+    "luci-i18n-diskman-zh-cn",
+    "luci-i18n-firewall-zh-cn",
+    "luci-i18n-frpc-zh-cn",
+    "luci-i18n-homeproxy-zh-cn",
+    "luci-i18n-mosdns-zh-cn",
+    "luci-i18n-natmap-zh-cn",
+    "luci-i18n-netspeedtest-zh-cn",
+    "luci-i18n-nlbwmon-zh-cn",
+    "luci-i18n-oaf-zh-cn",
+    "luci-i18n-ota-zh-cn",
+    "luci-i18n-package-manager-zh-cn",
+    "luci-i18n-quickfile-zh-cn",
+    "luci-i18n-ramfree-zh-cn",
+    "luci-i18n-socat-zh-cn",
+    "luci-i18n-sqm-zh-cn",
+    "luci-i18n-ttyd-zh-cn",
+    "luci-i18n-upnp-zh-cn",
+    "luci-i18n-vlmcsd-zh-cn",
+    "luci-i18n-webdav-zh-cn",
+    "luci-i18n-wol-zh-cn",
+    "luci-i18n-zerotier-zh-cn",
+    "luci-lib-chartjs",
+    "luci-lib-uqr",
+    "luci-light",
+    "luci-mod-admin-full",
+    "luci-mod-network",
+    "luci-mod-status",
+    "luci-mod-system",
+    "luci-nginx",
+    "luci-proto-ipv6",
+    "luci-proto-ppp",
+    "luci-proto-wireguard",
+    "luci-theme-argon",
+    "luci-theme-bootstrap"
+  ],
+  "luci_apps": [
+    "luci-app-airconnect",
+    "luci-app-airplay2",
+    "luci-app-argon-config",
+    "luci-app-autoreboot",
+    "luci-app-commands",
+    "luci-app-ddns",
+    "luci-app-diskman",
+    "luci-app-firewall",
+    "luci-app-frpc",
+    "luci-app-homeproxy",
+    "luci-app-mosdns",
+    "luci-app-natmap",
+    "luci-app-netspeedtest",
+    "luci-app-nlbwmon",
+    "luci-app-oaf",
+    "luci-app-ota",
+    "luci-app-package-manager",
+    "luci-app-quickfile",
+    "luci-app-ramfree",
+    "luci-app-socat",
+    "luci-app-sqm",
+    "luci-app-ttyd",
+    "luci-app-upnp",
+    "luci-app-vlmcsd",
+    "luci-app-webdav",
+    "luci-app-wol",
+    "luci-app-zerotier"
+  ],
+  "services": [
+    {
+      "name": "airconnect",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "airplay2",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "appfilter",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "autocore",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "autoreboot",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "avahi-daemon",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "boot",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "cron",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "dbus",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "ddns",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "dnsmasq",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "done",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "dropbear",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "etherwake",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "firewall",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "frpc",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "fstab",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "gpio_switch",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "homeproxy",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "keepalived",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "led",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "lm-sensors",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "log",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "luci_socat",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "miniupnpd",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "mosdns",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "nat6",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "natmap",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "netspeedtest",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "network",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "nginx",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "nlbwmon",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "nqptp",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "odhcpd",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "openbox",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "openbox-panel",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "openssl",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "packet_steering",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "quickfile",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "radius",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "rpcd",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "sing-box",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "socat",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "sqm",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "sysctl",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "sysfixtime",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "sysfsutils",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "sysntpd",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "system",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "ttyd",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "ubus",
+      "enabled": false,
+      "running": true
+    },
+    {
+      "name": "ucitrack",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "usbmuxd",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "uwsgi",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "vlmcsd",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "webdav",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "wpad",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "xl2tpd",
+      "enabled": true,
+      "running": true
+    },
+    {
+      "name": "zerotier",
+      "enabled": true,
+      "running": null
+    },
+    {
+      "name": "zram",
+      "enabled": true,
+      "running": null
+    }
+  ],
+  "interfaces": [
+    {
+      "name": "lan",
+      "up": true,
+      "available": true,
+      "pending": false,
+      "proto": "static",
+      "device": "br-lan",
+      "l3_device": "br-lan",
+      "ipv4": [
+        "192.168.31.167"
+      ],
+      "ipv6": [],
+      "routes": [
+        {
+          "target": "0.0.0.0",
+          "mask": 0,
+          "nexthop": "192.168.31.1",
+          "source": "0.0.0.0/0"
+        }
+      ],
+      "dns": [
+        "192.168.31.1"
+      ]
+    },
+    {
+      "name": "loopback",
+      "up": true,
+      "available": true,
+      "pending": false,
+      "proto": "static",
+      "device": "lo",
+      "l3_device": "lo",
+      "ipv4": [
+        "127.0.0.1"
+      ],
+      "ipv6": [],
+      "routes": [],
+      "dns": []
+    },
+    {
+      "name": "wan",
+      "up": false,
+      "available": false,
+      "pending": false,
+      "proto": "dhcp",
+      "device": "eth1",
+      "l3_device": null,
+      "ipv4": [],
+      "ipv6": [],
+      "routes": [],
+      "dns": []
+    },
+    {
+      "name": "wan6",
+      "up": false,
+      "available": false,
+      "pending": false,
+      "proto": "dhcpv6",
+      "device": "eth1",
+      "l3_device": null,
+      "ipv4": [],
+      "ipv6": [],
+      "routes": [],
+      "dns": []
+    }
+  ],
+  "default_routes_raw": "default via 192.168.31.1 dev br-lan proto static \n---V6---",
+  "upstream": {
+    "interface": "lan",
+    "l3_device": "br-lan",
+    "device": "br-lan",
+    "nexthop": "192.168.31.1",
+    "basis": "ubus network.interface dump default route"
+  },
+  "wireless": {
+    "present": false,
+    "radios": [],
+    "phys": []
+  }
+}

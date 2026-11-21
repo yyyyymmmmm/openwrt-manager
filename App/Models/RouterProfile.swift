@@ -30,7 +30,7 @@ enum AppFailure: LocalizedError {
         switch self {
         case .storage(let text): return text
         case .certificate(let notice):
-            return notice.changed ? "证书与已保存的指纹不同，请核对路由器证书。" : "路由器证书未获系统信任，请核对证书指纹。"
+            return notice.changed ? L10n.string("证书与已保存的指纹不同，请核对路由器证书。") : L10n.string("路由器证书未获系统信任，请核对证书指纹。")
         }
     }
 }

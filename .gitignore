@@ -8,6 +8,9 @@ DerivedData/
 artifacts/
 *.ipa
 *.p12
+*.p8
+*.pem
+*.key
 *.mobileprovision
 *.xcresult/
 .env

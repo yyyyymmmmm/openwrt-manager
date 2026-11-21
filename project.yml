@@ -1,8 +1,11 @@
 name: OpenWrtManager
 options:
   bundleIdPrefix: app.openwrtmanager
+  # The String Catalog's source language: app copy is authored in
+  # Simplified Chinese and translated to English in the catalog.
+  developmentLanguage: "zh-Hans"
   deploymentTarget:
-    iOS: "17.0"
+    iOS: "26.0"
   createIntermediateGroups: true
 
 packages:
@@ -22,21 +25,72 @@ targets:
         buildPhase: resources
     dependencies:
       - package: OpenWrtKit
+      - package: OpenWrtKit
+        product: OpenWrtSSH
+      - target: ZiroxWidget
+    entitlements:
+      path: App/OpenWrtManager.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.app.openwrtmanager.ios
     settings:
       base:
+        # Bundle ID 体系（已核定，全仓单一事实源就是本文件）：
+        #   App        app.openwrtmanager.ios
+        #   UI 测试    app.openwrtmanager.ios.uitests
+        # 前缀与 options.bundleIdPrefix 一致；改 ID 会孤立已装的未签名
+        # 版与其钥匙串凭据，TestFlight 沿用现 ID，不另起新 ID。
         PRODUCT_BUNDLE_IDENTIFIER: app.openwrtmanager.ios
         PRODUCT_NAME: OpenWrtManager
         INFOPLIST_FILE: App/Info.plist
         GENERATE_INFOPLIST_FILE: NO
         SWIFT_VERSION: "5.0"
-        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
-        TARGETED_DEVICE_FAMILY: "1"
+        IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+        # iPad 自包 D 起正式支持（TARGETED_DEVICE_FAMILY 1,2）：五 Tab
+        # 在 iPad 上走 sidebarAdaptable 侧边栏形态，不是放大手机版。
+        TARGETED_DEVICE_FAMILY: "1,2"
+        # 版本策略：MARKETING_VERSION 是人工维护的语义版本，只在发版
+        # 时改；CURRENT_PROJECT_VERSION 是本地/未签名线的构建号。
+        # TestFlight 线（codemagic.yaml 的 zirox-testflight）构建时用
+        # agvtool 把构建号覆盖为 ASC 已有最大值 +1（或 Codemagic 构建
+        # 号），不回写本文件——两条线互不干扰。
         MARKETING_VERSION: "0.3.0"
         CURRENT_PROJECT_VERSION: "6"
         SWIFT_STRICT_CONCURRENCY: minimal
         SUPPORTS_MACCATALYST: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Automatic
+
+  # Widget 扩展（包 D）：状态小组件＋长任务 Live Activity 呈现。
+  # 与 App 共用 App Group group.app.openwrtmanager.ios 传状态摘要；
+  # Live Activity 属性文件双目标共编译（App 启停、扩展呈现）。
+  ZiroxWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widget
+      - path: App/Infrastructure/RouterTaskActivityAttributes.swift
+    dependencies:
+      - package: OpenWrtKit
+    entitlements:
+      path: Widget/ZiroxWidget.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.app.openwrtmanager.ios
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.openwrtmanager.ios.widget
+        PRODUCT_NAME: ZiroxWidget
+        INFOPLIST_FILE: Widget/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        SWIFT_VERSION: "5.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        MARKETING_VERSION: "0.3.0"
+        CURRENT_PROJECT_VERSION: "6"
+        SWIFT_STRICT_CONCURRENCY: minimal
+        CODE_SIGN_STYLE: Automatic
+        SKIP_INSTALL: YES
 
   OpenWrtManagerUITests:
     type: bundle.ui-testing
@@ -50,7 +104,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.openwrtmanager.ios.uitests
         TEST_TARGET_NAME: OpenWrtManager
         SWIFT_VERSION: "5.0"
-        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "26.0"
         GENERATE_INFOPLIST_FILE: YES
         TARGETED_DEVICE_FAMILY: "1"
 

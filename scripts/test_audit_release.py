@@ -5,7 +5,9 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from audit_release import audit_ipa, audit_sources
+from audit_release import (audit_english_literals, audit_hardcoded_colors, audit_ipa,
+                           audit_localization, audit_rawvalue_display, audit_semantic_fills,
+                           audit_sources)
 
 
 class ReleaseAuditTests(unittest.TestCase):
@@ -38,7 +40,7 @@ class ReleaseAuditTests(unittest.TestCase):
         contents = {
             "Info.plist": plistlib.dumps({
                 "CFBundleExecutable": "OpenWrtManager", "CFBundleIdentifier": "app.openwrtmanager.ios",
-                "CFBundleShortVersionString": "1.0", "CFBundleVersion": "1", "MinimumOSVersion": "17.0",
+                "CFBundleShortVersionString": "1.0", "CFBundleVersion": "1", "MinimumOSVersion": "26.0",
             }),
             "PrivacyInfo.xcprivacy": plistlib.dumps({"NSPrivacyTracking": False}),
             "OpenWrtManager": struct.pack("<II", 0xFEEDFACF, 0x0100000C) + bytes(24),
@@ -61,6 +63,254 @@ class ReleaseAuditTests(unittest.TestCase):
     def test_ipa_rejects_wrong_executable_architecture(self):
         with self.assertRaisesRegex(ValueError, "ARM64"):
             audit_ipa(self.bundle({"OpenWrtManager": b"not an iPhone executable"}))
+
+
+
+class LocalizationAuditTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        (self.root / "App").mkdir(parents=True)
+        (self.root / "Packages/OpenWrtKit/Sources/OpenWrtKit").mkdir(parents=True)
+        (self.root / "scripts").mkdir()
+        catalog = {"sourceLanguage": "zh-Hans", "version": "1.0", "strings": {
+            "概览": {"localizations": {
+                "zh-Hans": {"stringUnit": {"state": "translated", "value": "概览"}},
+                "en": {"stringUnit": {"state": "translated", "value": "Overview"}}}},
+            "%lld 项": {"localizations": {
+                "zh-Hans": {"stringUnit": {"state": "translated", "value": "%lld 项"}},
+                "en": {"stringUnit": {"state": "translated", "value": "%lld items"}}}},
+        }}
+        import json
+        (self.root / "App/Localizable.xcstrings").write_text(
+            json.dumps(catalog, ensure_ascii=False), encoding="utf-8")
+
+    def test_catalogued_literals_pass(self):
+        (self.root / "App/Main.swift").write_text(
+            'import SwiftUI\nstruct V: View { var body: some View { Text("概览"); Text("\\(count) 项") } }\n',
+            encoding="utf-8")
+        result = audit_localization(self.root)
+        self.assertEqual(result["catalog_keys"], 2)
+
+    def test_uncatalogued_literal_fails(self):
+        (self.root / "App/Main.swift").write_text(
+            'import SwiftUI\nstruct V: View { var body: some View { Text("新功能") } }\n',
+            encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "not in Localizable"):
+            audit_localization(self.root)
+
+    def test_specifier_mismatch_fails(self):
+        import json
+        path = self.root / "App/Localizable.xcstrings"
+        catalog = json.loads(path.read_text(encoding="utf-8"))
+        catalog["strings"]["%lld 项"]["localizations"]["en"]["stringUnit"]["value"] = "%@ items"
+        path.write_text(json.dumps(catalog, ensure_ascii=False), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "specifiers differ"):
+            audit_localization(self.root)
+
+
+class EnglishLiteralAuditTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        (self.root / "App").mkdir(parents=True)
+        (self.root / "scripts").mkdir()
+
+    def write_view(self, body):
+        (self.root / "App/View.swift").write_text(
+            "import SwiftUI\nstruct V: View { var body: some View { " + body + " } }\n",
+            encoding="utf-8")
+
+    def test_hardcoded_english_title_fails(self):
+        self.write_view('Text("DHCP and DNS")')
+        with self.assertRaisesRegex(ValueError, "English literal"):
+            audit_english_literals(self.root)
+
+    def test_whitelisted_literal_passes(self):
+        (self.root / "scripts/english_literal_whitelist.txt").write_text(
+            "# matched against router ping output, never displayed\n100% packet loss\n",
+            encoding="utf-8")
+        self.write_view('if output.contains("100% packet loss") { Text("概览") }')
+        result = audit_english_literals(self.root)
+        self.assertEqual(result["english_literals_checked"], 1)
+
+    def test_unit_format_passes_without_whitelist(self):
+        self.write_view('Text("\\(signal) dBm"); Text(String(format: "%.1f%% CPU", cpu))')
+        result = audit_english_literals(self.root)
+        self.assertEqual(result["english_literals_checked"], 2)
+
+    def test_file_scoped_whitelist_passes(self):
+        (self.root / "scripts/english_literal_whitelist.txt").write_text(
+            "# seed fixture standing in for router data\nfile:App/Seed.swift\n",
+            encoding="utf-8")
+        (self.root / "App/Seed.swift").write_text(
+            'let titles = ["Custom Rules", "Port Forwards"]\n', encoding="utf-8")
+        result = audit_english_literals(self.root)
+        self.assertEqual(result["english_literals_checked"], 0)
+
+    def test_single_token_and_chinese_are_out_of_scope(self):
+        self.write_view('Text("OpenWrt"); Text("概览")')
+        result = audit_english_literals(self.root)
+        self.assertEqual(result["english_literals_checked"], 0)
+
+
+class RawValueAuditTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        (self.root / "App").mkdir(parents=True)
+        (self.root / "scripts").mkdir()
+
+    def test_rawvalue_rendered_in_view_fails(self):
+        (self.root / "App/View.swift").write_text(
+            "import SwiftUI\nstruct V: View { var body: some View { Text(status.rawValue) } }\n",
+            encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Raw-value audit"):
+            audit_rawvalue_display(self.root)
+
+    def test_whitelisted_rawvalue_passes(self):
+        (self.root / "scripts/rawvalue_whitelist.txt").write_text(
+            "# storage key only, never rendered\nApp/Store.swift :: size.rawValue\n",
+            encoding="utf-8")
+        (self.root / "App/Store.swift").write_text(
+            "var body: some View { Text(title).onAppear { saved = size.rawValue } }\n",
+            encoding="utf-8")
+        result = audit_rawvalue_display(self.root)
+        self.assertEqual(result["rawvalue_sites_checked"], 1)
+
+    def test_whitelist_is_file_scoped(self):
+        (self.root / "scripts/rawvalue_whitelist.txt").write_text(
+            "App/Store.swift :: size.rawValue\n", encoding="utf-8")
+        (self.root / "App/Other.swift").write_text(
+            "let label = size.rawValue\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Raw-value audit"):
+            audit_rawvalue_display(self.root)
+
+    def test_comment_mention_is_ignored(self):
+        (self.root / "App/View.swift").write_text(
+            "// Never render an enum .rawValue as text.\nimport SwiftUI\n",
+            encoding="utf-8")
+        result = audit_rawvalue_display(self.root)
+        self.assertEqual(result["rawvalue_sites_checked"], 0)
+
+
+class HardcodedColorAuditTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        (self.root / "App").mkdir(parents=True)
+        (self.root / "scripts").mkdir()
+
+    def test_hex_literal_in_view_fails(self):
+        (self.root / "App/View.swift").write_text(
+            "import SwiftUI\nlet brand = color(0x087873, 0x74C8C0)\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Hardcoded-color audit"):
+            audit_hardcoded_colors(self.root)
+
+    def test_system_color_direct_use_fails(self):
+        (self.root / "App/View.swift").write_text(
+            "import SwiftUI\nstruct V: View { var body: some View { Text(\"x\").foregroundStyle(.green) } }\n",
+            encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Hardcoded-color audit"):
+            audit_hardcoded_colors(self.root)
+
+    def test_accent_color_asset_reference_fails(self):
+        (self.root / "App/View.swift").write_text(
+            "import SwiftUI\nlet root = RootView().tint(.accentColor)\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Hardcoded-color audit"):
+            audit_hardcoded_colors(self.root)
+
+    def test_palette_token_use_passes(self):
+        (self.root / "App/View.swift").write_text(
+            "import SwiftUI\nstruct V: View { var body: some View { Text(\"x\").foregroundStyle(AppPalette.green) } }\n",
+            encoding="utf-8")
+        result = audit_hardcoded_colors(self.root)
+        self.assertEqual(result["color_sites_checked"], 0)
+
+    def test_whitelisted_site_passes(self):
+        (self.root / "scripts/color_whitelist.txt").write_text(
+            "# terminal brand tint, deliberate\nApp/View.swift :: .teal\n", encoding="utf-8")
+        (self.root / "App/View.swift").write_text(
+            "import SwiftUI\nlet tint = Color.teal\n", encoding="utf-8")
+        result = audit_hardcoded_colors(self.root)
+        self.assertEqual(result["color_sites_checked"], 1)
+
+    def test_file_scoped_exemption_passes(self):
+        (self.root / "scripts/color_whitelist.txt").write_text(
+            "file:App/Palette.swift\n", encoding="utf-8")
+        (self.root / "App/Palette.swift").write_text(
+            "let accent = color(0x0052D9, 0x6EA8FF)\n", encoding="utf-8")
+        result = audit_hardcoded_colors(self.root)
+        self.assertEqual(result["color_sites_checked"], 0)
+
+    def test_color_comment_mention_is_ignored(self):
+        (self.root / "App/View.swift").write_text(
+            "// Was .green before package O.\nimport SwiftUI\n", encoding="utf-8")
+        result = audit_hardcoded_colors(self.root)
+        self.assertEqual(result["color_sites_checked"], 0)
+
+
+class SemanticFillAuditTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        (self.root / "App/Views").mkdir(parents=True)
+
+    def write(self, name, text):
+        (self.root / "App/Views" / name).write_text(text, encoding="utf-8")
+
+    def test_green_soft_banner_ground_fails(self):
+        self.write("InsightComponents.swift",
+                   "import SwiftUI\n.background(AppPalette.greenSoft, in: Capsule())\n")
+        with self.assertRaisesRegex(ValueError, "Semantic-fill audit"):
+            audit_semantic_fills(self.root)
+
+    def test_grade_soft_chip_ground_fails(self):
+        self.write("InsightComponents.swift",
+                   "import SwiftUI\n.background(grade.soft, in: Capsule())\n")
+        with self.assertRaisesRegex(ValueError, "Semantic-fill audit"):
+            audit_semantic_fills(self.root)
+
+    def test_meter_bar_grade_tint_fill_fails(self):
+        self.write("InsightComponents.swift",
+                   "import SwiftUI\nCapsule().fill(grade.tint)\n")
+        with self.assertRaisesRegex(ValueError, "Semantic-fill audit"):
+            audit_semantic_fills(self.root)
+
+    def test_status_badge_soft_ground_fails(self):
+        self.write("DesignSystem.swift",
+                   "enum AppPalette {\n    static let greenSoft = color(0xEAF5ED, 0x1C3627)\n}\n"
+                   "struct StatusBadge: View {\n"
+                   "    var body: some View {\n"
+                   "        Text(\"x\").background(AppPalette.greenSoft, in: Capsule())\n"
+                   "    }\n"
+                   "}\n")
+        with self.assertRaisesRegex(ValueError, "Semantic-fill audit"):
+            audit_semantic_fills(self.root)
+
+    def test_grade_dot_and_warning_soft_pass(self):
+        self.write("InsightComponents.swift",
+                   "import SwiftUI\nCircle().fill(grade.tint).frame(width: 7, height: 7)\n"
+                   "Capsule().fill(grade.meterFill)\n.background(AppPalette.accentSoft, in: Capsule())\n")
+        self.write("SharedComponents.swift",
+                   "import SwiftUI\n.background(AppPalette.orangeSoft, in: RoundedRectangle(cornerRadius: 13))\n")
+        result = audit_semantic_fills(self.root)
+        self.assertEqual(result["semantic_fill_files_checked"], 2)
+
+    def test_neutral_status_badge_passes(self):
+        self.write("DesignSystem.swift",
+                   "struct StatusBadge: View {\n"
+                   "    var body: some View {\n"
+                   "        Text(\"x\").background(AppPalette.canvas, in: Capsule())\n"
+                   "    }\n"
+                   "}\n")
+        result = audit_semantic_fills(self.root)
+        self.assertEqual(result["semantic_fill_files_checked"], 1)
 
 
 if __name__ == "__main__":

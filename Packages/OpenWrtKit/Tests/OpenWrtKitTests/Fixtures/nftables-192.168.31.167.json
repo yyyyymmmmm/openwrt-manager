@@ -1,0 +1,228 @@
+{
+ "nftables": [
+  {
+   "metainfo": {
+    "version": "1.1.6",
+    "release_name": "Commodore Bullmoose #7",
+    "json_schema_version": 1
+   }
+  },
+  {
+   "table": {
+    "family": "inet",
+    "name": "fw4",
+    "handle": 2
+   }
+  },
+  {
+   "chain": {
+    "family": "inet",
+    "table": "fw4",
+    "name": "input",
+    "handle": 1,
+    "type": "filter",
+    "hook": "input",
+    "prio": 0,
+    "policy": "accept"
+   }
+  },
+  {
+   "rule": {
+    "family": "inet",
+    "table": "fw4",
+    "chain": "input",
+    "handle": 494,
+    "comment": "!sing-box: Accept traffic from tun",
+    "expr": [
+     {
+      "match": {
+       "op": "==",
+       "left": {
+        "meta": {
+         "key": "iifname"
+        }
+       },
+       "right": "openbox-tun"
+      }
+     },
+     {
+      "counter": {
+       "packets": 9,
+       "bytes": 1689
+      }
+     },
+     {
+      "accept": null
+     }
+    ]
+   }
+  },
+  {
+   "rule": {
+    "family": "inet",
+    "table": "fw4",
+    "chain": "input",
+    "handle": 493,
+    "comment": "!sing-box: Accept traffic from tun",
+    "expr": [
+     {
+      "match": {
+       "op": "==",
+       "left": {
+        "meta": {
+         "key": "oifname"
+        }
+       },
+       "right": "openbox-tun"
+      }
+     },
+     {
+      "counter": {
+       "packets": 0,
+       "bytes": 0
+      }
+     },
+     {
+      "accept": null
+     }
+    ]
+   }
+  },
+  {
+   "rule": {
+    "family": "inet",
+    "table": "fw4",
+    "chain": "input",
+    "handle": 494,
+    "comment": "!sing-box: Accept traffic from tun",
+    "expr": [
+     {
+      "match": {
+       "op": "==",
+       "left": {
+        "meta": {
+         "key": "iifname"
+        }
+       },
+       "right": "openbox-tun"
+      }
+     },
+     {
+      "counter": {
+       "packets": 9,
+       "bytes": 1689
+      }
+     },
+     {
+      "accept": null
+     }
+    ]
+   }
+  },
+  {
+   "chain": {
+    "family": "inet",
+    "table": "fw4",
+    "name": "forward",
+    "handle": 2,
+    "type": "filter",
+    "hook": "forward",
+    "prio": 0,
+    "policy": "drop"
+   }
+  },
+  {
+   "rule": {
+    "family": "inet",
+    "table": "fw4",
+    "chain": "forward",
+    "handle": 496,
+    "comment": "!sing-box: Accept traffic from tun",
+    "expr": [
+     {
+      "match": {
+       "op": "==",
+       "left": {
+        "meta": {
+         "key": "iifname"
+        }
+       },
+       "right": "openbox-tun"
+      }
+     },
+     {
+      "counter": {
+       "packets": 212,
+       "bytes": 92234
+      }
+     },
+     {
+      "accept": null
+     }
+    ]
+   }
+  },
+  {
+   "rule": {
+    "family": "inet",
+    "table": "fw4",
+    "chain": "forward",
+    "handle": 495,
+    "comment": "!sing-box: Accept traffic from tun",
+    "expr": [
+     {
+      "match": {
+       "op": "==",
+       "left": {
+        "meta": {
+         "key": "oifname"
+        }
+       },
+       "right": "openbox-tun"
+      }
+     },
+     {
+      "counter": {
+       "packets": 220,
+       "bytes": 176578
+      }
+     },
+     {
+      "accept": null
+     }
+    ]
+   }
+  },
+  {
+   "rule": {
+    "family": "inet",
+    "table": "fw4",
+    "chain": "forward",
+    "handle": 496,
+    "comment": "!sing-box: Accept traffic from tun",
+    "expr": [
+     {
+      "match": {
+       "op": "==",
+       "left": {
+        "meta": {
+         "key": "iifname"
+        }
+       },
+       "right": "openbox-tun"
+      }
+     },
+     {
+      "counter": {
+       "packets": 212,
+       "bytes": 92234
+      }
+     },
+     {
+      "accept": null
+     }
+    ]
+   }
+  }
+ ]
+}

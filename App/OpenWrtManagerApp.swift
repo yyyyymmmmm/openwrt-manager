@@ -4,11 +4,33 @@ import SwiftUI
 struct OpenWrtManagerApp: App {
     @State private var store = RouterStore()
 
+    init() {
+        // The kit resolves its fixed copy through KitL10n; feed it the
+        // language the system selected for this app before any view or
+        // store string is produced. The UI itself follows the system
+        // automatically through the String Catalog — there is no
+        // in-app language switch, matching the platform convention.
+        L10n.syncKitLanguage()
+        // Background sampling (package B) must register its handler
+        // before launch finishes; scheduling is re-armed on launch
+        // and whenever the app enters the background.
+        BackgroundSampler.register()
+        BackgroundSampler.schedule()
+        AppDiagnostics.record(.app, L10n.string("App 启动"),
+                              metadata: ["version": AppDiagnostics.appVersion,
+                                         "build": AppDiagnostics.appBuild])
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(store)
-                .tint(.accentColor)
+                // No .tint(.accentColor) here (package O): an inner
+                // tint would shadow AppPreferences' theme tint for
+                // every environment-tinted control (toggles, pickers,
+                // progress), pinning them to the AccentColor asset.
+                // The asset now matches the default theme and only
+                // serves surfaces that read it outside this hierarchy.
                 .modifier(AppPreferences())
         }
     }
