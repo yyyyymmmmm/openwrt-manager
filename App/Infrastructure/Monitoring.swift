@@ -323,11 +323,11 @@ enum BackgroundSampler {
               let defaultID = defaults.string(forKey: "default-router-profile.v1"),
               let profile = profiles.first(where: { $0.id.uuidString == defaultID }),
               let credential = try? CredentialStore().read(id: profile.id),
-              let password = credential?.password,
+              let password = credential.password,
               let address = try? URLNormalizer.normalize(profile.address) else { return }
         let routerID = profile.id.uuidString
         let transport = RouterTransport(address: address,
-                                        fingerprint: credential?.certificateFingerprint)
+                                        fingerprint: credential.certificateFingerprint)
         defer { transport.close() }
         let client = UbusClient(address: address, session: transport.session)
         let box = StaticCredentialBox(username: profile.username, password: password)
@@ -346,7 +346,9 @@ enum BackgroundSampler {
                 guard let total, let available, total > 0 else { return nil }
                 return Double(max(0, total - available)) / Double(total) * 100
             }()
-            let load = (info["load"].arrayValue ?? []).compactMap { $0.doubleValue.map { $0 / 65536 } }
+            let load: [Double] = (info["load"].arrayValue ?? []).compactMap { (value: JSONValue) -> Double? in
+                value.doubleValue.map { $0 / 65536 }
+            }
             let sample = MetricSample(at: now, load1: load.first, memoryPercent: memoryPercent,
                                       onlineDevices: leases?.count)
             MetricHistoryFileStore.shared.append(sample, routerID: routerID)
@@ -356,7 +358,9 @@ enum BackgroundSampler {
                 center.evaluate(
                     observation: AlertObservation(at: now, reachable: true,
                                                   load1: load.first, memoryPercent: memoryPercent,
-                                                  deviceIDs: leases.map { Set($0.map(\.mac)) }),
+                                                  deviceIDs: leases.map { (list: [DHCPLease]) -> Set<String> in
+                                                      Set(list.map { (lease: DHCPLease) in lease.mac })
+                                                  }),
                     routerID: routerID, routerName: profile.name)
             }
             AppDiagnostics.record(.app, L10n.string("后台采样完成"),

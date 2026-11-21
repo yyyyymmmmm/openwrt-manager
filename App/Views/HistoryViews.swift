@@ -57,7 +57,14 @@ struct HistoryChartView: View {
 
     private struct SeriesData {
         let name: String
-        let segments: [[MetricChartPoint]]
+        let segments: [SegmentData]
+        /// One gap-free run of points with its chart series key
+        /// precomputed in plain Swift — interpolating the key inside
+        /// the Chart builder timed out the type checker (build #15).
+        struct SegmentData {
+            let key: String
+            let points: [MetricChartPoint]
+        }
     }
 
     var body: some View {
@@ -86,11 +93,11 @@ struct HistoryChartView: View {
             } else {
                 Chart {
                     ForEach(series, id: \.name) { item in
-                        ForEach(Array(item.segments.enumerated()), id: \.offset) { segmentIndex, segment in
-                            ForEach(segment, id: \.at) { point in
+                        ForEach(item.segments, id: \.key) { segment in
+                            ForEach(segment.points, id: \.at) { point in
                                 LineMark(x: .value("时间", point.at),
                                          y: .value("值", point.value),
-                                         series: .value("序列", "\(item.name)#\(segmentIndex)"))
+                                         series: .value("序列", segment.key))
                                     .foregroundStyle(by: .value("类型", item.name))
                                     .interpolationMethod(.monotone)
                             }
@@ -143,23 +150,24 @@ struct HistoryChartView: View {
     }
 
     private func seriesData() -> [SeriesData] {
-        let history = monitoring.history
-        let bucket = range.bucket
         switch effectiveMetric {
         case .traffic:
-            return [
-                SeriesData(name: L10n.string("下载"),
-                           segments: history.chartSegments(metric: .trafficDown, in: window, bucketSeconds: bucket)),
-                SeriesData(name: L10n.string("上传"),
-                           segments: history.chartSegments(metric: .trafficUp, in: window, bucketSeconds: bucket)),
-            ]
+            return [makeSeries(name: L10n.string("下载"), metric: .trafficDown),
+                    makeSeries(name: L10n.string("上传"), metric: .trafficUp)]
         case .load:
-            return [SeriesData(name: L10n.string("负载"),
-                               segments: history.chartSegments(metric: .load, in: window, bucketSeconds: bucket))]
+            return [makeSeries(name: L10n.string("负载"), metric: .load)]
         case .memory:
-            return [SeriesData(name: L10n.string("内存"),
-                               segments: history.chartSegments(metric: .memory, in: window, bucketSeconds: bucket))]
+            return [makeSeries(name: L10n.string("内存"), metric: .memory)]
         }
+    }
+
+    private func makeSeries(name: String, metric: MetricKey) -> SeriesData {
+        let raw = monitoring.history.chartSegments(metric: metric, in: window,
+                                                   bucketSeconds: range.bucket)
+        let segments = raw.enumerated().map { index, points in
+            SeriesData.SegmentData(key: "\(name)#\(index)", points: points)
+        }
+        return SeriesData(name: name, segments: segments)
     }
 }
 
