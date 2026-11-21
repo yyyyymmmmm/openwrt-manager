@@ -218,6 +218,35 @@ final class TerminalInputView: UIView, UIKeyInput, UITextInput {
         return TerminalTextPosition(min(max(0, position.offset + offset), composingText.count))
     }
 
+    func position(from position: UITextPosition, in direction: UITextLayoutDirection,
+                  offset: Int) -> UITextPosition? {
+        // LTR semantics throughout (baseWritingDirection is fixed
+        // .leftToRight): right/down/forward move towards the end of
+        // the composition, left/up/backward towards its start. A move
+        // that would land outside the composition has no position.
+        guard let position = position as? TerminalTextPosition else { return nil }
+        let target: Int
+        switch direction {
+        case .right, .down, .forward: target = position.offset + offset
+        case .left, .up, .backward: target = position.offset - offset
+        @unknown default: return position
+        }
+        guard target >= 0, target <= composingText.count else { return nil }
+        return TerminalTextPosition(target)
+    }
+
+    func position(within range: UITextRange, farthestIn direction: UITextLayoutDirection) -> UITextPosition? {
+        // The farthest position inside the range in a direction: in
+        // this LTR-only document that is the range's start for
+        // left/up/backward and its end for right/down/forward.
+        guard let range = range as? TerminalTextRange else { return nil }
+        switch direction {
+        case .left, .up, .backward: return range.start
+        case .right, .down, .forward: return range.end
+        @unknown default: return range.end
+        }
+    }
+
     func offset(from: UITextPosition, to toPosition: UITextPosition) -> Int {
         guard let from = from as? TerminalTextPosition,
               let to = toPosition as? TerminalTextPosition else { return 0 }
@@ -257,6 +286,13 @@ final class TerminalInputView: UIView, UIKeyInput, UITextInput {
 
     func baseWritingDirection(for position: UITextPosition, in direction: UITextStorageDirection) -> NSWritingDirection {
         .leftToRight
+    }
+
+    func setBaseWritingDirection(_ writingDirection: NSWritingDirection, for range: UITextRange) {
+        // Deliberately no state: the composition is an ephemeral IME
+        // buffer with no persistent layout, and the getter above
+        // reports the only direction this input ever uses (LTR).
+        // Storing a direction would create state nothing reads.
     }
 
     // MARK: UITextInputTraits — no assistant features second-guess input
