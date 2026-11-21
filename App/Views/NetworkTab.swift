@@ -283,7 +283,7 @@ struct DHCPView: View {
                 }
             }
         }
-        .navigationTitle(merged ? "DHCP and DNS" : "DHCP")
+        .navigationTitle(merged ? L10n.key("DHCP 与 DNS") : "DHCP")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
     }

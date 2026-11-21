@@ -47,7 +47,7 @@ struct ConnectFlowView: View {
                             let normalized = try URLNormalizer.normalize(selectedAddress)
                             path.append(.login(address: normalized.url.absoluteString, profile: nil))
                         } catch {
-                            addressError = error.localizedDescription
+                            addressError = FriendlyError.message(error)
                             path.removeLast()
                         }
                     }
@@ -59,7 +59,7 @@ struct ConnectFlowView: View {
                 Alert(title: Text("删除保存的路由器？"),
                       message: Text("“\(profile.name)”及其本机凭据会从此设备移除。不会修改路由器设置。"),
                       primaryButton: .destructive(Text("删除")) {
-                          do { try store.remove(profile) } catch { addressError = error.localizedDescription }
+                          do { try store.remove(profile) } catch { addressError = FriendlyError.message(error) }
                       }, secondaryButton: .cancel())
             }
             .onChange(of: store.connectionID) { _, _ in
@@ -161,7 +161,7 @@ struct ConnectFlowView: View {
             address = normalized.url.absoluteString
             path.append(.login(address: normalized.url.absoluteString, profile: nil))
         } catch {
-            addressError = error.localizedDescription
+            addressError = FriendlyError.message(error)
         }
     }
 }

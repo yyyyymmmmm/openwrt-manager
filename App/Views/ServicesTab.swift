@@ -100,6 +100,20 @@ private struct PanelRules {
 }
 
 struct OpenBoxView: View {
+    /// Proxy-group types are panel-API vocabulary (layer-③ status
+    /// words): the known Clash group kinds get an app-side human
+    /// mapping; anything unrecognized keeps the panel's own word.
+    static func proxyTypeLabel(_ type: String) -> String {
+        switch type {
+        case "Selector": return L10n.string("手动选择")
+        case "URLTest": return L10n.string("自动测速")
+        case "Fallback": return L10n.string("故障转移")
+        case "LoadBalance": return L10n.string("负载均衡")
+        case "Relay": return L10n.string("中继")
+        default: return type
+        }
+    }
+
     @Environment(RouterStore.self) private var store
     @State private var state: LoadState<(OpenBoxServiceStatus, String?, [OpenBoxProxy], Int?, Bool?)> = .loading
     @State private var switchTarget: (group: String, node: String)?
@@ -161,7 +175,7 @@ struct OpenBoxView: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
                                     Text(proxy.name).font(AppTypography.rowTitle)
-                                    Text(proxy.type).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                                    Text(Self.proxyTypeLabel(proxy.type)).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                                 }
                                 Spacer()
                                 Text(proxy.current ?? "—").font(AppTypography.secondary).foregroundStyle(AppPalette.muted)

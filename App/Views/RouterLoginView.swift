@@ -173,7 +173,7 @@ struct RouterLoginView: View {
                 rememberPassword = true
             }
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = FriendlyError.message(error)
         }
     }
 
@@ -187,7 +187,7 @@ struct RouterLoginView: View {
             }
             startConnection(using: knownFingerprint)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = FriendlyError.message(error)
         }
     }
 

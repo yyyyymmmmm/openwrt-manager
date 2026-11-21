@@ -732,6 +732,23 @@
         }
       }
     },
+    "DHCP 与 DNS": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DHCP 与 DNS"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DHCP and DNS"
+          }
+        }
+      }
+    },
     "DHCP 完整配置": {
       "extractionState": "manual",
       "localizations": {
@@ -1799,6 +1816,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "In both"
+          }
+        }
+      }
+    },
+    "中继": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中继"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relay"
           }
         }
       }
@@ -3907,6 +3941,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Routers Found"
+          }
+        }
+      }
+    },
+    "发生未知错误，请稍后重试。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发生未知错误，请稍后重试。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Something went wrong. Please try again."
           }
         }
       }
@@ -7209,6 +7260,23 @@
         }
       }
     },
+    "手动选择": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "手动选择"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manual Select"
+          }
+        }
+      }
+    },
     "手机需能访问管理地址。局域网内可连接同一 Wi-Fi；自定义端口、反向代理和远程地址可手动输入。": {
       "extractionState": "manual",
       "localizations": {
@@ -7834,6 +7902,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Support & Privacy"
+          }
+        }
+      }
+    },
+    "故障转移": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "故障转移"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failover"
           }
         }
       }
@@ -13278,6 +13363,23 @@
         }
       }
     },
+    "自动测速": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动测速"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto Speed Test"
+          }
+        }
+      }
+    },
     "自动激活": {
       "extractionState": "manual",
       "localizations": {
@@ -14090,6 +14192,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Load and memory must stay above their thresholds before alerting, so brief spikes stay quiet; offline and WAN states need two consecutive confirmations. Firing and recovery arrive as a pair, and the same alert does not repeat during its cooldown."
+          }
+        }
+      }
+    },
+    "负载均衡": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "负载均衡"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Load Balance"
           }
         }
       }

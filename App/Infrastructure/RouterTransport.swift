@@ -115,6 +115,16 @@ enum FriendlyError {
             default: return L10n.format("网络请求失败（%lld），请检查连接后重试。", error.errorCode)
             }
         }
-        return error.localizedDescription
+        if let error = error as? OpenWrtKitError {
+            // Kit errors already describe themselves through KitL10n
+            // (including the audit-L5 ubus semantics) — pass that
+            // localized text through untouched.
+            return error.errorDescription ?? L10n.string("发生未知错误，请稍后重试。")
+        }
+        // Fallback of last resort (audit L6): an error type nobody
+        // mapped gets a human sentence, never its own — possibly
+        // English — description. The raw text stays available to the
+        // diagnostics channel at the call sites that record it.
+        return L10n.string("发生未知错误，请稍后重试。")
     }
 }

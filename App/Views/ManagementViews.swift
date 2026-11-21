@@ -185,7 +185,7 @@ struct DeviceDetailView: View {
                     LabeledContent("租约剩余", value: FormatHelpers.uptime(TimeInterval(expires)))
                 }
                 if let state = device.neighborState {
-                    LabeledContent("邻居状态", value: state)
+                    LabeledContent("邻居状态", value: RoutesStatusView.neighborStateLabel(state))
                 }
                 if let rx = device.rxBytes, let tx = device.txBytes {
                     LabeledContent("流量（本次关联）", value: "↓ \(FormatHelpers.bytes(rx)) · ↑ \(FormatHelpers.bytes(tx))")

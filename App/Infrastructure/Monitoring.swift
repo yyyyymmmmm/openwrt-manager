@@ -374,6 +374,7 @@ enum BackgroundSampler {
                     observation: AlertObservation(at: now, reachable: false),
                     routerID: routerID, routerName: profile.name)
             }
+            // Raw error text: diagnostics channel only (audit L3/L6).
             AppDiagnostics.record(.error, L10n.string("后台采样失败"),
                                   metadata: ["router": profile.address,
                                              "reason": error.localizedDescription])

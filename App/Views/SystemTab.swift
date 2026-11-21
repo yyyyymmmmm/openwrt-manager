@@ -377,7 +377,7 @@ struct OnlineUpgradeView: View {
             case .loaded(let check):
                 Section("可更新软件包") {
                     if let check {
-                        LabeledContent("包管理器", value: check.manager.rawValue)
+                        LabeledContent("包管理器", value: check.manager.displayName)
                         if check.lines.isEmpty {
                             EmptyStateView(title: "暂无可更新项", message: "已向路由器查询，当前没有可更新的软件包（列表未刷新时以路由器为准）。", symbol: "checkmark.circle")
                         } else {

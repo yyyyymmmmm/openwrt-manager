@@ -84,6 +84,9 @@ final class RouterStore {
             session = try await client.login(username: profile.username, password: password)
             try Task.checkCancellation()
         } catch {
+            // The raw error text goes to the diagnostics channel only
+            // (audit L3/L6); the user-facing throw path re-describes
+            // it through FriendlyError.
             AppDiagnostics.record(.error, L10n.string("连接失败"),
                                   metadata: ["address": profile.address, "reason": error.localizedDescription])
             let notice = candidateTransport.delegate.certificateNotice
@@ -474,7 +477,7 @@ final class RouterStore {
                                                             acknowledged: false)
                 recordActivity(L10n.string("配置应用结果待确认"), detail: L10n.format("%@ 的应用请求未收到确认，请验证连接后决定保留或回滚。", plan.original.name), isWarning: true, category: .transaction)
             } else {
-                recordActivity(L10n.string("配置事务失败"), detail: error.localizedDescription, isWarning: true, category: .transaction)
+                recordActivity(L10n.string("配置事务失败"), detail: FriendlyError.message(error), isWarning: true, category: .transaction)
             }
             throw error
         }
