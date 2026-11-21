@@ -10,10 +10,16 @@ public protocol UbusCalling: Sendable {
     func menu() async throws -> JSONValue
     func installedPackages() async throws -> [InstalledPackage]
     func destroySession() async
+    /// Drops the current session so the next call logs in again. Used by
+    /// discovery's self-healing when a haul comes back at anonymous grade
+    /// (the session was not recognized as logged in). Callers that cannot
+    /// re-login (FixedSessionCaller) keep the default no-op.
+    func invalidateSession() async
 }
 
 extension UbusCalling {
     public func destroySession() async {}
+    public func invalidateSession() async {}
 
     /// Parameterless convenience mirroring UbusClient.call's default.
     public func call(object: String, method: String) async throws -> JSONValue {
@@ -26,10 +32,14 @@ extension UbusCalling {
 public struct FixedSessionCaller: UbusCalling {
     private let client: UbusClient
     private let session: UbusSession
+    /// LuCI login cookie pair for the menu endpoint, when the fixed
+    /// session was established together with a LuCI web login.
+    private let luciCookie: String?
 
-    public init(client: UbusClient, session: UbusSession) {
+    public init(client: UbusClient, session: UbusSession, luciCookie: String? = nil) {
         self.client = client
         self.session = session
+        self.luciCookie = luciCookie
     }
 
     public func call(object: String, method: String, parameters: [String: JSONValue]) async throws -> JSONValue {
@@ -37,7 +47,10 @@ public struct FixedSessionCaller: UbusCalling {
     }
 
     public func menu() async throws -> JSONValue {
-        try await client.menu(session: session)
+        guard let luciCookie else {
+            throw OpenWrtKitError.unsupported("固定会话没有 LuCI 登录 cookie，无法读取菜单（菜单需要 LuCI 网页登录会话）。")
+        }
+        return try await client.menu(cookie: luciCookie)
     }
 
     public func installedPackages() async throws -> [InstalledPackage] {
@@ -58,5 +71,9 @@ extension SessionManager: UbusCalling {
 
     public func destroySession() async {
         await logout()
+    }
+
+    public func invalidateSession() async {
+        await invalidate()
     }
 }

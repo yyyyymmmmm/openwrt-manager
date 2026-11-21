@@ -20,6 +20,7 @@ final class DiscoveryAssemblyTests: XCTestCase {
         static var wireless: [String: Any] = [:]
         static var services: [String: Any] = [:]
         static var initList: [String: Any] = [:]
+        static var rcList: [String: Any] = [:]
         static var menu: [String: Any] = [:]
         static var packages: [[String: Any]] = []
         static var requestedCalls: [(String, String)] = []
@@ -28,7 +29,7 @@ final class DiscoveryAssemblyTests: XCTestCase {
         static func reset() {
             lock.lock()
             board = [:]; interfaces = [:]; wireless = [:]; services = [:]
-            initList = [:]; menu = [:]; packages = []; requestedCalls = []
+            initList = [:]; rcList = [:]; menu = [:]; packages = []; requestedCalls = []
             lock.unlock()
         }
 
@@ -38,6 +39,16 @@ final class DiscoveryAssemblyTests: XCTestCase {
         override func startLoading() {
             guard let client else { return }
             let url = request.url?.absoluteString ?? ""
+            if url.contains("cgi-bin/luci"), !url.contains("admin/menu") {
+                // LuCI web login: 302 with the sysauth cookie, as the real
+                // dispatcher answers a successful form login.
+                let response = HTTPURLResponse(url: request.url!, statusCode: 302,
+                                               httpVersion: "HTTP/1.1",
+                                               headerFields: ["Set-Cookie": "sysauth_http=0123456789abcdef0123456789abcdef; Path=/; HttpOnly"])!
+                client.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+                client.urlProtocolDidFinishLoading(self)
+                return
+            }
             let payload: Any
             if url.contains("admin/menu") {
                 payload = Self.menu
@@ -58,12 +69,14 @@ final class DiscoveryAssemblyTests: XCTestCase {
                     result = [0, Self.board]
                 case ("network.interface", "dump"):
                     result = [0, Self.interfaces]
-                case ("network.wireless", "status"):
+                case ("luci-rpc", "getWirelessDevices"):
                     result = [0, Self.wireless]
                 case ("service", "list"):
                     result = [0, Self.services]
                 case ("luci", "getInitList"):
                     result = [0, Self.initList]
+                case ("rc", "list"):
+                    result = [0, Self.rcList]
                 case ("file", "list"):
                     result = [0, ["entries": [Any]()]]
                 default:
@@ -151,16 +164,26 @@ final class DiscoveryAssemblyTests: XCTestCase {
             item["dns-server"] = iface.dns
             return item.compactMapValues { $0 }
         }]
-        // network.wireless status
+        // luci-rpc getWirelessDevices
         var wireless: [String: Any] = [:]
         for radio in collected.wireless.radios {
             var config: [String: Any] = [:]
             config["band"] = radio.band as Any
             config["disabled"] = radio.disabled as Any
-            wireless[radio.name] = ["up": radio.up as Any, "config": config.compactMapValues { $0 }]
+            wireless[radio.name] = ["up": radio.up as Any, "config": config.compactMapValues { $0 },
+                                    "interfaces": [Any]()]
                 .compactMapValues { $0 }
         }
         StubProtocol.wireless = wireless
+        // rc list (start/enabled/running per init script)
+        var rcList: [String: Any] = [:]
+        for service in collected.services {
+            var entry: [String: Any] = ["start": 50]
+            entry["enabled"] = service.enabled as Any
+            entry["running"] = service.running as Any
+            rcList[service.name] = entry.compactMapValues { $0 }
+        }
+        StubProtocol.rcList = rcList
         // service list (procd shape)
         var services: [String: Any] = [:]
         for service in collected.services {

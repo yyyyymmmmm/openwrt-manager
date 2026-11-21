@@ -46,10 +46,54 @@ public actor UbusClient {
         }
     }
 
-    public func menu(session auth: UbusSession) async throws -> JSONValue {
+    /// LuCI's own web login, the same flow the web UI uses: POST the
+    /// credentials to /cgi-bin/luci/ and keep the sysauth cookie from the
+    /// 302 response. This is NOT interchangeable with the ubus session
+    /// token: LuCI's dispatcher only treats a session as logged in when
+    /// rpcd's session data carries the token LuCI's own login writes
+    /// (dispatcher.uc `session_setup`), and a bare ubus `session login`
+    /// never writes it — presenting the ubus token as the sysauth cookie
+    /// therefore yields the anonymous menu (verified on-device: 7/58
+    /// second-level nodes satisfied anonymously vs 52/58 after a real
+    /// LuCI login). Writing the value remotely is impossible (rpcd denies
+    /// `session set` to login sessions, -32002), so the cookie must come
+    /// from this login. Returns the full "name=value" cookie pair.
+    public func luciLogin(username: String, password: String) async throws -> String {
+        var request = URLRequest(url: address.url.appendingPathComponent("cgi-bin/luci/"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        var form = URLComponents()
+        form.queryItems = [URLQueryItem(name: "luci_username", value: username),
+                           URLQueryItem(name: "luci_password", value: password)]
+        request.httpBody = form.percentEncodedQuery?.data(using: .utf8)
+        // Deliberately not checkedData: success is a 302 whose Set-Cookie
+        // header carries the session, and the app's session delegate
+        // refuses to follow redirects, so the 302 reaches us intact.
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.url?.host == address.url.host,
+              http.url?.scheme == address.scheme, http.url?.port == address.url.port else {
+            throw OpenWrtKitError.malformedResponse
+        }
+        guard http.statusCode == 302 || (200..<300).contains(http.statusCode) else {
+            throw OpenWrtKitError.http(http.statusCode)
+        }
+        let header = http.value(forHTTPHeaderField: "Set-Cookie") ?? ""
+        for name in ["sysauth_http", "sysauth_https"] {
+            guard let range = header.range(of: "\(name)=") else { continue }
+            let value = header[range.upperBound...].prefix { $0.isHexDigit }
+            guard value.count == 32 else { continue }
+            return "\(name)=\(value)"
+        }
+        throw OpenWrtKitError.authenticationFailed
+    }
+
+    /// The LuCI menu tree. Authenticated with the cookie pair issued by
+    /// `luciLogin` — see its documentation for why the ubus token cannot
+    /// be used here.
+    public func menu(cookie: String) async throws -> JSONValue {
         var request = URLRequest(url: address.url.appendingPathComponent("cgi-bin/luci/admin/menu"))
-        let cookieName = address.isSecure ? "sysauth_https" : "sysauth_http"
-        request.setValue("\(cookieName)=\(auth.token)", forHTTPHeaderField: "Cookie")
+        request.setValue(cookie, forHTTPHeaderField: "Cookie")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 15
         return try JSONDecoder().decode(JSONValue.self, from: await checkedData(request))
@@ -66,30 +110,23 @@ public actor UbusClient {
                            URLQueryItem(name: "command", value: "/usr/libexec/package-manager-call list-installed"),
                            URLQueryItem(name: "stderr", value: "0")]
         request.httpBody = form.percentEncodedQuery?.data(using: .utf8)
-        do {
-            let data = try await checkedData(request)
-            return try InventoryParser.packages(JSONDecoder().decode(JSONValue.self, from: data))
-        } catch {
-            let primaryError = error
-            if error is URLError || error is CancellationError { throw error }
-            if let failure = error as? OpenWrtKitError {
-                switch failure {
-                case .permissionDenied, .http(401), .http(403): throw error
-                case .http(let code) where code != 404 && code != 405: throw error
-                default: break
-                }
-            }
-            // Older opkg firmware has no package-manager-call helper.
-            do {
-                let result = try await call(session: auth, object: "file", method: "exec", parameters: [
-                    "command": .string("/bin/opkg"), "params": .array([.string("list-installed")])
-                ])
-                guard result["code"].intValue == 0, let text = result["stdout"].stringValue else { throw primaryError }
-                return try InventoryParser.opkg(text)
-            } catch {
-                throw OpenWrtKitError.unsupported("软件包主接口：\(primaryError.localizedDescription)；opkg 接口：\(error.localizedDescription)")
-            }
+        let data = try await checkedData(request)
+        // apk-based firmware answers with a JSON array; opkg-based
+        // firmware answers with stanza text (Package:/Version:/Depends:
+        // paragraphs) from the very same endpoint — verified on-device
+        // against an opkg router, whose JSON parse failure was the
+        // user-visible "软件包主接口格式错误". Parse whichever arrived.
+        if let value = try? JSONDecoder().decode(JSONValue.self, from: data), value.arrayValue != nil {
+            return try InventoryParser.packages(value)
         }
+        guard let text = String(data: data, encoding: .utf8) else {
+            throw OpenWrtKitError.malformedResponse
+        }
+        return try InventoryParser.opkgStanzas(text)
+        // There is deliberately no file-exec fallback: rpcd never grants
+        // arbitrary-command exec to login sessions (only whitelisted
+        // command lines are callable, verified on-device), so the old
+        // /bin/opkg exec fallback could only ever fail.
     }
 
     private func checkedData(_ request: URLRequest) async throws -> Data {

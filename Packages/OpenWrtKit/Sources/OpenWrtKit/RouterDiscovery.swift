@@ -19,13 +19,32 @@ public struct RouterDiscovery: Sendable {
     /// app can cache it and rebuild the identical snapshot offline.
     public func discoverWithCollected(routerID: String, address: String, role: String? = nil)
         async -> (collected: CollectedRouterSnapshot, snapshot: CapabilitySnapshot) {
+        let first = await haul(routerID: routerID, address: address, role: role)
+        // Self-healing: an anonymous-grade menu means the session was not
+        // recognized as logged in (LuCI decides that from rpcd session
+        // data, not from the ubus ACLs). Discard the session, log in
+        // again on both channels, and haul once more. If the menu is
+        // still anonymous-grade, surface that loudly in the warnings —
+        // and the app layer refuses to cache such a snapshot.
+        guard MenuQuality.isAnonymousGrade(first.inventory.menus) else { return first.result }
+        await reader.invalidateSession()
+        let second = await haul(routerID: routerID, address: address, role: role)
+        guard MenuQuality.isAnonymousGrade(second.inventory.menus) else { return second.result }
+        let warning = "发现-菜单权限：路由器返回的菜单不完整（会话未被 LuCI 认可为已登录），已重新登录重试仍未恢复；页面可能缺失，此结果不会被缓存。"
+        let snapshot = CapabilitySnapshot(collected: second.result.collected,
+                                          warnings: second.result.snapshot.warnings + [warning])
+        return (second.result.collected, snapshot)
+    }
+
+    private func haul(routerID: String, address: String, role: String?) async
+        -> (inventory: RouterInventory, result: (collected: CollectedRouterSnapshot, snapshot: CapabilitySnapshot)) {
         async let inventoryRead = reader.inventory()
         async let rawRead = reader.discoveryRawData()
         let (inventory, raw) = await (inventoryRead, rawRead)
         let collected = Self.assemble(routerID: routerID, address: address, role: role,
                                       inventory: inventory, raw: raw)
         let snapshot = CapabilitySnapshot(collected: collected, warnings: inventory.warnings + raw.warnings)
-        return (collected, snapshot)
+        return (inventory, (collected, snapshot))
     }
 
     static func assemble(routerID: String, address: String, role: String?,
@@ -38,7 +57,7 @@ public struct RouterDiscovery: Sendable {
             entries[entry.id] = CollectedRouterSnapshot.MenuEntryInfo(title: entry.title, order: entry.order)
         }
         let procd: [RouterService] = raw.services.flatMap { try? SnapshotParser.services($0) } ?? []
-        let runningByName: [String: Bool?] = Dictionary(uniqueKeysWithValues: procd.map { service in
+        var runningByName: [String: Bool?] = Dictionary(uniqueKeysWithValues: procd.map { service in
             let running: Bool?
             if let total = service.totalInstances, total > 0 {
                 running = (service.runningInstances ?? 0) > 0
@@ -47,13 +66,21 @@ public struct RouterDiscovery: Sendable {
             }
             return (service.name, running)
         })
+        // rc list is the running-state source on firmware that grants no
+        // procd service object at all; where both exist, procd's instance
+        // detail wins and rc only fills names procd did not report.
+        let rcStates: [String: InventoryParser.RCServiceState] =
+            raw.rcList.flatMap { try? InventoryParser.rcServices($0) } ?? [:]
+        for (name, state) in rcStates where runningByName[name] == nil {
+            runningByName[name] = state.running
+        }
         var initServices = inventory.initServices.map { service in
             CollectedRouterSnapshot.InitServiceState(name: service.name, enabled: service.enabled,
                                                      running: runningByName[service.name] ?? nil)
         }
         let knownNames = Set(initServices.map(\.name))
         for name in runningByName.keys.sorted() where !knownNames.contains(name) {
-            initServices.append(CollectedRouterSnapshot.InitServiceState(name: name, enabled: nil,
+            initServices.append(CollectedRouterSnapshot.InitServiceState(name: name, enabled: rcStates[name]?.enabled,
                                                                           running: runningByName[name] ?? nil))
         }
         initServices.sort { $0.name < $1.name }
@@ -111,16 +138,34 @@ public struct RouterDiscovery: Sendable {
         }.sorted { $0.name < $1.name }
     }
 
+    /// Parses luci-rpc getWirelessDevices (the wireless source granted to
+    /// login sessions; network.wireless status is granted to none). The
+    /// nesting varies across rpcd builds, so fields are read defensively;
+    /// an empty object means no radios — present stays false.
     static func parseWireless(_ value: JSONValue?) -> CollectedRouterSnapshot.WirelessState {
         guard let radios = value?.objectValue, !radios.isEmpty else {
             return CollectedRouterSnapshot.WirelessState(present: false)
         }
         let parsed = radios.map { name, radio in
-            CollectedRouterSnapshot.Radio(
-                name: name, up: radio["up"].boolValue,
+            let interfaces = radio["interfaces"].arrayValue ?? []
+            let band = radio["config"]["band"].stringValue
+                ?? radio["config"]["hwmode"].stringValue.map(hwmodeBand)
+            return CollectedRouterSnapshot.Radio(
+                name: name,
+                up: radio["up"].boolValue
+                    ?? (interfaces.contains { $0["iwinfo"].objectValue != nil } ? true : nil),
                 disabled: radio["disabled"].boolValue ?? radio["config"]["disabled"].boolValue,
-                band: radio["config"]["band"].stringValue ?? radio["config"]["hwmode"].stringValue)
+                band: band)
         }.sorted { $0.name < $1.name }
         return CollectedRouterSnapshot.WirelessState(present: true, radios: parsed)
+    }
+
+    private static func hwmodeBand(_ hwmode: String) -> String {
+        switch hwmode {
+        case "11a", "11ac": return "5g"
+        case "11b", "11g", "11ng": return "2g"
+        case "11ax": return "ax"
+        default: return hwmode
+        }
     }
 }

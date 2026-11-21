@@ -24,6 +24,11 @@ public actor SessionManager {
     private let credentialProvider: any SessionCredentialProvider
     private let refreshMargin: TimeInterval
     private var current: UbusSession?
+    /// The LuCI web-login cookie pair ("sysauth_http=…"), issued alongside
+    /// the ubus session and discarded with it. LuCI's dispatcher does not
+    /// recognize a bare ubus session (see UbusClient.luciLogin), so the
+    /// menu endpoint is authenticated with this cookie instead.
+    private var luciCookie: String?
 
     public init(client: UbusClient, credentialProvider: any SessionCredentialProvider,
                 refreshMargin: TimeInterval = 60) {
@@ -57,17 +62,32 @@ public actor SessionManager {
         }
     }
 
-    /// The sysauth cookie value for endpoints that authenticate with the
-    /// session token as a cookie (e.g. the LuCI menu endpoint).
+    /// The LuCI menu tree, authenticated with the LuCI login cookie (not
+    /// the ubus token — LuCI would treat that as anonymous and return a
+    /// stripped menu). A permission rejection discards both sessions,
+    /// re-logs in on both channels, and retries exactly once.
     public func menu() async throws -> JSONValue {
         let session = try await session()
         do {
-            return try await client.menu(session: session)
+            return try await client.menu(cookie: luciSessionCookie())
         } catch OpenWrtKitError.permissionDenied {
             invalidate(ifMatching: session)
-            let renewed = try await login()
-            return try await client.menu(session: renewed)
+            _ = try await login()
+            return try await client.menu(cookie: luciSessionCookie())
         }
+    }
+
+    /// The cached LuCI cookie, logging in via LuCI's web flow when there
+    /// is none. A failed LuCI login throws here — loudly, at the one call
+    /// site that needs it — instead of degrading the menu silently.
+    private func luciSessionCookie() async throws -> String {
+        if let luciCookie { return luciCookie }
+        guard let credentials = await credentialProvider.routerCredentials() else {
+            throw OpenWrtKitError.authenticationFailed
+        }
+        let cookie = try await client.luciLogin(username: credentials.username, password: credentials.password)
+        luciCookie = cookie
+        return cookie
     }
 
     public func installedPackages() async throws -> [InstalledPackage] {
@@ -81,15 +101,22 @@ public actor SessionManager {
         }
     }
 
-    public func invalidate() { current = nil }
+    public func invalidate() {
+        current = nil
+        luciCookie = nil
+    }
 
     private func invalidate(ifMatching session: UbusSession) {
-        if current?.token == session.token { current = nil }
+        if current?.token == session.token {
+            current = nil
+            luciCookie = nil
+        }
     }
 
     public func logout() async {
         guard let current else { return }
         self.current = nil
+        luciCookie = nil
         _ = try? await client.call(session: current, object: "session", method: "destroy")
     }
 

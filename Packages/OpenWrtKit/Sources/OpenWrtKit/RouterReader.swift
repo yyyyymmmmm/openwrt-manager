@@ -45,21 +45,38 @@ public struct RouterReader: Sendable {
         return try SnapshotParser.leases(value)
     }
 
+    /// Wireless radios via luci-rpc. `network.wireless status` is granted
+    /// to NO login session on stock firmware (verified in the acl.d sets
+    /// of both test routers), while getWirelessDevices is granted on both
+    /// and returns an empty object — not an error — when no radio exists.
     public func wireless() async throws -> [WirelessRadio] {
-        let value = try await caller.call(object: "network.wireless", method: "status")
-        return try SnapshotParser.wireless(value)
+        let value = try await caller.call(object: "luci-rpc", method: "getWirelessDevices")
+        return try SnapshotParser.wirelessDevices(value)
     }
 
+    /// Service state: procd's service list where it is granted, with the
+    /// rc list as the fallback — firmware whose acl.d grants no "service"
+    /// object at all (verified on the main router) still reports every
+    /// service's enabled/running state through rc.
     public func services() async throws -> [RouterService] {
-        let value = try await caller.call(object: "service", method: "list")
-        return try SnapshotParser.services(value)
+        do {
+            let value = try await caller.call(object: "service", method: "list")
+            return try SnapshotParser.services(value)
+        } catch OpenWrtKitError.permissionDenied, OpenWrtKitError.unsupported {
+            let value = try await caller.call(object: "rc", method: "list")
+            return try InventoryParser.rcServices(value).map { name, state in
+                RouterService(name: name,
+                              runningInstances: state.running.map { $0 ? 1 : 0 },
+                              totalInstances: 1)
+            }.sorted { $0.name < $1.name }
+        }
     }
 
     public func inventory() async -> RouterInventory {
         async let menu = capture { try InventoryParser.menus(await caller.menu()) }
         async let packages = capture { try await caller.installedPackages() }
         async let configs = capture { try InventoryParser.configNames(await caller.call(object: "file", method: "list", parameters: ["path": .string("/etc/config")])) }
-        async let startup = capture { try InventoryParser.initServices(await caller.call(object: "luci", method: "getInitList")) }
+        async let startup = capture { try await initServiceList() }
         let results = await (menu, packages, configs, startup)
         var inventory = RouterInventory()
         switch results.0 {
@@ -90,6 +107,7 @@ public struct RouterReader: Sendable {
         public var interfaces: JSONValue?
         public var wireless: JSONValue?
         public var services: JSONValue?
+        public var rcList: JSONValue?
         public var warnings: [String] = []
         public init() {}
     }
@@ -97,9 +115,10 @@ public struct RouterReader: Sendable {
     public func discoveryRawData() async -> DiscoveryRawData {
         async let board = capture { try await caller.call(object: "system", method: "board") }
         async let interfaces = capture { try await caller.call(object: "network.interface", method: "dump") }
-        async let wireless = capture { try await caller.call(object: "network.wireless", method: "status") }
+        async let wireless = capture { try await caller.call(object: "luci-rpc", method: "getWirelessDevices") }
         async let services = capture { try await caller.call(object: "service", method: "list") }
-        let results = await (board, interfaces, wireless, services)
+        async let rcList = capture { try await caller.call(object: "rc", method: "list") }
+        let results = await (board, interfaces, wireless, services, rcList)
         var data = DiscoveryRawData()
         switch results.0 {
         case .success(let value): data.board = value
@@ -111,18 +130,58 @@ public struct RouterReader: Sendable {
         }
         switch results.2 {
         case .success(let value): data.wireless = value
-        case .failure(let error): data.warnings.append("发现-无线：\(error.localizedDescription)")
+        case .failure:
+            // No warning on purpose: "no radios" and "wireless not
+            // granted" must both present as simply no wireless pages.
+            // getWirelessDevices returns {} for the no-radio case, so a
+            // failure here only ever means the latter.
+            data.wireless = nil
         }
         switch results.3 {
         case .success(let value): data.services = value
-        case .failure(let error): data.warnings.append("发现-服务状态：\(error.localizedDescription)")
+        case .failure(let error):
+            // rc list (read alongside) carries the same running state on
+            // firmware that grants no service object; only warn when rc
+            // could not fill the gap either.
+            if case .failure = results.4 {
+                data.warnings.append("发现-服务状态：\(error.localizedDescription)")
+            }
+        }
+        switch results.4 {
+        case .success(let value): data.rcList = value
+        case .failure: data.rcList = nil
         }
         return data
     }
 
+    /// Init-service catalogue (name + enabled). Source of truth is the rc
+    /// list — granted on both test firmwares and richer (it also carries
+    /// running state); luci getInitList is only a fallback because some
+    /// firmware grants it to no session at all (verified on the main
+    /// router: no acl.d group authorizes it there).
+    private func initServiceList() async throws -> [InitService] {
+        do {
+            let value = try await caller.call(object: "rc", method: "list")
+            let services = try InventoryParser.initServices(value)
+            // A real rc list is never empty (every firmware ships init
+            // scripts); an empty answer means the object is not really
+            // there, so fall through to the legacy source.
+            if !services.isEmpty { return services }
+        } catch OpenWrtKitError.permissionDenied, OpenWrtKitError.unsupported {
+            // Fall through to the legacy source.
+        }
+        let value = try await caller.call(object: "luci", method: "getInitList")
+        return try InventoryParser.initServices(value)
+    }
+
+    /// Drops the underlying session (discovery self-healing hook).
+    public func invalidateSession() async {
+        await caller.invalidateSession()
+    }
+
     public func serviceAction(name: String, action: ServiceAction) async throws {
         guard InventoryParser.validIdentifier(name) else { throw ConfigurationError.invalidIdentifier }
-        let initList = try InventoryParser.initServices(await caller.call(object: "luci", method: "getInitList"))
+        let initList = try await initServiceList()
         guard initList.contains(where: { $0.name == name }) else { throw OpenWrtKitError.unsupported("此服务不在路由器的启动项目录中。") }
         let access = try await caller.call(object: "session", method: "access", parameters: [
             "scope": .string("ubus"), "object": .string("luci"), "function": .string("setInitAction")
@@ -242,6 +301,26 @@ public enum SnapshotParser {
                                   expires: item["expires"].intValue, duid: item["duid"].stringValue)
             return seen.insert(lease.id).inserted ? lease : nil
         }.sorted { $0.hostname.localizedStandardCompare($1.hostname) == .orderedAscending }
+    }
+
+    /// luci-rpc getWirelessDevices, parsed defensively: the exact nesting
+    /// (config under the radio vs under each interface, iwinfo placement)
+    /// varies across rpcd builds, so every field is looked up in each of
+    /// its plausible homes. An empty object — a router with no radios —
+    /// parses to an empty list, never an error.
+    public static func wirelessDevices(_ value: JSONValue) throws -> [WirelessRadio] {
+        guard let radios = value.objectValue else { throw OpenWrtKitError.malformedResponse }
+        return radios.map { name, radio in
+            let interfaces = radio["interfaces"].arrayValue ?? []
+            let channel = radio["config"]["channel"].textValue
+                ?? radio["iwinfo"]["channel"].textValue
+                ?? interfaces.first?["iwinfo"]["channel"].textValue
+            var networks = interfaces.compactMap { $0["config"]["ssid"].stringValue ?? $0["iwinfo"]["ssid"].stringValue }
+            if networks.isEmpty, let ssid = radio["config"]["ssid"].stringValue { networks = [ssid] }
+            let up = radio["up"].boolValue
+                ?? (interfaces.contains { $0["iwinfo"].objectValue != nil } ? true : nil)
+            return WirelessRadio(name: name, up: up, channel: channel ?? "未报告", networks: networks)
+        }.sorted { $0.name < $1.name }
     }
 
     public static func wireless(_ value: JSONValue) throws -> [WirelessRadio] {

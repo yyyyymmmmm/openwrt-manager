@@ -75,8 +75,19 @@ public struct ReadOnlyDataClient: Sendable {
     // MARK: Services, leases, wireless
 
     public func serviceList() async throws -> [RouterService] {
-        let value = try await caller.call(object: "service", method: "list")
-        return try SnapshotParser.services(value)
+        do {
+            let value = try await caller.call(object: "service", method: "list")
+            return try SnapshotParser.services(value)
+        } catch OpenWrtKitError.permissionDenied, OpenWrtKitError.unsupported {
+            // Firmware whose acl.d grants no "service" object (verified on
+            // the main router): rc list carries the same running state.
+            let value = try await caller.call(object: "rc", method: "list")
+            return try InventoryParser.rcServices(value).map { name, state in
+                RouterService(name: name,
+                              runningInstances: state.running.map { $0 ? 1 : 0 },
+                              totalInstances: 1)
+            }.sorted { $0.name < $1.name }
+        }
     }
 
     public func leases() async throws -> [DHCPLease] {
@@ -85,8 +96,11 @@ public struct ReadOnlyDataClient: Sendable {
     }
 
     public func wirelessRadios() async throws -> [WirelessRadio] {
-        let value = try await caller.call(object: "network.wireless", method: "status")
-        return try SnapshotParser.wireless(value)
+        // luci-rpc getWirelessDevices is the wireless read granted to
+        // login sessions; network.wireless status is granted to none
+        // (verified in both test routers' acl.d). No radios → empty list.
+        let value = try await caller.call(object: "luci-rpc", method: "getWirelessDevices")
+        return try SnapshotParser.wirelessDevices(value)
     }
 
     public func connectionCount() async throws -> ConnectionCount {

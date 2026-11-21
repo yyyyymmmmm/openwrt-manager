@@ -137,13 +137,18 @@ final class RouterStore {
         let result = await discovery.discoverWithCollected(
             routerID: profile.id.uuidString, address: profile.address, role: nil)
         let snapshot = result.snapshot
-        if snapshot.menuTree.isEmpty, snapshot.board.hostname == nil {
-            capabilityError = "实时发现失败：路由器未返回菜单与设备信息。"
-            if let cached = cachedCapability(for: profile) {
+        // A haul that is not substantive — empty, or an anonymous-grade
+        // menu the discovery self-healing could not repair — is a failed
+        // discovery: never cache it, never let it replace a good
+        // snapshot. (The old check required BOTH an empty tree and a
+        // missing hostname, so stripped menus were cached as success.)
+        if !snapshot.hasSubstantiveMenu {
+            capabilityError = "实时发现失败：路由器返回的菜单不完整（会话未被认可为已登录），已保留上次结果，未写入缓存。"
+            if capability == nil, let cached = cachedCapability(for: profile) {
                 capability = cached
                 capabilityIsFromCache = true
                 capabilityUpdatedAt = nil
-                recordActivity("显示离线缓存", detail: "实时发现失败，导航来自上次成功发现的缓存快照。", isWarning: true)
+                recordActivity("显示离线缓存", detail: "实时发现不完整，导航来自上次成功发现的缓存快照。", isWarning: true)
             }
             return
         }

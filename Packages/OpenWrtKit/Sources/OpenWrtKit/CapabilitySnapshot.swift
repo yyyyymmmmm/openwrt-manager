@@ -271,6 +271,15 @@ public struct CapabilitySnapshot: Equatable, Sendable {
         self.warnings = warnings
     }
 
+    /// True when the menu carries a plausible logged-in haul. An
+    /// anonymous-grade menu (session not recognized by LuCI) collapses to
+    /// a handful of visible pages; such a snapshot must never be cached
+    /// or presented as a successful discovery.
+    public var hasSubstantiveMenu: Bool {
+        visibleMenuPaths.filter { $0.split(separator: "/").count == 3 }.count
+            >= MenuQuality.minimumLoggedInSecondLevel
+    }
+
     public func menuNode(_ path: String) -> MenuNode? {
         func search(_ nodes: [MenuNode]) -> MenuNode? {
             for node in nodes {

@@ -106,6 +106,46 @@ public enum InventoryParser {
         }.sorted { $0.name < $1.name }
     }
 
+    /// opkg's stanza format, which is what package-manager-call prints on
+    /// opkg firmware (verified on-device): blank-line-separated paragraphs
+    /// of "Key: value" lines, continuation lines start with a space.
+    public static func opkgStanzas(_ text: String) throws -> [InstalledPackage] {
+        var packages: [InstalledPackage] = []
+        var fields: [String: String] = [:]
+        var lastKey: String?
+        func flush() {
+            defer { fields = [:]; lastKey = nil }
+            guard let name = fields["Package"], let version = fields["Version"],
+                  !name.isEmpty, !version.isEmpty else { return }
+            let dependencies = (fields["Depends"] ?? "")
+                .split(separator: ",")
+                .map { dependency -> String in
+                    let trimmed = dependency.trimmingCharacters(in: .whitespaces)
+                    return trimmed.components(separatedBy: " (").first ?? trimmed
+                }
+                .filter { !$0.isEmpty }
+            packages.append(InstalledPackage(name: name, version: version,
+                                             description: fields["Description"] ?? "",
+                                             dependencies: dependencies))
+        }
+        for rawLine in text.components(separatedBy: "\n") {
+            let line = rawLine.hasSuffix("\r") ? String(rawLine.dropLast()) : rawLine
+            if line.trimmingCharacters(in: .whitespaces).isEmpty {
+                flush()
+            } else if line.hasPrefix(" ") || line.hasPrefix("\t") {
+                if let lastKey { fields[lastKey, default: ""] += "\n" + line.trimmingCharacters(in: .whitespaces) }
+            } else if let colon = line.firstIndex(of: ":") {
+                let key = String(line[..<colon])
+                let value = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
+                fields[key] = value
+                lastKey = key
+            }
+        }
+        flush()
+        guard !packages.isEmpty else { throw OpenWrtKitError.malformedResponse }
+        return packages.sorted { $0.name < $1.name }
+    }
+
     public static func opkg(_ text: String) throws -> [InstalledPackage] {
         let rows = text.split(whereSeparator: \.isNewline)
         let values = try rows.map { row -> InstalledPackage in
@@ -137,6 +177,32 @@ public enum InventoryParser {
         return children(admin, path: ["admin"])
     }
 
+    /// One rc list entry: {start, enabled, running} per init script. The
+    /// rc object is granted on both test firmwares and — unlike
+    /// luci getInitList — also reports the running state.
+    public struct RCServiceState: Equatable, Sendable {
+        public var enabled: Bool?
+        public var running: Bool?
+        public var start: Int?
+        public init(enabled: Bool? = nil, running: Bool? = nil, start: Int? = nil) {
+            self.enabled = enabled; self.running = running; self.start = start
+        }
+    }
+
+    public static func rcServices(_ value: JSONValue) throws -> [String: RCServiceState] {
+        guard let object = value.objectValue else { throw OpenWrtKitError.malformedResponse }
+        var result: [String: RCServiceState] = [:]
+        for (name, entry) in object {
+            guard entry.objectValue != nil else { throw OpenWrtKitError.malformedResponse }
+            func flag(_ key: String) -> Bool? {
+                entry[key].boolValue ?? entry[key].intValue.map { $0 != 0 }
+            }
+            result[name] = RCServiceState(enabled: flag("enabled"), running: flag("running"),
+                                          start: entry["start"].intValue)
+        }
+        return result
+    }
+
     public static func initServices(_ value: JSONValue) throws -> [InitService] {
         guard let object = value.objectValue else { throw OpenWrtKitError.malformedResponse }
         return try object.map {
@@ -159,5 +225,28 @@ public enum InventoryParser {
         !value.isEmpty && value.count <= 128 && value.utf8.allSatisfy {
             (65...90).contains($0) || (97...122).contains($0) || (48...57).contains($0) || $0 == 95 || $0 == 45
         }
+    }
+}
+
+/// Grades a parsed menu tree as "anonymous" when it is too small to be a
+/// logged-in menu. LuCI computes each node's `satisfied` flag from the
+/// session's ACLs; a session LuCI does not recognize as logged in (no
+/// LuCI login token in its rpcd session data) gets the anonymous ACL set,
+/// which satisfies almost nothing. Measured on a real bypass router:
+/// 7 of 58 second-level nodes satisfied anonymously (3 after the parser
+/// drops endpoint groups) vs 52 of 58 after a proper LuCI login, while
+/// even a stock LuCI install yields well over 20. The threshold sits far
+/// below any plausible logged-in menu and above the measured anonymous
+/// one, so a genuinely small router is never misjudged.
+public enum MenuQuality {
+    public static let minimumLoggedInSecondLevel = 8
+
+    /// Second-level entries (admin/<group>/<page>) across all groups.
+    public static func secondLevelCount(_ menus: [RouterMenuEntry]) -> Int {
+        menus.reduce(0) { $0 + $1.children.count }
+    }
+
+    public static func isAnonymousGrade(_ menus: [RouterMenuEntry]) -> Bool {
+        secondLevelCount(menus) < minimumLoggedInSecondLevel
     }
 }
