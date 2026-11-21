@@ -157,6 +157,31 @@ public actor UbusClient {
 
     /// Native data requests only. No arbitrary commands or web UI are exposed.
     public func installedPackages(session auth: UbusSession) async throws -> [InstalledPackage] {
+        try await packageList(session: auth, action: "list-installed").packages
+    }
+
+    /// Both package lists through the router's package-manager helper
+    /// (the channel LuCI's software page uses): list-installed for
+    /// what is on the router, list-available for what the feeds offer.
+    /// The update check diffs the two locally — the bare opkg/apk
+    /// binaries are NOT callable from a login session (rpcd grants no
+    /// exec key for them on either test router, verified 2026-11-21),
+    /// which is why the old exec-based check could only ever fail.
+    public func packageLists(session auth: UbusSession) async throws -> PackageLists {
+        let installed = try await packageList(session: auth, action: "list-installed")
+        let available = try await packageList(session: auth, action: "list-available")
+        return PackageLists(manager: installed.manager,
+                            installed: installed.packages, available: available.packages)
+    }
+
+    /// One package-manager-call list through cgi-exec. The answer's
+    /// shape identifies the manager: apk-based firmware answers with
+    /// a JSON array; opkg-based firmware answers with stanza text
+    /// (Package:/Version:/Depends: paragraphs) from the very same
+    /// endpoint — verified on-device against both router classes.
+    /// Parse whichever arrived.
+    private func packageList(session auth: UbusSession, action: String) async throws
+        -> (manager: PackageManager, packages: [InstalledPackage]) {
         var request = URLRequest(url: address.url.appendingPathComponent("cgi-bin/cgi-exec"))
         request.httpMethod = "POST"
         request.timeoutInterval = 30
@@ -164,26 +189,44 @@ public actor UbusClient {
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         var form = URLComponents()
         form.queryItems = [URLQueryItem(name: "sessionid", value: auth.token),
-                           URLQueryItem(name: "command", value: "/usr/libexec/package-manager-call list-installed"),
+                           URLQueryItem(name: "command", value: "/usr/libexec/package-manager-call \(action)"),
                            URLQueryItem(name: "stderr", value: "0")]
         request.httpBody = form.percentEncodedQuery?.data(using: .utf8)
         let data = try await checkedData(request)
-        // apk-based firmware answers with a JSON array; opkg-based
-        // firmware answers with stanza text (Package:/Version:/Depends:
-        // paragraphs) from the very same endpoint — verified on-device
-        // against an opkg router, whose JSON parse failure was the
-        // user-visible "软件包主接口格式错误". Parse whichever arrived.
+        guard !data.isEmpty else {
+            throw OpenWrtKitError.unsupported(KitL10n.text("路由器未返回软件包列表。"))
+        }
         if let value = try? JSONDecoder().decode(JSONValue.self, from: data), value.arrayValue != nil {
-            return try InventoryParser.packages(value)
+            return (.apk, try InventoryParser.packages(value))
         }
         guard let text = String(data: data, encoding: .utf8) else {
             throw OpenWrtKitError.malformedResponse
         }
-        return try InventoryParser.opkgStanzas(text)
+        return (.opkg, try InventoryParser.opkgStanzas(text))
         // There is deliberately no file-exec fallback: rpcd never grants
         // arbitrary-command exec to login sessions (only whitelisted
         // command lines are callable, verified on-device), so the old
         // /bin/opkg exec fallback could only ever fail.
+    }
+
+    /// A sysupgrade configuration backup, produced and served by the
+    /// router's own cgi-io endpoint — the channel LuCI's flash page
+    /// downloads through (cgi-io "backup" is granted to login
+    /// sessions on both test routers). The ubus file plane cannot
+    /// substitute: `sysupgrade --create-backup` has no exec grant at
+    /// all, and the tarball path it would write has no read grant.
+    /// The response is the tar.gz itself, byte for byte what LuCI
+    /// would download.
+    public func backupArchive(session auth: UbusSession) async throws -> Data {
+        var request = URLRequest(url: address.url.appendingPathComponent("cgi-bin/cgi-backup"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 60
+        applyLanguage(to: &request)
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        var form = URLComponents()
+        form.queryItems = [URLQueryItem(name: "sessionid", value: auth.token)]
+        request.httpBody = form.percentEncodedQuery?.data(using: .utf8)
+        return try await checkedData(request)
     }
 
     /// Package install / upgrade / remove through the router's own

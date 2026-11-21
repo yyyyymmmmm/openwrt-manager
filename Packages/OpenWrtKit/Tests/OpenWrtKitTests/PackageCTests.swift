@@ -125,11 +125,12 @@ final class PackageCTests: XCTestCase {
 
     private func restoreOperations(recorder: CallRecorder,
                                    remoteDigest: String? = nil,
+                                   snapshotData: Data = Data(),
                                    probeAnswers: [Bool] = [true]) -> BackupRestoreFlow.Operations {
         var probes = probeAnswers
         return BackupRestoreFlow.Operations(
             createBackupOnRouter: { recorder.record("snapshot"); return "/tmp/pre.tar.gz" },
-            downloadFile: { _ in Data() },
+            downloadFile: { _ in snapshotData },
             uploadFile: { _, path in recorder.record("upload:\(path)") },
             remoteSHA256: { _ in recorder.record("sha"); return remoteDigest ?? "" },
             restoreBackup: { _ in recorder.record("restore") },
@@ -158,15 +159,21 @@ final class PackageCTests: XCTestCase {
         // SHA-256("abc"), the standard vector.
         let digest = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
         let operations = restoreOperations(recorder: recorder, remoteDigest: digest,
+                                           snapshotData: Data("pre".utf8),
                                            probeAnswers: [false, true])
         let result = try await BackupRestoreFlow.restore(
             backupData: data, fileName: "b.tar.gz", confirmed: true, operations: operations)
         XCTAssertTrue(result.reconnected)
         XCTAssertEqual(result.preRestoreSnapshotPath, "/tmp/pre.tar.gz")
+        // The snapshot's bytes travel with the result: the on-router
+        // copy is in tmpfs and dies with the restore's own reboot.
+        XCTAssertEqual(result.preRestoreSnapshotData, Data("pre".utf8))
         // Snapshot strictly before upload; restore strictly after the
-        // hash check; reboot last before probing.
+        // hash check; reboot last before probing. The payload stages
+        // at the one path the restore exec key authorizes, whatever
+        // the library file is called (package L, permission audit #4).
         XCTAssertEqual(recorder.calls,
-                       ["snapshot", "upload:/tmp/b.tar.gz", "sha", "restore", "reboot", "probe", "probe"])
+                       ["snapshot", "upload:/tmp/backup.tar.gz", "sha", "restore", "reboot", "probe", "probe"])
     }
 
     func testRestoreAbortsOnHashMismatchBeforeRestore() async {
@@ -178,7 +185,7 @@ final class PackageCTests: XCTestCase {
                 confirmed: true, operations: operations)
             XCTFail("hash mismatch must abort")
         } catch {
-            XCTAssertEqual(error as? TransactionError, .verificationFailed("/tmp/b.tar.gz"))
+            XCTAssertEqual(error as? TransactionError, .verificationFailed("/tmp/backup.tar.gz"))
         }
         XCTAssertFalse(recorder.calls.contains("restore"))
         XCTAssertFalse(recorder.calls.contains("reboot"))

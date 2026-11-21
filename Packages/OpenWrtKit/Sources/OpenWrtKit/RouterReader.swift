@@ -210,24 +210,60 @@ public struct RouterReader: Sendable {
         guard InventoryParser.validIdentifier(name) else { throw ConfigurationError.invalidIdentifier }
         let initList = try await initServiceList()
         guard initList.contains(where: { $0.name == name }) else { throw OpenWrtKitError.unsupported(KitL10n.text("此服务不在路由器的启动项目录中。")) }
-        let access = try await caller.call(object: "session", method: "access", parameters: [
-            "scope": .string("ubus"), "object": .string("luci"), "function": .string("setInitAction")
-        ])
-        guard access["access"].boolValue == true else { throw OpenWrtKitError.permissionDenied }
-        let value = try await caller.call(object: "luci", method: "setInitAction", parameters: [
-            "name": .string(name), "action": .string(action.rawValue)
-        ])
-        guard value["result"].boolValue == true else { throw OpenWrtKitError.unsupported(KitL10n.text("路由器未确认服务操作成功，请检查日志和当前状态。")) }
+        // Two channels carry init actions, and firmware grants them
+        // independently (permission audit #1): luci setInitAction is
+        // granted on the bypass router but by NO acl group on stock
+        // firmware (the main router), where every action used to die
+        // as "permission denied"; the rc object's init method is
+        // granted on both. Probe the session's actual grant and take
+        // the channel it holds.
+        if await sessionAccess(scope: "ubus", object: "luci", function: "setInitAction") {
+            let value = try await caller.call(object: "luci", method: "setInitAction", parameters: [
+                "name": .string(name), "action": .string(action.rawValue)
+            ])
+            guard value["result"].boolValue == true else { throw OpenWrtKitError.unsupported(KitL10n.text("路由器未确认服务操作成功，请检查日志和当前状态。")) }
+        } else {
+            _ = try await caller.call(object: "rc", method: "init", parameters: [
+                "name": .string(name), "action": .string(action.rawValue)
+            ])
+        }
+    }
+
+    /// Whether this session is granted one (scope, object, function)
+    /// triple, per rpcd's own access query. A query that fails reads
+    /// as "not granted" — callers use this to pick a channel or gate
+    /// an entry, where the safe direction is the closed one.
+    private func sessionAccess(scope: String, object: String, function: String) async -> Bool {
+        guard let value = try? await caller.call(object: "session", method: "access", parameters: [
+            "scope": .string(scope), "object": .string(object), "function": .string(function)
+        ]) else { return false }
+        return value["access"].boolValue == true
     }
 
     public func records(_ kind: RouterRecordKind) async throws -> [JSONValue] {
         switch kind {
         case .logs:
-            let value = try await caller.call(object: "log", method: "read", parameters: [
-                "lines": .number(200), "oneshot": .bool(true), "stream": .bool(false)
-            ])
-            guard let records = value["log"].arrayValue else { throw OpenWrtKitError.malformedResponse }
-            return records
+            do {
+                let value = try await caller.call(object: "log", method: "read", parameters: [
+                    "lines": .number(200), "oneshot": .bool(true), "stream": .bool(false)
+                ])
+                guard let records = value["log"].arrayValue else { throw OpenWrtKitError.malformedResponse }
+                return records
+            } catch OpenWrtKitError.permissionDenied, OpenWrtKitError.unsupported {
+                // Firmware whose acl.d grants no log object at all
+                // (the main router, stock 24.10): the same
+                // syslog-wrapper fallback ReadOnlyDataClient.systemLog
+                // uses, which IS granted there (permission audit
+                // #14). The wrapper prints the whole log oldest
+                // first; keep the newest 200 lines as plain records.
+                let value = try await caller.call(object: "file", method: "exec", parameters: [
+                    "command": .string("/usr/libexec/syslog-wrapper"), "params": .array([])
+                ])
+                guard value["code"].intValue == 0, let output = value["stdout"].stringValue else {
+                    throw OpenWrtKitError.permissionDenied
+                }
+                return output.split(whereSeparator: \.isNewline).suffix(200).map { .string(String($0)) }
+            }
         case .processes, .mounts:
             let method = kind == .processes ? "getProcessList" : "getMountPoints"
             let value = try await caller.call(object: "luci", method: method)

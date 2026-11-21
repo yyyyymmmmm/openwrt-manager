@@ -2,12 +2,13 @@ import Foundation
 
 // MARK: - Configuration backup & restore (package C, item 1)
 //
-// The backup artefact is OpenWrt's own: `sysupgrade --create-backup`
-// produces the same tar.gz LuCI's flash page downloads, and
-// `sysupgrade --restore-backup` consumes it — a backup made here
-// restores in LuCI and vice versa. Both run over the ubus file plane
-// the app already holds (the exact channel the upgrade flow's own
-// automatic backup uses). Alongside the tarball the app keeps a
+// The backup artefact is OpenWrt's own: the same tar.gz LuCI's
+// flash page downloads, produced by the router's cgi-io backup
+// endpoint (the `sysupgrade --create-backup` exec is not granted
+// to login sessions), and consumed by `sysupgrade
+// --restore-backup` over the ubus file plane at the one tarball
+// path acl.d authorizes — a backup made here restores in LuCI and
+// vice versa. Alongside the tarball the app keeps a
 // manifest — model/firmware at capture time and the UCI config
 // inventory — so a restore can be previewed and diffed before
 // anything is sent. The manifest is app-side metadata only; it never
@@ -90,6 +91,17 @@ public enum BackupFileNaming {
     public static func stagingPath(fileName: String) -> String {
         "/tmp/\(fileName)"
     }
+
+    /// The one tarball path every firmware's acl.d authorizes end
+    /// to end: file write for staging, file read for download, and
+    /// the `sysupgrade --restore-backup` exec key all name exactly
+    /// this path (permission audit #4). A per-backup staging name
+    /// under /tmp is refused on stock firmware.
+    public static let routerBackupPath = "/tmp/backup.tar.gz"
+
+    /// Where a restore payload is staged: the same authorized path
+    /// — the restore exec key names nothing else.
+    public static let restoreStagingPath = "/tmp/backup.tar.gz"
 }
 
 /// The restore transaction, staged like the upgrade flow so that "no
@@ -147,9 +159,17 @@ public enum BackupRestoreFlow {
         /// On-router path of the pre-restore snapshot of the
         /// configuration that was current just before the restore.
         public var preRestoreSnapshotPath: String
+        /// The snapshot's bytes, downloaded during the restore: the
+        /// on-router copy lives in tmpfs and dies with the restore's
+        /// own reboot, so the caller persists these bytes (the app
+        /// files them in its backup library) as the durable recovery
+        /// artefact.
+        public var preRestoreSnapshotData: Data
         public var reconnected: Bool
-        public init(preRestoreSnapshotPath: String, reconnected: Bool) {
+        public init(preRestoreSnapshotPath: String, preRestoreSnapshotData: Data = Data(),
+                    reconnected: Bool) {
             self.preRestoreSnapshotPath = preRestoreSnapshotPath
+            self.preRestoreSnapshotData = preRestoreSnapshotData
             self.reconnected = reconnected
         }
     }
@@ -169,8 +189,13 @@ public enum BackupRestoreFlow {
 
     /// The restore proper. Refuses without `confirmed`. Order is the
     /// L4 discipline applied to a non-UCI write: snapshot the current
-    /// state first, stage + verify the upload byte-for-byte, only
-    /// then restore, reboot, and verify the router comes back.
+    /// state first (and hold its bytes — the payload staging below
+    /// reuses the same single authorized tarball path, and the
+    /// on-router copy would not survive the reboot anyway), stage +
+    /// verify the upload byte-for-byte, only then restore, reboot,
+    /// and verify the router comes back. `fileName` names the
+    /// caller's library entry; staging no longer derives from it —
+    /// the restore exec key authorizes exactly one path.
     public static func restore(backupData: Data, fileName: String,
                                confirmed: Bool,
                                operations: Operations,
@@ -179,7 +204,8 @@ public enum BackupRestoreFlow {
         guard confirmed else { throw OpenWrtKitError.permissionDenied }
         onStep(.snapshottingCurrent)
         let snapshotPath = try await operations.createBackupOnRouter()
-        let staging = BackupFileNaming.stagingPath(fileName: fileName)
+        let snapshotData = try await operations.downloadFile(snapshotPath)
+        let staging = BackupFileNaming.restoreStagingPath
         onStep(.uploading)
         try await operations.uploadFile(backupData, staging)
         onStep(.verifyingUpload)
@@ -198,25 +224,33 @@ public enum BackupRestoreFlow {
         for _ in 0..<max(1, reconnectAttempts) {
             if await operations.probeReconnect() {
                 onStep(.succeeded)
-                return RestoreResult(preRestoreSnapshotPath: snapshotPath, reconnected: true)
+                return RestoreResult(preRestoreSnapshotPath: snapshotPath,
+                                     preRestoreSnapshotData: snapshotData, reconnected: true)
             }
             await operations.probeDelay()
         }
         onStep(.failed(KitL10n.text("恢复后未能重新连接路由器")))
-        return RestoreResult(preRestoreSnapshotPath: snapshotPath, reconnected: false)
+        return RestoreResult(preRestoreSnapshotPath: snapshotPath,
+                             preRestoreSnapshotData: snapshotData, reconnected: false)
     }
 
     /// Builds the standard operations on top of the ubus file plane —
     /// the same wiring the upgrade flow uses, plus the restore exec.
+    /// Channels are the ones rpcd grants to login sessions
+    /// (permission audit #3/#4): creation goes through cgi-io's
+    /// backup endpoint (the `--create-backup` exec has no grant at
+    /// all) and the archive is staged at the one authorized tarball
+    /// path; the upload digest is a readback hash (the sha256sum
+    /// exec has no grant either).
     public static func standardOperations(files: FileClient) -> Operations {
         Operations(
             createBackupOnRouter: {
-                let path = "/tmp/zirox-backup.tar.gz"
-                let (code, _) = try await files.exec(command: "/sbin/sysupgrade", arguments: ["--create-backup", path])
-                guard code == 0 else {
-                    throw OpenWrtKitError.unsupported(KitL10n.format("备份创建失败（sysupgrade 返回 %lld）。", code))
+                let data = try await files.downloadSysupgradeBackup()
+                guard !data.isEmpty else {
+                    throw OpenWrtKitError.unsupported(KitL10n.text("路由器返回了空的备份文件，未保存。"))
                 }
-                return path
+                try await files.writeDataVerified(path: BackupFileNaming.routerBackupPath, data: data)
+                return BackupFileNaming.routerBackupPath
             },
             downloadFile: { path in
                 let base64 = try await files.readBase64(path: path)
@@ -229,11 +263,11 @@ public enum BackupRestoreFlow {
                 try await files.writeDataVerified(path: path, data: data)
             },
             remoteSHA256: { path in
-                let (code, output) = try await files.exec(command: "/usr/bin/sha256sum", arguments: [path])
-                guard code == 0, let digest = output.split(separator: " ").first else {
+                let base64 = try await files.readBase64(path: path)
+                guard let data = Data(base64Encoded: base64) else {
                     throw OpenWrtKitError.unsupported(KitL10n.text("无法读取路由器上的备份哈希。"))
                 }
-                return String(digest)
+                return SHA256Hasher.hexDigest(data)
             },
             restoreBackup: { path in
                 let (code, _) = try await files.exec(command: "/sbin/sysupgrade", arguments: ["--restore-backup", path])

@@ -98,9 +98,23 @@ public enum UpgradeFlow {
         /// False means "no expected digest was provided" — the UI must
         /// say the official-hash comparison did not happen.
         public var expectedHashVerified: Bool
+        /// True when the router-side digest readback ran and matched.
+        /// False means the readback was unavailable on this firmware
+        /// (rpcd grants no remote hashing to login sessions): the
+        /// transfer's integrity then rests on the chunked write's
+        /// size verification plus sysupgrade's own test-mode verdict,
+        /// and the UI must say so instead of claiming a hash match.
+        public var remoteHashVerified: Bool
         /// Router free space measured after the backup was created.
         public var space: RouterStorageSpace
     }
+
+    /// The one staging path every firmware's acl.d authorizes for
+    /// firmware work: file write, the `--test` validation exec and
+    /// the bare sysupgrade exec are all keyed to exactly this path
+    /// (permission audit #6/#8/#9). Any other staging name is
+    /// refused with "permission denied" on stock firmware.
+    public static let defaultImagePath = "/tmp/firmware.bin"
 
     /// Runs steps 1-3 and returns the local digest; the UI then collects
     /// the second confirmation and calls finish(). Splitting the flow at
@@ -110,7 +124,7 @@ public enum UpgradeFlow {
     /// Retained for callers that already hold the image in memory; the
     /// app uses the streaming prepare(source:) path, which adds the
     /// storage precheck and never holds the whole image in memory.
-    public static func prepare(image: Data, imagePath: String = "/tmp/firmware-image.bin",
+    public static func prepare(image: Data, imagePath: String = UpgradeFlow.defaultImagePath,
                                operations: Operations,
                                onStep: @Sendable (Step) -> Void = { _ in }) async throws -> (backupPath: String, imageSHA256: String) {
         onStep(.backup)
@@ -119,9 +133,14 @@ public enum UpgradeFlow {
         try await operations.stageImage(image, imagePath)
         onStep(.hashVerification)
         let localDigest = SHA256Hasher.hexDigest(image)
-        let remoteDigest = try await operations.remoteSHA256(imagePath)
-        guard remoteDigest.lowercased() == localDigest else {
-            throw TransactionError.verificationFailed(KitL10n.format("镜像哈希不一致：本地 %@，路由器 %@", localDigest, remoteDigest))
+        // The remote digest is an optional cross-check (permission
+        // audit #7): when the router offers one it must match; when
+        // it cannot be read, the size-verified write plus the
+        // sysupgrade test below carry the integrity verdict.
+        if let remoteDigest = try? await operations.remoteSHA256(imagePath) {
+            guard remoteDigest.lowercased() == localDigest else {
+                throw TransactionError.verificationFailed(KitL10n.format("镜像哈希不一致：本地 %@，路由器 %@", localDigest, remoteDigest))
+            }
         }
         onStep(.imageValidation)
         guard try await operations.validateImage(imagePath) else {
@@ -137,7 +156,7 @@ public enum UpgradeFlow {
     /// supplied) and sysupgrade test-mode validation — in that order,
     /// aborting before anything is flashed on any failure.
     public static func prepare(source: FirmwareChunkReader,
-                               imagePath: String = "/tmp/firmware-image.bin",
+                               imagePath: String = UpgradeFlow.defaultImagePath,
                                expectedSHA256: String? = nil,
                                operations: Operations,
                                onProgress: @Sendable (Int64) -> Void = { _ in },
@@ -207,9 +226,17 @@ public enum UpgradeFlow {
         }
 
         onStep(.hashVerification)
-        let remoteDigest = try await operations.remoteSHA256(imagePath)
-        guard remoteDigest.lowercased() == localDigest else {
-            throw TransactionError.verificationFailed(KitL10n.format("镜像哈希不一致：本地 %@，路由器 %@", localDigest, remoteDigest))
+        // Optional cross-check, as in the in-memory prepare: a
+        // digest the router does offer must match; an unreadable one
+        // (no remote hashing is granted to login sessions) leaves
+        // the verdict to the size-verified staging above and the
+        // sysupgrade test below, and is reported as unverified.
+        var remoteHashVerified = false
+        if let remoteDigest = try? await operations.remoteSHA256(imagePath) {
+            guard remoteDigest.lowercased() == localDigest else {
+                throw TransactionError.verificationFailed(KitL10n.format("镜像哈希不一致：本地 %@，路由器 %@", localDigest, remoteDigest))
+            }
+            remoteHashVerified = true
         }
         var expectedHashVerified = false
         if let expectedDigest {
@@ -227,11 +254,12 @@ public enum UpgradeFlow {
         }
         onStep(.awaitingSecondConfirmation)
         return PreparedUpgrade(backupPath: backupPath, imageSHA256: localDigest,
-                               expectedHashVerified: expectedHashVerified, space: spaceAfter)
+                               expectedHashVerified: expectedHashVerified,
+                               remoteHashVerified: remoteHashVerified, space: spaceAfter)
     }
 
     /// Steps 5-6. Only callable with the second confirmation in hand.
-    public static func finish(imagePath: String = "/tmp/firmware-image.bin",
+    public static func finish(imagePath: String = UpgradeFlow.defaultImagePath,
                               secondConfirmation: Bool,
                               operations: Operations,
                               reconnectAttempts: Int = 30,
@@ -251,26 +279,37 @@ public enum UpgradeFlow {
     }
 
     /// Builds the standard operations on top of the ubus file plane.
+    /// Every channel used here is one rpcd actually grants to login
+    /// sessions (permission audit, 2026-11-21): the backup is made by
+    /// cgi-io and staged at the one authorized tarball path; the
+    /// image stages at /tmp/firmware.bin, the only path the file
+    /// write, `--test` and bare sysupgrade exec keys all name; the
+    /// space precheck reads luci getMountPoints instead of a df exec
+    /// that has no grant; the remote digest is a readback hash (the
+    /// sha256sum exec has no grant either) and stays optional in the
+    /// flow, which reports whether it ran.
     public static func standardOperations(files: FileClient) -> Operations {
         Operations(
             createBackup: {
-                let path = "/tmp/zirox-backup.tar.gz"
-                let (code, _) = try await files.exec(command: "/sbin/sysupgrade", arguments: ["--create-backup", path])
-                guard code == 0 else { throw OpenWrtKitError.unsupported(KitL10n.format("备份创建失败（sysupgrade 返回 %lld）。", code)) }
-                return path
+                let data = try await files.downloadSysupgradeBackup()
+                guard !data.isEmpty else {
+                    throw OpenWrtKitError.unsupported(KitL10n.text("路由器返回了空的备份文件，未保存。"))
+                }
+                try await files.writeDataVerified(path: BackupFileNaming.routerBackupPath, data: data)
+                return BackupFileNaming.routerBackupPath
             },
             stageImage: { data, path in
                 try await files.writeDataVerified(path: path, data: data)
             },
             remoteSHA256: { path in
-                let (code, output) = try await files.exec(command: "/usr/bin/sha256sum", arguments: [path])
-                guard code == 0, let digest = output.split(separator: " ").first else {
+                let base64 = try await files.readBase64(path: path)
+                guard let data = Data(base64Encoded: base64) else {
                     throw OpenWrtKitError.unsupported(KitL10n.text("无法读取路由器上的镜像哈希。"))
                 }
-                return String(digest)
+                return SHA256Hasher.hexDigest(data)
             },
             validateImage: { path in
-                let (code, _) = try await files.exec(command: "/sbin/sysupgrade", arguments: ["-T", path])
+                let (code, _) = try await files.exec(command: "/sbin/sysupgrade", arguments: ["--test", path])
                 return code == 0
             },
             runUpgrade: { path in
@@ -280,11 +319,7 @@ public enum UpgradeFlow {
             },
             probeReconnect: { false }, // replaced by the app's session wiring
             routerSpace: {
-                let (code, output) = try await files.exec(command: "/bin/df", arguments: ["-k", "/tmp", "/overlay"])
-                guard code == 0 else {
-                    throw OpenWrtKitError.unsupported(KitL10n.text("无法读取路由器可用空间。"))
-                }
-                return DfOutputParser.parse(output)
+                try await files.mountSpace()
             },
             removeFile: { path in
                 _ = try? await files.remove(path: path)
@@ -364,6 +399,28 @@ public enum DfOutputParser {
         return RouterStorageSpace(
             tmpFreeBytes: freeByMount["/tmp"],
             overlayFreeBytes: freeByMount["/overlay"] ?? freeByMount["/"])
+    }
+}
+
+/// Parses `luci getMountPoints` ({"result": [{"mount": "/tmp",
+/// "avail": <bytes>, …}]}): the space source that replaces the df
+/// exec, which rpcd grants to no login session (permission audit
+/// #5). avail values are BYTES on both measured firmwares (OpenWrt
+/// 24.10.8 and 25.12.5, cross-checked against df -k output
+/// 2026-11-21). /overlay is not always a mount of its own — when it
+/// has no entry, the root entry stands in for it, mirroring
+/// DfOutputParser's rule.
+public enum MountPointsParser {
+    public static func parse(_ value: JSONValue) -> RouterStorageSpace {
+        guard let entries = value["result"].arrayValue else {
+            return RouterStorageSpace(tmpFreeBytes: nil, overlayFreeBytes: nil)
+        }
+        func avail(_ mount: String) -> Int64? {
+            entries.first { $0["mount"].stringValue == mount }?["avail"].intValue.map(Int64.init)
+        }
+        return RouterStorageSpace(
+            tmpFreeBytes: avail("/tmp"),
+            overlayFreeBytes: avail("/overlay") ?? avail("/"))
     }
 }
 

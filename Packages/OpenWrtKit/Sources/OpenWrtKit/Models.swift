@@ -131,7 +131,7 @@ public enum OpenWrtKitError: LocalizedError, Equatable, Sendable {
         case .transport(let message): return message
         case .http(let code): return KitL10n.format("路由器返回 HTTP %lld，请检查管理端口和 /ubus 接口。", code)
         case .authenticationFailed: return KitL10n.text("登录失败。请检查用户名、密码以及 rpcd 登录设置。")
-        case .permissionDenied: return KitL10n.text("会话已过期或账户权限不足。请重新登录，或检查 rpcd ACL。")
+        case .permissionDenied: return KitL10n.text("路由器未授权此功能：这台固件没有向 App 登录会话开放这项操作，重新登录也不会改变。")
         case .unsupported(let message): return message
         case .malformedResponse: return KitL10n.text("路由器响应不符合 ubus JSON-RPC 格式。")
         case .ubus(let code, let message):

@@ -257,7 +257,9 @@ final class UpgradeSafetyClosureTests: XCTestCase {
             guard case .unsupported(let message) = error else { return XCTFail("Wrong error: \(error)") }
             XCTAssertTrue(message.contains("残缺镜像"), message)
         } catch { XCTFail("Unexpected error: \(error)") }
-        XCTAssertEqual(recorder.removedPaths, ["/tmp/firmware-image.bin"])
+        // The default staging path is the one the firmware's exec
+        // keys authorize (package L, permission audit #6/#8/#9).
+        XCTAssertEqual(recorder.removedPaths, ["/tmp/firmware.bin"])
         XCTAssertFalse(recorder.validated)
     }
 }

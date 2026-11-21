@@ -91,65 +91,80 @@ final class PackageGTests: XCTestCase {
 
     // MARK: F2 — package-manager-aware update check
 
-    private final class ExecScriptedCaller: UbusCalling, @unchecked Sendable {
-        /// Keyed by "command arg1 arg2…"; a missing entry exits 127,
-        /// like a binary that does not exist.
-        var execResults: [String: (code: Int, stdout: String)] = [:]
-        var requestedCommands: [String] = []
+    /// Package L rewired the check to the package-manager helper's
+    /// two lists (cgi-exec): the bare opkg/apk execs it used before
+    /// are granted to no login session (permission audit #10), so
+    /// these tests now script the lists channel instead. The F2
+    /// contract is unchanged: manager-aware, "cannot check" (nil)
+    /// distinct from "nothing to update" (empty), failures throw.
+    private final class PackageListsCaller: UbusCalling, @unchecked Sendable {
+        var lists: PackageLists?
+        var listsError: Error?
 
         func call(object: String, method: String, parameters: [String: JSONValue]) async throws -> JSONValue {
-            guard object == "file", method == "exec" else { return .object([:]) }
-            let command = parameters["command"]?.stringValue ?? ""
-            let args = parameters["params"]?.arrayValue?.map { $0.stringValue ?? "" } ?? []
-            let key = ([command] + args).joined(separator: " ")
-            requestedCommands.append(key)
-            let result = execResults[key] ?? (127, "")
-            return .object(["code": .number(Double(result.code)), "stdout": .string(result.stdout)])
+            .object([:])
         }
 
         func menu() async throws -> JSONValue { .object([:]) }
         func installedPackages() async throws -> [InstalledPackage] { [] }
+        func packageLists() async throws -> PackageLists {
+            if let listsError { throw listsError }
+            guard let lists else { throw OpenWrtKitError.unsupported("no lists scripted") }
+            return lists
+        }
+    }
+
+    private func package(_ name: String, _ version: String) -> InstalledPackage {
+        InstalledPackage(name: name, version: version)
     }
 
     func testUpgradablePackagesViaOpkg() async throws {
-        let caller = ExecScriptedCaller()
-        caller.execResults["/bin/opkg --version"] = (0, "opkg version 2024.10.16")
-        caller.execResults["/bin/opkg list-upgradable"] = (0, "base-files - 1 - 2\nbusybox - 1.36.1-1 - 1.36.1-2\n")
+        let caller = PackageListsCaller()
+        caller.lists = PackageLists(
+            manager: .opkg,
+            installed: [package("base-files", "1"), package("busybox", "1.36.1-1"), package("dnsmasq", "2.90")],
+            available: [package("base-files", "2"), package("busybox", "1.36.1-2"), package("dnsmasq", "2.90")])
         let client = ReadOnlyDataClient(caller: caller)
         let result = try await client.upgradablePackages()
         XCTAssertEqual(result?.manager, .opkg)
+        // Only version differences appear, in the historical
+        // "name - installed - available" line shape.
         XCTAssertEqual(result?.lines, ["base-files - 1 - 2", "busybox - 1.36.1-1 - 1.36.1-2"])
-        // opkg answered: apk is never probed.
-        XCTAssertFalse(caller.requestedCommands.contains { $0.hasPrefix("/usr/bin/apk") })
     }
 
     func testUpgradablePackagesViaApk() async throws {
-        // The .167 shape: no opkg at all (probe exits 127), apk answers.
-        let caller = ExecScriptedCaller()
-        caller.execResults["/usr/bin/apk --version"] = (0, "apk-tools 3.0.0")
-        caller.execResults["/usr/bin/apk list --upgradable"] = (0, "busybox-1.36.1-r2 x86_64 {feeds} (upgradable from 1.36.1-r1)\n")
+        let caller = PackageListsCaller()
+        caller.lists = PackageLists(
+            manager: .apk,
+            installed: [package("busybox", "1.36.1-r1")],
+            available: [package("busybox", "1.36.1-r2"), package("not-installed", "9")])
         let client = ReadOnlyDataClient(caller: caller)
         let result = try await client.upgradablePackages()
         XCTAssertEqual(result?.manager, .apk)
-        XCTAssertEqual(result?.lines.count, 1)
-        XCTAssertTrue(result?.lines.first?.contains("busybox") ?? false)
+        // A package that is available but not installed is not an
+        // upgrade and must not appear.
+        XCTAssertEqual(result?.lines, ["busybox - 1.36.1-r1 - 1.36.1-r2"])
     }
 
     func testUpgradablePackagesNoManager() async throws {
-        // Neither binary exists: the check is impossible (nil), which
-        // the UI renders as "cannot check" — never as "no updates".
-        let caller = ExecScriptedCaller()
+        // The session cannot query package lists at all: the check
+        // is impossible (nil), which the UI renders as "cannot
+        // check" — never as "no updates".
+        let caller = PackageListsCaller()
+        caller.listsError = OpenWrtKitError.unsupported("no helper")
         let client = ReadOnlyDataClient(caller: caller)
         let result = try await client.upgradablePackages()
         XCTAssertNil(result)
     }
 
     func testUpgradablePackagesEmptyIsARealConclusion() async throws {
-        // A manager that answers with an empty list is a true
-        // "nothing to update", distinct from the nil case above.
-        let caller = ExecScriptedCaller()
-        caller.execResults["/usr/bin/apk --version"] = (0, "apk-tools 3.0.0")
-        caller.execResults["/usr/bin/apk list --upgradable"] = (0, "")
+        // Lists answer and nothing differs: a true "nothing to
+        // update", distinct from the nil case above.
+        let caller = PackageListsCaller()
+        caller.lists = PackageLists(
+            manager: .apk,
+            installed: [package("busybox", "1.36.1-r2")],
+            available: [package("busybox", "1.36.1-r2")])
         let client = ReadOnlyDataClient(caller: caller)
         let result = try await client.upgradablePackages()
         XCTAssertEqual(result?.manager, .apk)
@@ -157,11 +172,10 @@ final class PackageGTests: XCTestCase {
     }
 
     func testUpgradablePackagesListFailureThrows() async {
-        // Manager detected but the list command fails: the error
+        // The lists fetch fails after the channel exists: the error
         // must surface (true failure state), not collapse to empty.
-        let caller = ExecScriptedCaller()
-        caller.execResults["/bin/opkg --version"] = (0, "opkg version 2024.10.16")
-        caller.execResults["/bin/opkg list-upgradable"] = (1, "")
+        let caller = PackageListsCaller()
+        caller.listsError = OpenWrtKitError.ubus(code: -1, message: "boom")
         let client = ReadOnlyDataClient(caller: caller)
         do {
             _ = try await client.upgradablePackages()

@@ -29,6 +29,38 @@ public struct UpgradablePackages: Equatable, Sendable {
     }
 }
 
+/// The router's two package lists as the package-manager helper
+/// reports them (cgi-exec): what is installed and what the feeds
+/// offer. The update check is a local diff of the two — the same
+/// construction LuCI's software page presents.
+public struct PackageLists: Equatable, Sendable {
+    public var manager: PackageManager
+    public var installed: [InstalledPackage]
+    public var available: [InstalledPackage]
+    public init(manager: PackageManager, installed: [InstalledPackage], available: [InstalledPackage]) {
+        self.manager = manager
+        self.installed = installed
+        self.available = available
+    }
+}
+
+/// The local half of the update check: which installed packages the
+/// feeds offer at a different version. Lines keep the opkg
+/// list-upgradable shape ("name - installed - available") the UI
+/// has always rendered and name-matched against.
+public enum PackageListDiff {
+    public static func upgradableLines(installed: [InstalledPackage],
+                                       available: [InstalledPackage]) -> [String] {
+        let installedVersions = Dictionary(installed.map { ($0.name, $0.version) },
+                                           uniquingKeysWith: { first, _ in first })
+        return available.compactMap { candidate -> String? in
+            guard let current = installedVersions[candidate.name],
+                  current != candidate.version else { return nil }
+            return "\(candidate.name) - \(current) - \(candidate.version)"
+        }.sorted()
+    }
+}
+
 /// The L3 read-only data plane (spec section 1). Every read the phase-1
 /// pages need goes through here on top of UbusCalling, so session renewal
 /// and transport stay single-sourced. Nothing in this type writes.
@@ -306,32 +338,72 @@ public struct ReadOnlyDataClient: Sendable {
         return output
     }
 
-    // MARK: Package update check (online upgrade page)
+    // MARK: Session access precheck (batch-2 gating)
 
-    /// Detects the router's package manager and lists upgradable
-    /// packages (audit F2). OpenWrt builds ship exactly one manager:
-    /// opkg (older / 24.x) or apk (25.x, e.g. the bypass router at
-    /// 192.168.31.167, measured 2026-11-21: /usr/bin/apk present,
-    /// opkg absent). The probe order keeps opkg first — the page's
-    /// historical behaviour — and falls to apk only when opkg does
-    /// not answer. Returns nil when neither manager answers, which
-    /// the UI must present as "cannot check", never as "no updates".
-    /// Once a manager is detected, a failing list command throws:
-    /// a failed check is a failure state, not an empty conclusion.
-    public func upgradablePackages() async throws -> UpgradablePackages? {
-        if (try? await exec(command: "/bin/opkg", arguments: ["--version"])) != nil {
-            let output = try await exec(command: "/bin/opkg", arguments: ["list-upgradable"])
-            return UpgradablePackages(manager: .opkg, lines: Self.outputLines(output))
-        }
-        if (try? await exec(command: "/usr/bin/apk", arguments: ["--version"])) != nil {
-            let output = try await exec(command: "/usr/bin/apk", arguments: ["list", "--upgradable"])
-            return UpgradablePackages(manager: .apk, lines: Self.outputLines(output))
-        }
-        return nil
+    /// Asks rpcd whether THIS session may use one (scope, object,
+    /// function) triple — the same question rpcd answers before
+    /// every call, asked up front so an entry can be greyed out with
+    /// an explanation instead of failing after the fact. Never
+    /// throws: a check that cannot be answered reads as "not
+    /// granted", which is the safe direction for a gate.
+    public func sessionAccess(scope: String, object: String, function: String) async -> Bool {
+        guard let value = try? await caller.call(object: "session", method: "access", parameters: [
+            "scope": .string(scope), "object": .string(object), "function": .string(function)
+        ]) else { return false }
+        return value["access"].boolValue == true
     }
 
-    private static func outputLines(_ output: String) -> [String] {
-        output.split(whereSeparator: \.isNewline).map(String.init)
+    // MARK: Bandwidth data (nlbwmon)
+
+    /// The nlbwmon accounting dump through the action helper LuCI's
+    /// bandwidth page uses (`nlbwmon-action download`, granted to
+    /// login sessions; the bare `/usr/sbin/nlbw` exec is NOT granted
+    /// anywhere, verified 2026-11-21). Default output is the same
+    /// JSON dump BandwidthParser already reads. Returns nil when the
+    /// helper is refused or absent — the component is not installed
+    /// or not exposed to this session — so the page can say exactly
+    /// that instead of a generic permission failure.
+    public func bandwidthDownload() async throws -> String? {
+        let value: JSONValue
+        do {
+            value = try await caller.call(object: "file", method: "exec", parameters: [
+                "command": .string("/usr/libexec/nlbwmon-action"),
+                "params": .array([.string("download"), .string("-f"), .string("json")])
+            ])
+        } catch OpenWrtKitError.permissionDenied {
+            return nil
+        }
+        guard value["code"].intValue == 0, let output = value["stdout"].stringValue else {
+            return nil
+        }
+        return output
+    }
+
+    // MARK: Package update check (online upgrade page)
+
+    /// Lists upgradable packages (audit F2) by diffing the router's
+    /// installed and available lists, both fetched through the
+    /// package-manager helper (cgi-exec) — the channel LuCI's
+    /// software page uses. The previous construction probed and ran
+    /// the bare opkg/apk binaries over file exec; rpcd grants no
+    /// exec key for either binary on any measured firmware, so the
+    /// check could only ever report "cannot check" (permission
+    /// audit #10). Returns nil when the session cannot query package
+    /// lists at all, which the UI presents as "cannot check", never
+    /// as "no updates"; a list fetch that fails after the channel
+    /// answered throws — a failed check is a failure state, not an
+    /// empty conclusion.
+    public func upgradablePackages() async throws -> UpgradablePackages? {
+        let lists: PackageLists
+        do {
+            lists = try await caller.packageLists()
+        } catch OpenWrtKitError.unsupported {
+            return nil
+        }
+        return UpgradablePackages(
+            manager: lists.manager,
+            lines: PackageListDiff.upgradableLines(installed: lists.installed,
+                                                   available: lists.available))
     }
 
     private func capture<T: Sendable>(_ operation: @Sendable () async throws -> T) async -> Result<T, Error> {

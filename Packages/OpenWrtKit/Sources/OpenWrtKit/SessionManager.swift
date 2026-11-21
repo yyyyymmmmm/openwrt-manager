@@ -136,6 +136,33 @@ public actor SessionManager {
         }
     }
 
+    /// Package lists (installed + available) through the helper:
+    /// same session discipline as the installed list.
+    public func packageLists() async throws -> PackageLists {
+        let session = try await session()
+        do {
+            return try await client.packageLists(session: session)
+        } catch OpenWrtKitError.permissionDenied {
+            invalidate(ifMatching: session)
+            let renewed = try await login()
+            return try await client.packageLists(session: renewed)
+        }
+    }
+
+    /// Configuration backup through cgi-io: same renewal discipline.
+    /// cgi-io reports a stale or refused session as HTTP 403 rather
+    /// than a ubus permission error, so both shapes renew once.
+    public func backupArchive() async throws -> Data {
+        let session = try await session()
+        do {
+            return try await client.backupArchive(session: session)
+        } catch OpenWrtKitError.permissionDenied, OpenWrtKitError.http(403) {
+            invalidate(ifMatching: session)
+            let renewed = try await login()
+            return try await client.backupArchive(session: renewed)
+        }
+    }
+
     /// Package actions (audit F7): same session discipline as the
     /// installed list — one permission rejection renews the session
     /// and retries exactly once. Note the retry re-runs the helper;

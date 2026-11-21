@@ -398,5 +398,10 @@ extension KitL10n {
         "上传镜像中途失败，已清除路由器上的残缺镜像文件。原因：%@": "The image upload failed partway; the partial image file on the router was removed. Reason: %@",
         "镜像与提供的 SHA-256 不一致：提供值 %@，镜像实际 %@。已中止，未执行升级。": "The image does not match the provided SHA-256: provided %@, actual image %@. Aborted; the upgrade was not performed.",
         "无法读取路由器可用空间。": "Could not read the router's free space.",
+        "路由器未返回软件包列表。": "The router did not return a package list.",
+        "此会话不支持软件包列表查询。": "This session does not support package list queries.",
+        "此会话不支持配置备份下载。": "This session does not support configuration backup downloads.",
+        "接口 %@ 未能重新启动（ifup 返回 %lld）。": "Interface %@ could not be restarted (ifup returned %lld).",
+        "路由器未授权此功能：这台固件没有向 App 登录会话开放这项操作，重新登录也不会改变。": "The router has not authorized this feature: this firmware does not expose this operation to app login sessions, and signing in again will not change that.",
 ]
 }

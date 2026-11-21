@@ -204,6 +204,24 @@ public struct FileClient: Sendable {
         return digest
     }
 
+    /// A sysupgrade configuration backup produced by the router's
+    /// cgi-io backup endpoint (see UbusClient.backupArchive): the
+    /// file plane cannot create one — `sysupgrade --create-backup`
+    /// has no exec grant for login sessions.
+    public func downloadSysupgradeBackup() async throws -> Data {
+        try await caller.backupArchive()
+    }
+
+    /// Free space on /tmp and the overlay via `luci getMountPoints`
+    /// (granted to login sessions on both test routers; the previous
+    /// source, a `/bin/df` exec, has no grant anywhere). Values in
+    /// the response are bytes — verified against df on both routers
+    /// 2026-11-21.
+    public func mountSpace() async throws -> RouterStorageSpace {
+        let value = try await caller.call(object: "luci", method: "getMountPoints")
+        return MountPointsParser.parse(value)
+    }
+
     /// Runs a fixed command through file exec and returns (code, stdout).
     public func exec(command: String, arguments: [String]) async throws -> (code: Int, stdout: String) {
         let value = try await caller.call(object: "file", method: "exec", parameters: [

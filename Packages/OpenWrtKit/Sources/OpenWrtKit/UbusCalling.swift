@@ -9,6 +9,14 @@ public protocol UbusCalling: Sendable {
     func call(object: String, method: String, parameters: [String: JSONValue]) async throws -> JSONValue
     func menu() async throws -> JSONValue
     func installedPackages() async throws -> [InstalledPackage]
+    /// Installed + available package lists through the router's
+    /// package-manager helper (cgi-exec). Default: unsupported —
+    /// only session-owning callers implement it.
+    func packageLists() async throws -> PackageLists
+    /// A sysupgrade backup archive produced by the router's cgi-io
+    /// backup endpoint. Default: unsupported — only session-owning
+    /// callers implement it.
+    func backupArchive() async throws -> Data
     /// Package install / upgrade / remove through the router's
     /// package-manager helper (audit F7). Default: unsupported —
     /// only session-owning callers implement it.
@@ -36,6 +44,14 @@ public protocol UbusCalling: Sendable {
 extension UbusCalling {
     public func packageManagerAction(action: PackageActionKind, packages: [String]) async throws -> PackageActionOutcome {
         throw OpenWrtKitError.unsupported(KitL10n.text("此会话不支持软件包安装/卸载操作。"))
+    }
+
+    public func packageLists() async throws -> PackageLists {
+        throw OpenWrtKitError.unsupported(KitL10n.text("此会话不支持软件包列表查询。"))
+    }
+
+    public func backupArchive() async throws -> Data {
+        throw OpenWrtKitError.unsupported(KitL10n.text("此会话不支持配置备份下载。"))
     }
 
     public func destroySession() async {}
@@ -80,6 +96,14 @@ public struct FixedSessionCaller: UbusCalling {
 
     public func installedPackages() async throws -> [InstalledPackage] {
         try await client.installedPackages(session: session)
+    }
+
+    public func packageLists() async throws -> PackageLists {
+        try await client.packageLists(session: session)
+    }
+
+    public func backupArchive() async throws -> Data {
+        try await client.backupArchive(session: session)
     }
 
     public func packageManagerAction(action: PackageActionKind, packages: [String]) async throws -> PackageActionOutcome {

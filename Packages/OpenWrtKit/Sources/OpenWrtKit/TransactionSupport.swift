@@ -102,12 +102,29 @@ public struct SystemControlClient: Sendable {
     }
 
     /// WAN redial (package B quick action): cycle one network
-    /// interface down and back up through its own ubus object — the
-    /// same call LuCI's interface "Restart" makes. The down call is
-    /// allowed to fail (the interface may already be down); the up
-    /// call is the verdict and its failure propagates.
+    /// interface down and back up. The per-interface ubus objects
+    /// cannot carry this — acl.d grants network.interface only the
+    /// `dump` method to login sessions (permission audit #2) — so
+    /// the cycle runs through the ifdown/ifup file-exec keys, which
+    /// both test firmwares grant (luci-mod-network-config). The
+    /// down call is allowed to fail (the interface may already be
+    /// down); the up call is the verdict and its failure propagates.
     public func restartInterface(name: String) async throws {
-        _ = try? await caller.call(object: "network.interface.\(name)", method: "down")
-        _ = try await caller.call(object: "network.interface.\(name)", method: "up")
+        guard InventoryParser.validIdentifier(name) else { throw ConfigurationError.invalidIdentifier }
+        _ = try? await exec(command: "/sbin/ifdown", arguments: [name])
+        let (code, _) = try await exec(command: "/sbin/ifup", arguments: [name])
+        guard code == 0 else {
+            throw OpenWrtKitError.unsupported(KitL10n.format("接口 %@ 未能重新启动（ifup 返回 %lld）。", name, Int64(code)))
+        }
+    }
+
+    /// Runs a fixed command through rpcd's file exec and returns
+    /// (code, stdout) — the FileClient.exec shape, for callers that
+    /// hold only the session caller.
+    private func exec(command: String, arguments: [String]) async throws -> (code: Int, stdout: String) {
+        let value = try await caller.call(object: "file", method: "exec", parameters: [
+            "command": .string(command), "params": .array(arguments.map(JSONValue.string))
+        ])
+        return (value["code"].intValue ?? -1, value["stdout"].stringValue ?? "")
     }
 }
