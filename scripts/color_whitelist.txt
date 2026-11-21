@@ -4,6 +4,20 @@
 # direct system colors. Exceptions below, each with its reason.
 # Format: "file:<path>" exempts one whole file; "path :: substring"
 # exempts the matching lines of one file.
+#
+# Large-area rule (package P, enforced by audit_semantic_fills in
+# audit_release.py): a semantic status color (green/blue/orange/red
+# and their soft variants) may appear at small area only — dots,
+# icons, label glyphs. Large-area fills — banner and card
+# backgrounds, capsule grounds, meter bars, bands — come from the
+# themed accent ramp or the neutrals (canvas/surface/line/muted),
+# never from a status color: a green worn as a fill reads as the
+# page's main color, not as a status. The one exemption is warning
+# surfaces (SummaryBanner warning/bad tones, the ReadStatus strip,
+# ErrorStateView), whose orange/red soft fill is itself the alarm.
+# The machine check covers the shared components (SummaryBanner,
+# MeterBar, GradeChip, FreshnessBadge, StatusBadge); one-off views
+# follow the same rule by review.
 
 # DesignSystem.swift IS the palette: every token's light/dark pair is
 # defined there by hex (including the primary button's .white on the

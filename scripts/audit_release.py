@@ -86,7 +86,8 @@ def main():
               "localization": audit_localization(args.repository.resolve()),
               "english_literals": audit_english_literals(args.repository.resolve()),
               "rawvalue_display": audit_rawvalue_display(args.repository.resolve()),
-              "hardcoded_colors": audit_hardcoded_colors(args.repository.resolve())}
+              "hardcoded_colors": audit_hardcoded_colors(args.repository.resolve()),
+              "semantic_fills": audit_semantic_fills(args.repository.resolve())}
     if args.ipa:
         result["ipa"] = audit_ipa(args.ipa.resolve())
     print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -468,6 +469,91 @@ def audit_hardcoded_colors(repository):
     if errors:
         raise ValueError("Hardcoded-color audit failed:\n" + "\n".join(errors))
     return {"color_sites_checked": checked}
+
+
+
+# ---------------------------------------------------------------------------
+# Large-area semantic-fill audit (package P, 2026-11-21)
+#
+# Package O classified every green on screen as status semantics and
+# stopped there — but classification ignored visual area. A status
+# green worn as a banner background, a capsule fill or a meter bar
+# stops reading as "status" and becomes the page's main color,
+# whatever the theme says. The doctrine since package P: semantic
+# colors appear at small area only — dots, icons, label glyphs;
+# large-area fills (backgrounds, bars, bands) come from the themed
+# accent ramp or the neutrals. Warning surfaces are the one
+# exemption: the SummaryBanner warning/bad tones, the ReadStatus
+# strip and ErrorStateView wear orange/red soft fills because there
+# the fill itself is the alarm.
+#
+# What a text scan can honestly assert, it asserts here, over the
+# shared components where those fills live:
+#   * InsightComponents.swift / SharedComponents.swift hold no
+#     greenSoft / blueSoft reference, no grade.soft background and
+#     no Capsule filled with grade.tint — the historical offenders
+#     (the good banner's ground, the grade chip's ground, the meter
+#     bar). A Circle filled with grade.tint is the grade dot and
+#     stays legal, so the meter pattern names the Capsule.
+#   * The StatusBadge struct in DesignSystem.swift sources no Soft
+#     token at all — its ground is neutral. The check is scoped to
+#     the struct; the palette's own token definitions live in a
+#     different declaration in the same file and are not read.
+# What the scan cannot assert — that no future one-off view paints
+# a big semantic fill — stays a review rule, written into
+# scripts/color_whitelist.txt beside the scan it extends.
+# ---------------------------------------------------------------------------
+
+_SEMANTIC_FILL_FILES = ("App/Views/InsightComponents.swift",
+                        "App/Views/SharedComponents.swift")
+_SEMANTIC_FILL_RE = re.compile(r"greenSoft|blueSoft|grade\.soft|Capsule\(\)\.fill\(grade\.tint\)")
+
+
+def _struct_block(lines, declaration):
+    """One top-level struct's lines, from its declaration to the
+    closing brace at column zero — enough to scope a check to a
+    single component without parsing Swift."""
+    start = next((i for i, line in enumerate(lines) if line.startswith(declaration)), None)
+    if start is None:
+        return []
+    block = []
+    for line in lines[start:]:
+        block.append(line)
+        if line == "}":
+            break
+    return block
+
+
+def audit_semantic_fills(repository):
+    errors = []
+    checked = 0
+    for relative in _SEMANTIC_FILL_FILES:
+        source = repository / relative
+        if not source.is_file():
+            continue
+        checked += 1
+        for number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
+            if line.strip().startswith("//"):
+                continue
+            if _SEMANTIC_FILL_RE.search(line):
+                errors.append(
+                    f"{relative}:{number}: large-area semantic fill in a shared component "
+                    f"(package P doctrine — fills wear the accent ramp or neutrals): {line.strip()!r}")
+    badge_file = repository / "App/Views/DesignSystem.swift"
+    if badge_file.is_file():
+        checked += 1
+        block = _struct_block(badge_file.read_text(encoding="utf-8").splitlines(),
+                              "struct StatusBadge")
+        for line in block:
+            if line.strip().startswith("//"):
+                continue
+            if "Soft" in line:
+                errors.append(
+                    f"App/Views/DesignSystem.swift: StatusBadge sources a soft fill "
+                    f"(package P doctrine — its ground stays neutral): {line.strip()!r}")
+    if errors:
+        raise ValueError("Semantic-fill audit failed:\n" + "\n".join(errors))
+    return {"semantic_fill_files_checked": checked}
 
 
 if __name__ == "__main__":

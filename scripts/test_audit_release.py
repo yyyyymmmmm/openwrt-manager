@@ -6,7 +6,8 @@ import zipfile
 from pathlib import Path
 
 from audit_release import (audit_english_literals, audit_hardcoded_colors, audit_ipa,
-                           audit_localization, audit_rawvalue_display, audit_sources)
+                           audit_localization, audit_rawvalue_display, audit_semantic_fills,
+                           audit_sources)
 
 
 class ReleaseAuditTests(unittest.TestCase):
@@ -251,6 +252,65 @@ class HardcodedColorAuditTests(unittest.TestCase):
             "// Was .green before package O.\nimport SwiftUI\n", encoding="utf-8")
         result = audit_hardcoded_colors(self.root)
         self.assertEqual(result["color_sites_checked"], 0)
+
+
+class SemanticFillAuditTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        (self.root / "App/Views").mkdir(parents=True)
+
+    def write(self, name, text):
+        (self.root / "App/Views" / name).write_text(text, encoding="utf-8")
+
+    def test_green_soft_banner_ground_fails(self):
+        self.write("InsightComponents.swift",
+                   "import SwiftUI\n.background(AppPalette.greenSoft, in: Capsule())\n")
+        with self.assertRaisesRegex(ValueError, "Semantic-fill audit"):
+            audit_semantic_fills(self.root)
+
+    def test_grade_soft_chip_ground_fails(self):
+        self.write("InsightComponents.swift",
+                   "import SwiftUI\n.background(grade.soft, in: Capsule())\n")
+        with self.assertRaisesRegex(ValueError, "Semantic-fill audit"):
+            audit_semantic_fills(self.root)
+
+    def test_meter_bar_grade_tint_fill_fails(self):
+        self.write("InsightComponents.swift",
+                   "import SwiftUI\nCapsule().fill(grade.tint)\n")
+        with self.assertRaisesRegex(ValueError, "Semantic-fill audit"):
+            audit_semantic_fills(self.root)
+
+    def test_status_badge_soft_ground_fails(self):
+        self.write("DesignSystem.swift",
+                   "enum AppPalette {\n    static let greenSoft = color(0xEAF5ED, 0x1C3627)\n}\n"
+                   "struct StatusBadge: View {\n"
+                   "    var body: some View {\n"
+                   "        Text(\"x\").background(AppPalette.greenSoft, in: Capsule())\n"
+                   "    }\n"
+                   "}\n")
+        with self.assertRaisesRegex(ValueError, "Semantic-fill audit"):
+            audit_semantic_fills(self.root)
+
+    def test_grade_dot_and_warning_soft_pass(self):
+        self.write("InsightComponents.swift",
+                   "import SwiftUI\nCircle().fill(grade.tint).frame(width: 7, height: 7)\n"
+                   "Capsule().fill(grade.meterFill)\n.background(AppPalette.accentSoft, in: Capsule())\n")
+        self.write("SharedComponents.swift",
+                   "import SwiftUI\n.background(AppPalette.orangeSoft, in: RoundedRectangle(cornerRadius: 13))\n")
+        result = audit_semantic_fills(self.root)
+        self.assertEqual(result["semantic_fill_files_checked"], 2)
+
+    def test_neutral_status_badge_passes(self):
+        self.write("DesignSystem.swift",
+                   "struct StatusBadge: View {\n"
+                   "    var body: some View {\n"
+                   "        Text(\"x\").background(AppPalette.canvas, in: Capsule())\n"
+                   "    }\n"
+                   "}\n")
+        result = audit_semantic_fills(self.root)
+        self.assertEqual(result["semantic_fill_files_checked"], 1)
 
 
 if __name__ == "__main__":
