@@ -100,4 +100,14 @@ public struct SystemControlClient: Sendable {
     public func reboot() async throws {
         _ = try await caller.call(object: "system", method: "reboot")
     }
+
+    /// WAN redial (package B quick action): cycle one network
+    /// interface down and back up through its own ubus object — the
+    /// same call LuCI's interface "Restart" makes. The down call is
+    /// allowed to fail (the interface may already be down); the up
+    /// call is the verdict and its failure propagates.
+    public func restartInterface(name: String) async throws {
+        _ = try? await caller.call(object: "network.interface.\(name)", method: "down")
+        _ = try await caller.call(object: "network.interface.\(name)", method: "up")
+    }
 }

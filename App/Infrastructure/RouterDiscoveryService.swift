@@ -2,11 +2,17 @@ import Foundation
 import Network
 import Observation
 import Darwin
+import OpenWrtKit
 
 struct DiscoveredRouter: Identifiable, Hashable, Sendable {
     let address: String
     let name: String
     let source: String
+    var model: String? = nil
+    var firmware: String? = nil
+    /// True only when the OpenWrt fingerprint check passed — an open
+    /// web port alone never earns this.
+    var verified = false
     var id: String { address }
 }
 
@@ -16,6 +22,15 @@ private struct ProbeTarget: Sendable {
     var address: String { "\(port == 443 ? "https" : "http")://\(host)" }
 }
 
+/// LAN auto-discovery (package B, item 4 — replaces the original
+/// whole-subnet web-port sweep): probe only the handful of addresses
+/// a home router actually sits at (gateway-first, from the kit's
+/// DiscoveryCandidates), then verify each open port is really
+/// OpenWrt before listing it — LuCI login-page fingerprint first,
+/// the anonymous ubus board call for model/firmware when the build
+/// answers it. Bonjour services are verified the same way when they
+/// resolve. Nothing here logs in; credentials stay in the normal
+/// add flow that follows a tap.
 @MainActor @Observable
 final class RouterDiscoveryService {
     private(set) var results: [DiscoveredRouter] = []
@@ -41,7 +56,7 @@ final class RouterDiscoveryService {
         hasScanned = true
         isScanning = true
         startBonjour(generation: run)
-        let hosts = Self.localIPv4Candidates()
+        let hosts = Self.localGatewayCandidates()
         let targets = hosts.flatMap { host in
             [ProbeTarget(host: host, port: 80), ProbeTarget(host: host, port: 443)]
         }
@@ -49,12 +64,13 @@ final class RouterDiscoveryService {
         if targets.isEmpty {
             message = L10n.string("未获取到 Wi-Fi IPv4 网段，正在尝试 Bonjour 发现。你也可以手动输入地址。")
         } else {
-            message = L10n.string("检查当前 Wi-Fi 所在网段的 80 / 443 端口；较大的网段仅检查手机所在的 /24 范围。")
+            message = L10n.string("只检查网关等少数常用地址，并逐个验证是否为 OpenWrt，不做全网段扫描。")
         }
         scanTask = Task { [weak self] in
+            var openTargets: [ProbeTarget] = []
             await withTaskGroup(of: (ProbeTarget, Bool).self) { group in
                 var next = 0
-                for _ in 0..<min(16, targets.count) {
+                for _ in 0..<min(8, targets.count) {
                     let target = targets[next]
                     next += 1
                     group.addTask { (target, await TCPProbe.check(host: target.host, port: target.port)) }
@@ -65,9 +81,7 @@ final class RouterDiscoveryService {
                         return
                     }
                     self.completed += 1
-                    if open {
-                        self.insert(.init(address: target.address, name: target.host, source: L10n.string("开放 Web 端口 · 尚未验证 OpenWrt")))
-                    }
+                    if open { openTargets.append(target) }
                     if next < targets.count {
                         let target = targets[next]
                         next += 1
@@ -75,9 +89,24 @@ final class RouterDiscoveryService {
                     }
                 }
             }
+            guard let self, self.generation == run, !Task.isCancelled else { return }
+            // Verification phase: an open port is a lead, not a result.
+            for target in openTargets {
+                guard self.generation == run, !Task.isCancelled else { return }
+                let check = await OpenWrtProbe.verify(host: target.host, port: target.port)
+                guard self.generation == run, !Task.isCancelled else { return }
+                if check.isOpenWrt {
+                    self.insert(.init(address: target.address,
+                                      name: check.board?.hostname ?? target.host,
+                                      source: L10n.string("已验证为 OpenWrt"),
+                                      model: check.board?.model,
+                                      firmware: check.board?.firmware,
+                                      verified: true))
+                }
+            }
             // Give Bonjour time to resolve when no IPv4 interface was available.
             if targets.isEmpty { try? await Task.sleep(for: .seconds(4)) }
-            guard let self, self.generation == run, !Task.isCancelled else { return }
+            guard self.generation == run, !Task.isCancelled else { return }
             self.finish()
         }
     }
@@ -99,9 +128,19 @@ final class RouterDiscoveryService {
     }
 
     private func insert(_ result: DiscoveredRouter) {
-        guard !results.contains(where: { $0.id == result.id }) else { return }
+        if let index = results.firstIndex(where: { $0.id == result.id }) {
+            // A verified result upgrades an unverified entry for the
+            // same address; never the other way round.
+            if result.verified && !results[index].verified {
+                results[index] = result
+            }
+            return
+        }
         results.append(result)
-        results.sort { $0.address.localizedStandardCompare($1.address) == .orderedAscending }
+        results.sort {
+            if $0.verified != $1.verified { return $0.verified && !$1.verified }
+            return $0.address.localizedStandardCompare($1.address) == .orderedAscending
+        }
     }
 
     private func startBonjour(generation run: UUID) {
@@ -138,12 +177,22 @@ final class RouterDiscoveryService {
                             @unknown default: return
                             }
                             let scheme = type == "_https._tcp" ? "https" : "http"
+                            let address = "\(scheme)://\(hostText):\(port.rawValue)"
                             Task { @MainActor [weak self] in
                                 guard let self, self.generation == run, self.isScanning else { return }
-                                self.insert(.init(
-                                    address: "\(scheme)://\(hostText):\(port.rawValue)",
-                                    name: name, source: L10n.string("Bonjour Web 服务 · 尚未验证 OpenWrt")
-                                ))
+                                // Listed at once as an unverified
+                                // Bonjour lead, then upgraded in place
+                                // when the fingerprint check passes.
+                                self.insert(.init(address: address, name: name,
+                                                  source: L10n.string("Bonjour Web 服务 · 尚未验证 OpenWrt")))
+                                let check = await OpenWrtProbe.verify(host: hostText, port: port.rawValue)
+                                guard self.generation == run, check.isOpenWrt else { return }
+                                self.insert(.init(address: address,
+                                                  name: check.board?.hostname ?? name,
+                                                  source: L10n.string("Bonjour · 已验证为 OpenWrt"),
+                                                  model: check.board?.model,
+                                                  firmware: check.board?.firmware,
+                                                  verified: true))
                             }
                         case .failed, .cancelled:
                             connection.stateUpdateHandler = nil
@@ -162,14 +211,13 @@ final class RouterDiscoveryService {
         }
     }
 
-    /// No guessed remote subnets: inspect only the active Wi-Fi IPv4 interface.
-    /// A /16 or larger network is bounded to this phone's /24.
-    private static func localIPv4Candidates() -> [String] {
+    /// Gateway-first candidates inside the phone's own /24, computed
+    /// by the kit (the list itself is unit-tested there).
+    private static func localGatewayCandidates() -> [String] {
         var first: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&first) == 0, let first else { return [] }
         defer { freeifaddrs(first) }
         var cursor: UnsafeMutablePointer<ifaddrs>? = first
-        var hosts = Set<String>()
         while let current = cursor {
             defer { cursor = current.pointee.ifa_next }
             let interface = current.pointee
@@ -182,17 +230,81 @@ final class RouterDiscoveryService {
             let mask = maskAddress.withMemoryRebound(to: sockaddr_in.self, capacity: 1) {
                 UInt32(bigEndian: $0.pointee.sin_addr.s_addr)
             }
-            // Broad networks are capped at /24; narrower masks stay intact.
-            let boundedMask = mask | 0xFFFFFF00
-            let network = ip & boundedMask
-            let broadcast = network | ~boundedMask
-            guard broadcast > network + 1 else { continue }
-            for candidate in (network + 1)..<broadcast where candidate != ip {
-                let octets = [24, 16, 8, 0].map { String((candidate >> $0) & 255) }
-                hosts.insert(octets.joined(separator: "."))
-            }
+            return DiscoveryCandidates.hosts(phoneIP: dotted(ip), netmask: dotted(mask))
         }
-        return hosts.sorted()
+        return []
+    }
+
+    private static func dotted(_ value: UInt32) -> String {
+        [24, 16, 8, 0].map { String((value >> $0) & 255) }.joined(separator: ".")
+    }
+}
+
+/// The OpenWrt fingerprint probe. Its URLSession accepts any server
+/// trust because this step only *identifies* a LAN candidate by its
+/// public login page — no credential is ever sent through it. The
+/// address it returns still goes through the normal login flow,
+/// whose own certificate handling runs before a password is typed.
+private enum OpenWrtProbe {
+    struct Result {
+        var isOpenWrt: Bool
+        var board: OpenWrtFingerprint.BoardInfo?
+    }
+
+    private static let session: URLSession = {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 4
+        configuration.timeoutIntervalForResource = 6
+        configuration.urlCache = nil
+        configuration.httpCookieStorage = nil
+        return URLSession(configuration: configuration,
+                          delegate: ProbeTrustDelegate(), delegateQueue: nil)
+    }()
+
+    static func verify(host: String, port: UInt16) async -> Result {
+        let scheme = port == 443 ? "https" : "http"
+        let authority = (port == 80 || port == 443) ? host : "\(host):\(port)"
+        let base = "\(scheme)://\(authority)"
+        if let url = URL(string: "\(base)/cgi-bin/luci/"),
+           let (data, _) = try? await session.data(for: request(url)),
+           let html = String(data: data, encoding: .utf8),
+           OpenWrtFingerprint.looksLikeLuCI(html: html) {
+            return Result(isOpenWrt: true, board: await boardInfo(base: base))
+        }
+        // Some builds redirect or gate the login page yet still answer
+        // the board call; that answer is itself strong evidence.
+        if let board = await boardInfo(base: base) {
+            return Result(isOpenWrt: true, board: board)
+        }
+        return Result(isOpenWrt: false, board: nil)
+    }
+
+    private static func boardInfo(base: String) async -> OpenWrtFingerprint.BoardInfo? {
+        guard let url = URL(string: "\(base)/ubus") else { return nil }
+        var post = request(url)
+        post.httpMethod = "POST"
+        post.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        post.httpBody = Data(#"{"jsonrpc":"2.0","id":1,"method":"call","params":["00000000000000000000000000000000","system","board",{}]}"#.utf8)
+        guard let (data, _) = try? await session.data(for: post) else { return nil }
+        return OpenWrtFingerprint.boardInfo(from: data)
+    }
+
+    private static func request(_ url: URL) -> URLRequest {
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 4
+        return request
+    }
+}
+
+private final class ProbeTrustDelegate: NSObject, URLSessionDelegate {
+    func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
+                    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+              let trust = challenge.protectionSpace.serverTrust else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+        completionHandler(.useCredential, URLCredential(trust: trust))
     }
 }
 

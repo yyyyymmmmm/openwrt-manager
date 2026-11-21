@@ -477,6 +477,19 @@ final class RouterStore {
         recordActivity(L10n.string("已发送重启指令"), detail: L10n.string("路由器正在重启，连接将中断数分钟。"), isWarning: true, category: .session)
     }
 
+    /// WAN redial (package B quick action): cycle the discovered
+    /// upstream interface down/up through the same session channel as
+    /// every other action. Callers verify recovery by refreshing and
+    /// watching the interface state; the call itself only dials.
+    func redialWAN() async throws {
+        guard !isMutating, pendingConfiguration == nil, let sessionManager else { throw ConfigurationError.busy }
+        guard let upstream = capability?.upstream else {
+            throw AppFailure.storage(L10n.string("未发现上游接口，无法重拨。"))
+        }
+        try await SystemControlClient(caller: sessionManager).restartInterface(name: upstream.interfaceName)
+        recordActivity(L10n.string("已重拨 WAN"), detail: L10n.format("接口 %@ 已重新拨号，等待恢复连接。", upstream.interfaceName), isWarning: true, category: .session)
+    }
+
     func records(_ kind: RouterRecordKind) async throws -> [JSONValue] {
         guard let reader else { throw OpenWrtKitError.authenticationFailed }
         return try await reader.records(kind)

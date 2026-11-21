@@ -9537,6 +9537,1740 @@
           }
         }
       }
+    },
+    "%@：%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@：%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: %@"
+          }
+        }
+      }
+    },
+    "路由器离线": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路由器离线"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Router Offline"
+          }
+        }
+      }
+    },
+    "连续两次无法读取路由器状态，可能已断电、重启或网络中断。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连续两次无法读取路由器状态，可能已断电、重启或网络中断。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Router state could not be read twice in a row. It may be powered off, rebooting, or cut off from the network."
+          }
+        }
+      }
+    },
+    "路由器已恢复": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路由器已恢复"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Router Back Online"
+          }
+        }
+      }
+    },
+    "路由器重新可达。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路由器重新可达。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The router is reachable again."
+          }
+        }
+      }
+    },
+    "WAN 已断开": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WAN 已断开"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WAN Disconnected"
+          }
+        }
+      }
+    },
+    "上游接口报告未连接，外网可能不可用。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上游接口报告未连接，外网可能不可用。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The upstream interface reports no connection; internet access may be unavailable."
+          }
+        }
+      }
+    },
+    "WAN 已恢复": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WAN 已恢复"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WAN Restored"
+          }
+        }
+      }
+    },
+    "上游接口重新连接。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上游接口重新连接。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The upstream interface is connected again."
+          }
+        }
+      }
+    },
+    "系统负载过高": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "系统负载过高"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System Load High"
+          }
+        }
+      }
+    },
+    "1 分钟负载平均值 %.2f，持续超过阈值。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 分钟负载平均值 %.2f，持续超过阈值。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The 1-minute load average is %.2f and has stayed above the threshold."
+          }
+        }
+      }
+    },
+    "系统负载已回落": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "系统负载已回落"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System Load Recovered"
+          }
+        }
+      }
+    },
+    "负载恢复到阈值以内。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "负载恢复到阈值以内。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Load is back within the threshold."
+          }
+        }
+      }
+    },
+    "内存占用过高": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内存占用过高"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memory Usage High"
+          }
+        }
+      }
+    },
+    "内存占用 %.0f%%，持续超过阈值。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内存占用 %.0f%%，持续超过阈值。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memory usage is %.0f%% and has stayed above the threshold."
+          }
+        }
+      }
+    },
+    "内存占用已回落": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内存占用已回落"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memory Usage Recovered"
+          }
+        }
+      }
+    },
+    "内存恢复到阈值以内。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内存恢复到阈值以内。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memory usage is back within the threshold."
+          }
+        }
+      }
+    },
+    "新设备接入": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新设备接入"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Device Joined"
+          }
+        }
+      }
+    },
+    "新设备：%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新设备：%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New device: %@"
+          }
+        }
+      }
+    },
+    "监控已启动": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "监控已启动"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monitoring started"
+          }
+        }
+      }
+    },
+    "监控已停止": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "监控已停止"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monitoring stopped"
+          }
+        }
+      }
+    },
+    "后台采样完成": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "后台采样完成"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Background sample completed"
+          }
+        }
+      }
+    },
+    "后台采样失败": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "后台采样失败"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Background sample failed"
+          }
+        }
+      }
+    },
+    "只检查网关等少数常用地址，并逐个验证是否为 OpenWrt，不做全网段扫描。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只检查网关等少数常用地址，并逐个验证是否为 OpenWrt，不做全网段扫描。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only a few common gateway addresses are checked, each verified as OpenWrt. No whole-subnet sweep."
+          }
+        }
+      }
+    },
+    "已验证为 OpenWrt": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已验证为 OpenWrt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verified as OpenWrt"
+          }
+        }
+      }
+    },
+    "Bonjour · 已验证为 OpenWrt": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bonjour · 已验证为 OpenWrt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bonjour · Verified as OpenWrt"
+          }
+        }
+      }
+    },
+    "已重拨 WAN": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已重拨 WAN"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WAN Redialed"
+          }
+        }
+      }
+    },
+    "接口 %@ 已重新拨号，等待恢复连接。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "接口 %@ 已重新拨号，等待恢复连接。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interface %@ has redialed; waiting for the connection to recover."
+          }
+        }
+      }
+    },
+    "通知": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通知"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notifications"
+          }
+        }
+      }
+    },
+    "告警通过本地通知发出，不经过任何服务器。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "告警通过本地通知发出，不经过任何服务器。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alerts are delivered as local notifications; nothing passes through a server."
+          }
+        }
+      }
+    },
+    "规则": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "规则"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rules"
+          }
+        }
+      }
+    },
+    "路由器离线 / 恢复": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路由器离线 / 恢复"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Router Offline / Recovered"
+          }
+        }
+      }
+    },
+    "WAN 断开 / 恢复": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WAN 断开 / 恢复"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WAN Down / Recovered"
+          }
+        }
+      }
+    },
+    "负载阈值（1 分钟平均）": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "负载阈值（1 分钟平均）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Load Threshold (1-min average)"
+          }
+        }
+      }
+    },
+    "内存阈值": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内存阈值"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memory Threshold"
+          }
+        }
+      }
+    },
+    "持续超阈多久后告警": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "持续超阈多久后告警"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time Above Threshold Before Alerting"
+          }
+        }
+      }
+    },
+    "%lld 分钟": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 分钟"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld min"
+          }
+        }
+      }
+    },
+    "同类告警冷却": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同类告警冷却"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cooldown for Repeat Alerts"
+          }
+        }
+      }
+    },
+    "事件记录": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "事件记录"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Event Log"
+          }
+        }
+      }
+    },
+    "节奏与记录": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "节奏与记录"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Timing & Records"
+          }
+        }
+      }
+    },
+    "负载与内存需持续超阈才告警，避免瞬时尖峰打扰；离线与 WAN 需连续两次确认。触发与恢复成对通知，同类告警在冷却期内不重复。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "负载与内存需持续超阈才告警，避免瞬时尖峰打扰；离线与 WAN 需连续两次确认。触发与恢复成对通知，同类告警在冷却期内不重复。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Load and memory must stay above their thresholds before alerting, so brief spikes stay quiet; offline and WAN states need two consecutive confirmations. Firing and recovery arrive as a pair, and the same alert does not repeat during its cooldown."
+          }
+        }
+      }
+    },
+    "前台打开 App 时每 30 秒评估一次。App 在后台时由 iOS 决定何时唤醒采样（BGAppRefreshTask），可能间隔数小时，也可能不发生——离线告警以后台尽力而为为准，不能替代路由器自身的可用性保障。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前台打开 App 时每 30 秒评估一次。App 在后台时由 iOS 决定何时唤醒采样（BGAppRefreshTask），可能间隔数小时，也可能不发生——离线告警以后台尽力而为为准，不能替代路由器自身的可用性保障。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In the foreground the app evaluates every 30 seconds. In the background, iOS decides when sampling wakes (BGAppRefreshTask); it may be hours apart or not happen at all. Treat offline alerts as best-effort — they are not a substitute for the router’s own availability safeguards."
+          }
+        }
+      }
+    },
+    "后台限制": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "后台限制"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Background Limits"
+          }
+        }
+      }
+    },
+    "告警设置": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "告警设置"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alert Settings"
+          }
+        }
+      }
+    },
+    "通知权限": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通知权限"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notification Permission"
+          }
+        }
+      }
+    },
+    "已允许": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已允许"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allowed"
+          }
+        }
+      }
+    },
+    "去系统设置开启": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "去系统设置开启"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Settings to Enable"
+          }
+        }
+      }
+    },
+    "允许通知": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "允许通知"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow Notifications"
+          }
+        }
+      }
+    },
+    "暂无事件": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无事件"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Events Yet"
+          }
+        }
+      }
+    },
+    "操作与告警会记录在这里。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "操作与告警会记录在这里。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Operations and alerts will be recorded here."
+          }
+        }
+      }
+    },
+    "告警": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "告警"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alert"
+          }
+        }
+      }
+    },
+    "流量": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "流量"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traffic"
+          }
+        }
+      }
+    },
+    "近 1 小时": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 1 小时"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last Hour"
+          }
+        }
+      }
+    },
+    "近 24 小时": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 24 小时"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last 24 Hours"
+          }
+        }
+      }
+    },
+    "近 7 天": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近 7 天"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last 7 Days"
+          }
+        }
+      }
+    },
+    "范围": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "范围"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Range"
+          }
+        }
+      }
+    },
+    "暂无历史数据": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无历史数据"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No History Yet"
+          }
+        }
+      }
+    },
+    "保持连接一段时间后，这里会累积出曲线。App 未运行且后台采样未被系统调度的时段不会有数据。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持连接一段时间后，这里会累积出曲线。App 未运行且后台采样未被系统调度的时段不会有数据。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stay connected for a while and curves will accumulate here. Periods when the app was closed and background sampling was not scheduled by the system have no data."
+          }
+        }
+      }
+    },
+    "类型": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "类型"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type"
+          }
+        }
+      }
+    },
+    "曲线空白处是没有数据的时段（App 未运行、手机或路由器离线），未作补造。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "曲线空白处是没有数据的时段（App 未运行、手机或路由器离线），未作补造。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blank stretches are periods with no data (app closed, phone or router offline). Nothing was filled in."
+          }
+        }
+      }
+    },
+    "快捷动作": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快捷动作"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quick Actions"
+          }
+        }
+      }
+    },
+    "重拨 WAN": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重拨 WAN"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redial WAN"
+          }
+        }
+      }
+    },
+    "关闭 Wi-Fi": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭 Wi-Fi"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn Wi-Fi Off"
+          }
+        }
+      }
+    },
+    "开启 Wi-Fi": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开启 Wi-Fi"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn Wi-Fi On"
+          }
+        }
+      }
+    },
+    "确定要重启路由器吗？": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确定要重启路由器吗？"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restart this router?"
+          }
+        }
+      }
+    },
+    "全家网络将中断约 2–5 分钟，所有设备的连接都会断开。发送后 App 会自动等待路由器恢复并重新读取状态。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全家网络将中断约 2–5 分钟，所有设备的连接都会断开。发送后 App 会自动等待路由器恢复并重新读取状态。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The whole home network will be down for about 2–5 minutes and every device will disconnect. After sending, the app waits for the router to recover and re-reads its state."
+          }
+        }
+      }
+    },
+    "重新拨号 WAN？": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新拨号 WAN？"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redial WAN?"
+          }
+        }
+      }
+    },
+    "重拨": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重拨"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redial"
+          }
+        }
+      }
+    },
+    "外网会短暂中断（通常 10–60 秒），局域网不受影响。完成后 App 会核对 WAN 是否恢复连接。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "外网会短暂中断（通常 10–60 秒），局域网不受影响。完成后 App 会核对 WAN 是否恢复连接。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internet access will pause briefly (usually 10–60 seconds); the LAN is unaffected. The app then verifies that WAN reconnected."
+          }
+        }
+      }
+    },
+    "正在发送重启指令…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在发送重启指令…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sending the restart command…"
+          }
+        }
+      }
+    },
+    "已从概览页发起重启，等待恢复。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已从概览页发起重启，等待恢复。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restart started from the overview; waiting for recovery."
+          }
+        }
+      }
+    },
+    "路由器重启中，等待恢复…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路由器重启中，等待恢复…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Router is restarting; waiting for recovery…"
+          }
+        }
+      }
+    },
+    "路由器已恢复，状态已重新读取。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路由器已恢复，状态已重新读取。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The router recovered and its state was re-read."
+          }
+        }
+      }
+    },
+    "重启后重新登录成功，状态已刷新。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重启后重新登录成功，状态已刷新。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signed back in after the restart; state refreshed."
+          }
+        }
+      }
+    },
+    "等待超时，路由器尚未恢复。请检查电源与网络后手动刷新。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等待超时，路由器尚未恢复。请检查电源与网络后手动刷新。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Timed out waiting; the router has not recovered. Check its power and network, then refresh manually."
+          }
+        }
+      }
+    },
+    "重启后未恢复": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重启后未恢复"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Router Did Not Recover"
+          }
+        }
+      }
+    },
+    "等待约 7 分钟仍无法重新登录路由器。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等待约 7 分钟仍无法重新登录路由器。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Still unable to sign in to the router after about 7 minutes of waiting."
+          }
+        }
+      }
+    },
+    "正在重拨…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在重拨…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redialing…"
+          }
+        }
+      }
+    },
+    "已从概览页发起重拨，等待核对。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已从概览页发起重拨，等待核对。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redial started from the overview; waiting to verify."
+          }
+        }
+      }
+    },
+    "等待 WAN 恢复…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等待 WAN 恢复…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting for WAN to recover…"
+          }
+        }
+      }
+    },
+    "WAN 已恢复连接。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WAN 已恢复连接。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WAN is connected again."
+          }
+        }
+      }
+    },
+    "重拨完成": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重拨完成"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redial Complete"
+          }
+        }
+      }
+    },
+    "WAN 接口已恢复连接。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WAN 接口已恢复连接。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The WAN interface is connected again."
+          }
+        }
+      }
+    },
+    "等待超时，WAN 尚未恢复。请检查线路，或到接口页确认状态。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等待超时，WAN 尚未恢复。请检查线路，或到接口页确认状态。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Timed out waiting; WAN has not recovered. Check the line, or confirm the state on the Interfaces page."
+          }
+        }
+      }
+    },
+    "未找到无线设备配置，无法开关 Wi-Fi。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未找到无线设备配置，无法开关 Wi-Fi。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No wireless device configuration found; Wi-Fi cannot be toggled."
+          }
+        }
+      }
+    },
+    "已从概览页发起，经配置事务确认后生效。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已从概览页发起，经配置事务确认后生效。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Started from the overview; takes effect after the configuration transaction is confirmed."
+          }
+        }
+      }
+    },
+    "历史": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "历史"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "History"
+          }
+        }
+      }
+    },
+    "历史流量": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "历史流量"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traffic History"
+          }
+        }
+      }
+    },
+    "自动发现路由器": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动发现路由器"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discover Routers"
+          }
+        }
+      }
+    },
+    "连接路由器所在的 Wi-Fi，查找并验证 OpenWrt 路由器。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接路由器所在的 Wi-Fi，查找并验证 OpenWrt 路由器。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Join the router’s Wi-Fi to find and verify OpenWrt routers."
+          }
+        }
+      }
+    },
+    "只查常用网关地址": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只查常用网关地址"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Common Gateway Addresses Only"
+          }
+        }
+      }
+    },
+    "检查 .1 / .254 等少数地址，逐个验证是否为 OpenWrt，不做全网段扫描": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "检查 .1 / .254 等少数地址，逐个验证是否为 OpenWrt，不做全网段扫描"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checks a few addresses such as .1 / .254 and verifies each as OpenWrt; no whole-subnet sweep"
+          }
+        }
+      }
+    },
+    "发现只做识别，不会发送任何密码；登录在下一步由你完成": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发现只做识别，不会发送任何密码；登录在下一步由你完成"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discovery only identifies; no password is sent. You sign in yourself in the next step"
+          }
+        }
+      }
+    },
+    "局域网发现进度": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "局域网发现进度"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LAN discovery progress"
+          }
+        }
+      }
+    },
+    "已检查 %lld / %lld 个地址，正在验证 OpenWrt…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已检查 %lld / %lld 个地址，正在验证 OpenWrt…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checked %lld of %lld addresses; verifying OpenWrt…"
+          }
+        }
+      }
+    },
+    "发现的路由器": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发现的路由器"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Routers Found"
+          }
+        }
+      }
+    },
+    "已验证 OpenWrt": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已验证 OpenWrt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verified OpenWrt"
+          }
+        }
+      }
+    },
+    "没有发现 OpenWrt 路由器": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有发现 OpenWrt 路由器"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No OpenWrt Router Found"
+          }
+        }
+      }
+    },
+    "已检查网关等常用地址，均未通过 OpenWrt 验证。路由器可能在其他地址、使用 IPv6 或未广播服务。请确认 Wi-Fi，也可以手动输入管理网址。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已检查网关等常用地址，均未通过 OpenWrt 验证。路由器可能在其他地址、使用 IPv6 或未广播服务。请确认 Wi-Fi，也可以手动输入管理网址。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The usual gateway addresses were checked and none passed OpenWrt verification. The router may use another address, IPv6 only, or not advertise a service. Check your Wi-Fi, or enter the management address manually."
+          }
+        }
+      }
+    },
+    "自动发现只覆盖常用地址。使用自定义端口、VPN、蜂窝网络或网络隔离时，请手动连接。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动发现只覆盖常用地址。使用自定义端口、VPN、蜂窝网络或网络隔离时，请手动连接。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto-discovery covers common addresses only. With a custom port, VPN, cellular connection, or network isolation, connect manually."
+          }
+        }
+      }
+    },
+    "监控与告警": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "监控与告警"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monitoring & Alerts"
+          }
+        }
+      }
+    },
+    "未发现上游接口，无法重拨。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未发现上游接口，无法重拨。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No upstream interface was discovered; cannot redial."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

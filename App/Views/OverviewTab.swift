@@ -134,6 +134,14 @@ struct OverviewTabScreen: View {
                 LabeledContent("UPnP", value: L10n.string("已检出（详情见网络页）"))
             }
         }
+
+        QuickActionsSection()
+
+        Section("历史") {
+            HistoryChartView()
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+        }
     }
 
     private func memoryDetail(_ system: SystemSnapshot) -> String? {
@@ -378,6 +386,11 @@ struct RealtimeView: View {
             Section {
                 FreshnessBadge(freshness: store.freshnessPolicy.evaluate(
                     fetchedAt: store.realtimeUpdatedAt, now: Date()))
+            }
+            Section("历史流量") {
+                HistoryChartView(fixedMetric: .traffic)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
             }
         }
         .navigationTitle("实时信息")

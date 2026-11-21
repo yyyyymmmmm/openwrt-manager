@@ -3,7 +3,9 @@ import OpenWrtKit
 
 struct RootView: View {
     @Environment(RouterStore.self) private var store
+    @Environment(\.scenePhase) private var scenePhase
     @State private var showingRouterPicker = false
+    @State private var monitoring = MonitoringService()
 
     var body: some View {
         Group {
@@ -14,6 +16,8 @@ struct RootView: View {
                 ConnectFlowView(isModal: false)
             }
         }
+        .environment(monitoring)
+        .environment(EventLogStore.shared)
         .sheet(isPresented: $showingRouterPicker) {
             ConnectFlowView(isModal: true)
                 .presentationDragIndicator(.visible)
@@ -24,6 +28,15 @@ struct RootView: View {
         .task(id: store.connectionID) {
             guard store.hasConnection else { return }
             await store.refresh()
+        }
+        // Package B monitoring: samples history + evaluates alerts
+        // for the lifetime of this connection, reading only what the
+        // store already fetched.
+        .task(id: store.connectionID) {
+            await monitoring.run(store: store)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { BackgroundSampler.schedule() }
         }
         // Language changes (system or per-app) re-run the refresh,
         // whose language gate re-discovers when the snapshot's

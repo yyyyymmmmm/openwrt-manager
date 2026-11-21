@@ -11,6 +11,11 @@ struct OpenWrtManagerApp: App {
         // automatically through the String Catalog — there is no
         // in-app language switch, matching the platform convention.
         L10n.syncKitLanguage()
+        // Background sampling (package B) must register its handler
+        // before launch finishes; scheduling is re-armed on launch
+        // and whenever the app enters the background.
+        BackgroundSampler.register()
+        BackgroundSampler.schedule()
         AppDiagnostics.record(.app, L10n.string("App 启动"),
                               metadata: ["version": AppDiagnostics.appVersion,
                                          "build": AppDiagnostics.appBuild])

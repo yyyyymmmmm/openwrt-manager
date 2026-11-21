@@ -58,6 +58,18 @@ struct SettingsTabScreen: View {
                         Text(removeError).font(AppTypography.secondary).foregroundStyle(AppPalette.red)
                     }
                 }
+                Section("监控与告警") {
+                    NavigationLink {
+                        AlertSettingsView()
+                    } label: {
+                        Label("告警设置", systemImage: "bell.badge")
+                    }
+                    NavigationLink {
+                        EventLogView()
+                    } label: {
+                        Label("事件记录", systemImage: "list.bullet.rectangle")
+                    }
+                }
                 Section("应用") {
                     NavigationLink {
                         AppSettingsView()

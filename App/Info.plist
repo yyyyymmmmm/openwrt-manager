@@ -20,6 +20,14 @@
     <true/>
     <key>NSLocalNetworkUsageDescription</key>
     <string>查找并管理你所在 Wi-Fi 中的路由器。</string>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>fetch</string>
+    </array>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>app.openwrtmanager.ios.monitoring-refresh</string>
+    </array>
     <key>NSBonjourServices</key>
     <array>
         <string>_http._tcp</string>
