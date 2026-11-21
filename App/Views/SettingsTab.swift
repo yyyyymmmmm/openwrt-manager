@@ -69,6 +69,11 @@ struct SettingsTabScreen: View {
                     } label: {
                         Label("关于", systemImage: "info.circle")
                     }
+                    NavigationLink {
+                        DiagnosticsView()
+                    } label: {
+                        Label("诊断日志", systemImage: "waveform.path.ecg")
+                    }
                 }
             }
             .navigationTitle("设置")

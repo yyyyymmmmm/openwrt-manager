@@ -392,6 +392,40 @@
         }
       }
     },
+    "App 启动": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App 启动"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Launched"
+          }
+        }
+      }
+    },
+    "App 版本": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App 版本"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Version"
+          }
+        }
+      }
+    },
     "App 直接连接你指定的路由器，没有云端账户、广告或分析 SDK，也不向开发者服务器上传路由器数据。": {
       "extractionState": "manual",
       "localizations": {
@@ -1072,6 +1106,23 @@
         }
       }
     },
+    "事务": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "事务"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transaction"
+          }
+        }
+      }
+    },
     "事务失败": {
       "extractionState": "manual",
       "localizations": {
@@ -1153,6 +1204,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Prefer HTTPS. Self-signed certificates must be trusted only after verifying the fingerprint through a trusted channel, and re-verified when the certificate changes. HTTP sends login and session data in clear text."
+          }
+        }
+      }
+    },
+    "会话": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "会话"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session"
           }
         }
       }
@@ -2007,6 +2075,23 @@
         }
       }
     },
+    "发现": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发现"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discovery"
+          }
+        }
+      }
+    },
     "发现 Web 端口不代表已验证为 OpenWrt": {
       "extractionState": "manual",
       "localizations": {
@@ -2466,6 +2551,23 @@
         }
       }
     },
+    "型号": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "型号"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model"
+          }
+        }
+      }
+    },
     "域名查询": {
       "extractionState": "manual",
       "localizations": {
@@ -2670,6 +2772,23 @@
         }
       }
     },
+    "实时发现失败": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "实时发现失败"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live Discovery Failed"
+          }
+        }
+      }
+    },
     "实时发现失败：路由器返回的菜单不完整（会话未被认可为已登录），已保留上次结果，未写入缓存。": {
       "extractionState": "manual",
       "localizations": {
@@ -2734,6 +2853,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "The password is saved to the iOS Keychain only when you choose to remember it."
+          }
+        }
+      }
+    },
+    "导出": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export"
+          }
+        }
+      }
+    },
+    "导出文件生成失败，请稍后重试。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出文件生成失败，请稍后重试。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The export file could not be created. Please try again later."
+          }
+        }
+      }
+    },
+    "导出诊断日志": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出诊断日志"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export Diagnostic Log"
           }
         }
       }
@@ -3125,6 +3295,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Used"
+          }
+        }
+      }
+    },
+    "已记录事件": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已记录事件"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recorded Events"
           }
         }
       }
@@ -4812,6 +4999,23 @@
         }
       }
     },
+    "暂无诊断事件": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无诊断事件"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Diagnostic Events"
+          }
+        }
+      }
+    },
     "暂无速率数据": {
       "extractionState": "manual",
       "localizations": {
@@ -4859,6 +5063,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Final Confirmation: Reboot Now?"
+          }
+        }
+      }
+    },
+    "最近事件": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近事件"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent Events"
           }
         }
       }
@@ -6308,6 +6529,23 @@
         }
       }
     },
+    "清除日志": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清除日志"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear Log"
+          }
+        }
+      }
+    },
     "版本": {
       "extractionState": "manual",
       "localizations": {
@@ -6508,6 +6746,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Target Platform"
+          }
+        }
+      }
+    },
+    "确定要清除全部诊断事件吗？": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确定要清除全部诊断事件吗？"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear all diagnostic events?"
           }
         }
       }
@@ -7379,6 +7634,40 @@
         }
       }
     },
+    "诊断事件记录连接、发现、会话与配置事务的结果，已自动脱敏，不含密码与会话令牌。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "诊断事件记录连接、发现、会话与配置事务的结果，已自动脱敏，不含密码与会话令牌。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diagnostic events record the results of connections, discovery, sessions and configuration transactions. They are redacted automatically and never contain passwords or session tokens."
+          }
+        }
+      }
+    },
+    "诊断日志": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "诊断日志"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diagnostic Log"
+          }
+        }
+      }
+    },
     "读取失败": {
       "extractionState": "manual",
       "localizations": {
@@ -8195,6 +8484,23 @@
         }
       }
     },
+    "连接失败": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接失败"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connection Failed"
+          }
+        }
+      }
+    },
     "连接安全": {
       "extractionState": "manual",
       "localizations": {
@@ -8854,6 +9160,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Retry"
+          }
+        }
+      }
+    },
+    "错误": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "错误"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Error"
           }
         }
       }

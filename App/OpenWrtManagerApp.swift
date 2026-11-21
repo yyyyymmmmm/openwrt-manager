@@ -11,6 +11,9 @@ struct OpenWrtManagerApp: App {
         // automatically through the String Catalog — there is no
         // in-app language switch, matching the platform convention.
         L10n.syncKitLanguage()
+        AppDiagnostics.record(.app, L10n.string("App 启动"),
+                              metadata: ["version": AppDiagnostics.appVersion,
+                                         "build": AppDiagnostics.appBuild])
     }
 
     var body: some Scene {

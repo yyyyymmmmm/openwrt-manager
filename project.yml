@@ -29,6 +29,11 @@ targets:
         product: OpenWrtSSH
     settings:
       base:
+        # Bundle ID 体系（已核定，全仓单一事实源就是本文件）：
+        #   App        app.openwrtmanager.ios
+        #   UI 测试    app.openwrtmanager.ios.uitests
+        # 前缀与 options.bundleIdPrefix 一致；改 ID 会孤立已装的未签名
+        # 版与其钥匙串凭据，TestFlight 沿用现 ID，不另起新 ID。
         PRODUCT_BUNDLE_IDENTIFIER: app.openwrtmanager.ios
         PRODUCT_NAME: OpenWrtManager
         INFOPLIST_FILE: App/Info.plist
@@ -36,6 +41,11 @@ targets:
         SWIFT_VERSION: "5.0"
         IPHONEOS_DEPLOYMENT_TARGET: "26.0"
         TARGETED_DEVICE_FAMILY: "1"
+        # 版本策略：MARKETING_VERSION 是人工维护的语义版本，只在发版
+        # 时改；CURRENT_PROJECT_VERSION 是本地/未签名线的构建号。
+        # TestFlight 线（codemagic.yaml 的 zirox-testflight）构建时用
+        # agvtool 把构建号覆盖为 ASC 已有最大值 +1（或 Codemagic 构建
+        # 号），不回写本文件——两条线互不干扰。
         MARKETING_VERSION: "0.3.0"
         CURRENT_PROJECT_VERSION: "6"
         SWIFT_STRICT_CONCURRENCY: minimal

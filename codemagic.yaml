@@ -3,9 +3,12 @@
 # 作业未启动，本工作流在 Codemagic（既有定版第二通道）上镜像
 # .github/workflows/ios.yml 的实质步骤做终验。
 # 等价范围：XcodeGen 生成工程、OpenWrtKit swift test、未签名 Release 构建
-# 与 IPA 打包、既有审计脚本（源码审计 + IPA 审计）。
-# 非等价点：模拟器 UI 测试不在本工作流内（终验范围按任务口径）；
+# 与 IPA 打包、既有审计脚本（源码审计 + IPA 审计）、模拟器 UI 测试
+# （XCUITest，数据来自 App 的 DEBUG-only 启动参数种子，不连真路由器）。
 # Codemagic 步骤遇错即停——测试红则不出包，判读时注意。
+# zirox-testflight 工作流是 TestFlight 骨架：签名资产与 App Store
+# Connect 集成由用户在 Codemagic 后台补齐后才可运行，见
+# briefs/testflight-checklist.md。
 workflows:
   zirox-ios:
     name: Zirox-openwrt iOS (native, unsigned IPA, macOS final check)
@@ -32,6 +35,20 @@ workflows:
         script: swift test --package-path Packages/OpenWrtKit
       - name: Generate Xcode project
         script: xcodegen generate
+      - name: Run UI tests on simulator
+        script: |
+          set -euo pipefail
+          mkdir -p artifacts
+          SIMULATOR_ID="$(xcrun simctl list devices available --json | python3 scripts/select_simulator.py)"
+          echo "UI tests on simulator $SIMULATOR_ID"
+          xcodebuild test \
+            -project OpenWrtManager.xcodeproj \
+            -scheme OpenWrtManager \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -parallel-testing-enabled NO \
+            -derivedDataPath build/ui-tests \
+            -resultBundlePath artifacts/OpenWrtManager.xcresult \
+            CODE_SIGNING_ALLOWED=NO
       - name: Build unsigned iPhone app for personal signing
         script: |
           set -euo pipefail
@@ -52,3 +69,83 @@ workflows:
         script: python3 scripts/audit_release.py --ipa artifacts/Zirox-openwrt-unsigned.ipa
     artifacts:
       - artifacts/Zirox-openwrt-unsigned.ipa
+      - artifacts/OpenWrtManager.xcresult
+
+  # TestFlight 发布骨架（包 A）。按 Codemagic 官方原生 iOS 文档编写：
+  # 签名走 app-store-connect CLI（fetch-signing-files --create 可从零
+  # 创建证书与描述文件），发布走 publishing.app_store_connect。
+  # 运行前置条件（缺一不可，详见 briefs/testflight-checklist.md）：
+  #   1. Codemagic Team integrations > Developer Portal 里已添加名为
+  #      "Zirox App Store Connect" 的 App Store Connect API 密钥；
+  #      下方 integrations 的名字必须与之逐字一致。集成会向构建注入
+  #      APP_STORE_CONNECT_KEY_IDENTIFIER / APP_STORE_CONNECT_ISSUER_ID /
+  #      APP_STORE_CONNECT_PRIVATE_KEY 三个环境变量供 CLI 使用。
+  #   2. App Store Connect 里已建好 Bundle ID 为 app.openwrtmanager.ios
+  #      的 App 记录。
+  # 凭据只以集成名/环境变量占位出现，绝不写进本文件。
+  zirox-testflight:
+    name: Zirox-openwrt iOS (TestFlight, signed)
+    instance_type: mac_mini_m2        # 与 zirox-ios 同规格
+    max_build_duration: 60
+    integrations:
+      app_store_connect: Zirox App Store Connect   # ← 占位名，用户在 Codemagic 后台按此名建集成
+    environment:
+      xcode: 26.6                     # 与 zirox-ios 对齐；以 Codemagic 当期镜像为准
+      vars:
+        BUNDLE_ID: "app.openwrtmanager.ios"
+        XCODE_SCHEME: "OpenWrtManager"
+        # App Store Connect 里该 App 的 Apple ID（数字）。填上后构建号
+        # 自动取 ASC 已有最大值 +1；留空则用 Codemagic 构建号 $BUILD_NUMBER。
+        APP_STORE_APPLE_ID: ""
+    scripts:
+      - name: Show Xcode
+        script: |
+          xcodebuild -version
+          xcodebuild -showsdks
+      - name: Install XcodeGen
+        script: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+      - name: Audit production sources
+        script: |
+          python3 -m unittest discover -s scripts -p 'test_*.py'
+          python3 scripts/audit_release.py
+      - name: Test OpenWrtKit
+        script: swift test --package-path Packages/OpenWrtKit
+      - name: Generate Xcode project
+        script: xcodegen generate
+      - name: Fetch signing files (App Store distribution)
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+          keychain add-certificates
+      - name: Set up provisioning profiles on Xcode project
+        script: xcode-project use-profiles
+      - name: Set build number
+        script: |
+          set -euo pipefail
+          cd "$CM_BUILD_DIR"
+          if [ -n "$APP_STORE_APPLE_ID" ]; then
+            LATEST_BUILD_NUMBER=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID")
+            agvtool new-version -all $(($LATEST_BUILD_NUMBER + 1))
+          else
+            agvtool new-version -all "$BUILD_NUMBER"
+          fi
+      - name: Build signed IPA for TestFlight
+        script: |
+          xcode-project build-ipa \
+            --project OpenWrtManager.xcodeproj \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        # 上传后提交到 TestFlight。内部测试人员无需 beta_groups；
+        # 外部测试需先在 App Store Connect 建组并通过 Beta 审核，
+        # 再把组名填到下面（取消注释）。
+        submit_to_testflight: true
+        # beta_groups:
+        #   - Internal Testers

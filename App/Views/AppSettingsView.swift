@@ -26,6 +26,9 @@ struct AppSettingsView: View {
                         .buttonStyle(.plain).accessibilityIdentifier("privacyLink")
                     AppDivider()
                     NavigationLink { AppAboutView() } label: { AppRow(title: "关于", symbol: "info.circle", chevron: true) }.buttonStyle(.plain)
+                    AppDivider()
+                    NavigationLink { DiagnosticsView() } label: { AppRow(title: "诊断日志", symbol: "waveform.path.ecg", chevron: true) }
+                        .buttonStyle(.plain).accessibilityIdentifier("diagnosticsLink")
                 }
             }
         }.appDetailStyle("App 设置")

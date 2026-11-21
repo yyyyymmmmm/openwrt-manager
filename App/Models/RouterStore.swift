@@ -63,6 +63,9 @@ final class RouterStore {
             do { profiles = try JSONDecoder().decode([RouterProfile].self, from: data) }
             catch { storageError = "保存的路由器列表无法读取。原始记录仍保留在设备上。" }
         }
+        #if DEBUG
+        UITestingSeed.applyIfNeeded(to: self)
+        #endif
     }
 
     func credential(for profile: RouterProfile) throws -> StoredCredential? {
@@ -81,6 +84,8 @@ final class RouterStore {
             session = try await client.login(username: profile.username, password: password)
             try Task.checkCancellation()
         } catch {
+            AppDiagnostics.record(.error, L10n.string("连接失败"),
+                                  metadata: ["address": profile.address, "reason": error.localizedDescription])
             let notice = candidateTransport.delegate.certificateNotice
             candidateTransport.close()
             if let notice { throw AppFailure.certificate(notice) }
@@ -120,7 +125,7 @@ final class RouterStore {
         activeProfile = saved
         connectionID = UUID()
         clearData()
-        recordActivity(L10n.string("已连接路由器"), detail: L10n.string("通过路由器账户建立管理会话。"))
+        recordActivity(L10n.string("已连接路由器"), detail: L10n.string("通过路由器账户建立管理会话。"), category: .connection)
         profiles.removeAll { $0.id == saved.id }
         profiles.insert(saved, at: 0)
         persist()
@@ -146,12 +151,14 @@ final class RouterStore {
         // snapshot. (The old check required BOTH an empty tree and a
         // missing hostname, so stripped menus were cached as success.)
         if !snapshot.hasSubstantiveMenu {
+            AppDiagnostics.record(.discovery, L10n.string("实时发现失败"),
+                                  metadata: ["address": profile.address])
             capabilityError = L10n.string("实时发现失败：路由器返回的菜单不完整（会话未被认可为已登录），已保留上次结果，未写入缓存。")
             if capability == nil, let cached = cachedCapability(for: profile) {
                 capability = cached
                 capabilityIsFromCache = true
                 capabilityUpdatedAt = nil
-                recordActivity(L10n.string("显示离线缓存"), detail: L10n.string("实时发现不完整，导航来自上次成功发现的缓存快照。"), isWarning: true)
+                recordActivity(L10n.string("显示离线缓存"), detail: L10n.string("实时发现不完整，导航来自上次成功发现的缓存快照。"), isWarning: true, category: .discovery)
             }
             return
         }
@@ -290,11 +297,11 @@ final class RouterStore {
         if capability == nil || capabilityIsFromCache || languageStale { await loadCapability() }
         let errors = [overviewError, devicesError, wirelessError, servicesError].compactMap { $0 }
         if !errors.isEmpty && (!wasLoaded || !previouslyFailed) {
-            recordActivity(L10n.string("部分信息读取失败"), detail: L10n.format("%lld 项数据未能更新，请在对应页面查看原因。", errors.count), isWarning: true)
+            recordActivity(L10n.string("部分信息读取失败"), detail: L10n.format("%lld 项数据未能更新，请在对应页面查看原因。", errors.count), isWarning: true, category: .error)
         } else if errors.isEmpty && previouslyFailed {
-            recordActivity(L10n.string("状态读取已恢复"), detail: L10n.string("概览、租约、无线和服务状态已重新读取。"))
+            recordActivity(L10n.string("状态读取已恢复"), detail: L10n.string("概览、租约、无线和服务状态已重新读取。"), category: .refresh)
         } else if !wasLoaded && errors.isEmpty {
-            recordActivity(L10n.string("首次读取完成"), detail: L10n.string("概览、租约、无线和服务状态已读取。"))
+            recordActivity(L10n.string("首次读取完成"), detail: L10n.string("概览、租约、无线和服务状态已读取。"), category: .refresh)
         }
         hasLoaded = true
     }
@@ -339,9 +346,15 @@ final class RouterStore {
         hasLoaded = false; isRefreshing = false
     }
 
-    private func recordActivity(_ title: String, detail: String, isWarning: Bool = false) {
+    /// Every activity also lands in the diagnostic event buffer
+    /// (package A) under the caller's category, so the exportable log
+    /// covers the same ground as the on-screen activity list. The
+    /// buffer redacts on record; the detail rides as metadata.
+    private func recordActivity(_ title: String, detail: String, isWarning: Bool = false,
+                                category: DiagnosticCategory = .app) {
         activities.insert(RouterActivity(title, detail: detail, isWarning: isWarning), at: 0)
         activities = Array(activities.prefix(50))
+        AppDiagnostics.record(category, title, metadata: ["detail": detail])
     }
 
     func configuration(_ name: String) async throws -> RouterConfiguration {
@@ -361,9 +374,9 @@ final class RouterStore {
         let pending = try await configurationClient.apply(plan)
         pendingConfiguration = pending
         if pending.acknowledged {
-            recordActivity(L10n.string("配置等待确认"), detail: L10n.format("%@ 的应用请求已获路由器确认，等待连接验证。", plan.original.name))
+            recordActivity(L10n.string("配置等待确认"), detail: L10n.format("%@ 的应用请求已获路由器确认，等待连接验证。", plan.original.name), category: .transaction)
         } else {
-            recordActivity(L10n.string("配置应用结果待确认"), detail: L10n.format("%@ 的应用请求未收到响应，请验证连接并核对配置。", plan.original.name), isWarning: true)
+            recordActivity(L10n.string("配置应用结果待确认"), detail: L10n.format("%@ 的应用请求未收到响应，请验证连接并核对配置。", plan.original.name), isWarning: true, category: .transaction)
         }
     }
 
@@ -373,7 +386,7 @@ final class RouterStore {
         defer { isMutating = false }
         try await configurationClient.confirm()
         pendingConfiguration = nil
-        recordActivity(L10n.string("配置已确认"), detail: L10n.string("路由器连接验证通过，修改已保留。"))
+        recordActivity(L10n.string("配置已确认"), detail: L10n.string("路由器连接验证通过，修改已保留。"), category: .transaction)
         await refresh()
     }
 
@@ -383,7 +396,7 @@ final class RouterStore {
         defer { isMutating = false }
         try await configurationClient.rollback()
         pendingConfiguration = nil
-        recordActivity(L10n.string("配置已回滚"), detail: L10n.string("路由器已接受回滚请求，请核对重新读取的配置。"))
+        recordActivity(L10n.string("配置已回滚"), detail: L10n.string("路由器已接受回滚请求，请核对重新读取的配置。"), category: .transaction)
         await refresh()
     }
 
@@ -391,7 +404,7 @@ final class RouterStore {
         guard let pendingConfiguration, pendingConfiguration.deadline <= Date(), !isMutating else { return }
         await configurationClient?.releaseExpired()
         self.pendingConfiguration = nil
-        recordActivity(L10n.string("配置确认已超时"), detail: L10n.string("已超过回滚期限。请重新读取配置，核对路由器实际状态。"), isWarning: true)
+        recordActivity(L10n.string("配置确认已超时"), detail: L10n.string("已超过回滚期限。请重新读取配置，核对路由器实际状态。"), isWarning: true, category: .transaction)
         await refresh()
     }
 
@@ -419,9 +432,9 @@ final class RouterStore {
             })
         let outcome = try await transaction.execute(name: name, action: action)
         if outcome.verified == false {
-            recordActivity(L10n.string("服务操作后状态未达预期"), detail: L10n.format("%@：%@ 已下发，但路由器报告的状态与预期不一致，请核对。", name, action.title), isWarning: true)
+            recordActivity(L10n.string("服务操作后状态未达预期"), detail: L10n.format("%@：%@ 已下发，但路由器报告的状态与预期不一致，请核对。", name, action.title), isWarning: true, category: .session)
         } else {
-            recordActivity(L10n.string("服务操作已执行"), detail: L10n.format("%@：%@。", name, action.title))
+            recordActivity(L10n.string("服务操作已执行"), detail: L10n.format("%@：%@。", name, action.title), category: .session)
         }
         await refresh()
     }
@@ -438,7 +451,7 @@ final class RouterStore {
             let receipt = try await configurationClient.execute(plan: plan, reloadServices: reloadServices) { name, action in
                 try await reader.serviceAction(name: name, action: action)
             }
-            recordActivity(L10n.string("配置已更新"), detail: L10n.format("%@：%lld 项修改已下发、回读验证并确认。", plan.original.name, plan.edits.count))
+            recordActivity(L10n.string("配置已更新"), detail: L10n.format("%@：%lld 项修改已下发、回读验证并确认。", plan.original.name, plan.edits.count), category: .transaction)
             await refresh()
             return receipt
         } catch let error as TransactionError {
@@ -448,9 +461,9 @@ final class RouterStore {
                 pendingConfiguration = PendingConfiguration(config: plan.original.name,
                                                             deadline: Date().addingTimeInterval(90),
                                                             acknowledged: false)
-                recordActivity(L10n.string("配置应用结果待确认"), detail: L10n.format("%@ 的应用请求未收到确认，请验证连接后决定保留或回滚。", plan.original.name), isWarning: true)
+                recordActivity(L10n.string("配置应用结果待确认"), detail: L10n.format("%@ 的应用请求未收到确认，请验证连接后决定保留或回滚。", plan.original.name), isWarning: true, category: .transaction)
             } else {
-                recordActivity(L10n.string("配置事务失败"), detail: error.localizedDescription, isWarning: true)
+                recordActivity(L10n.string("配置事务失败"), detail: error.localizedDescription, isWarning: true, category: .transaction)
             }
             throw error
         }
@@ -461,7 +474,7 @@ final class RouterStore {
     func rebootRouter() async throws {
         guard !isMutating, pendingConfiguration == nil, let sessionManager else { throw ConfigurationError.busy }
         try await SystemControlClient(caller: sessionManager).reboot()
-        recordActivity(L10n.string("已发送重启指令"), detail: L10n.string("路由器正在重启，连接将中断数分钟。"), isWarning: true)
+        recordActivity(L10n.string("已发送重启指令"), detail: L10n.string("路由器正在重启，连接将中断数分钟。"), isWarning: true, category: .session)
     }
 
     func records(_ kind: RouterRecordKind) async throws -> [JSONValue] {
@@ -512,3 +525,20 @@ extension RouterStore {
         }
     }
 }
+
+#if DEBUG
+extension RouterStore {
+    /// DEBUG-only installer for the XCUITest seed (see UITestingSeed).
+    /// In-memory state only — nothing is persisted, no transport is
+    /// created — and Release builds compile this out entirely.
+    func installSeededState(profiles seeded: [RouterProfile], activeProfile seededActive: RouterProfile?,
+                            capability seededCapability: CapabilitySnapshot?) {
+        profiles = seeded
+        activeProfile = seededActive
+        if let seededActive { defaultProfileID = seededActive.id }
+        capability = seededCapability
+        capabilityUpdatedAt = seededCapability == nil ? nil : Date()
+        hasLoaded = seededActive != nil
+    }
+}
+#endif
