@@ -663,10 +663,15 @@ struct WireGuardStatusView: View {
         guard let client = store.readClient else { state = .failed("未连接路由器。"); return }
         state = .loading
         localization = await client.localization()
-        // A failed configuration read is a failure state (audit
-        // U9), not a silently config-less page.
-        do { state = .loaded(try await client.configuration("wireguard")) }
-        catch { state = .failed(FriendlyError.message(error)) }
+        // The configuration summary is optional by construction:
+        // OpenWrt keeps WireGuard inside the `network` config —
+        // there is no `wireguard` UCI config on either measured
+        // firmware, so this read can never succeed there and must
+        // not fail the whole page (permission audit #13, which
+        // supersedes the audit-U9 treatment for this page). The
+        // interface list above is the page's substance and needs
+        // no configuration read at all.
+        state = .loaded(try? await client.configuration("wireguard"))
     }
 }
 

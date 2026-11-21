@@ -829,7 +829,7 @@ struct RestorePreviewView: View {
             Button("恢复并重启", role: .destructive) { Task { await runRestore() } }
             Button("取消", role: .cancel) {}
         } message: {
-            Text("路由器当前配置将被这份备份覆盖，全家网络会中断数分钟。恢复前会自动备份当前配置到路由器 /tmp 目录。")
+            Text("路由器当前配置将被这份备份覆盖，全家网络会中断数分钟。恢复前会自动把当前配置另存一份到本机备份库，恢复不满意可以再恢复回来。")
         }
     }
 
@@ -862,6 +862,26 @@ struct RestorePreviewView: View {
                         }
                     }
                 })
+            // The durable copy of the pre-restore snapshot is the
+            // one the flow downloaded: file it in the local backup
+            // library as a normal, restorable entry. The on-router
+            // copy sits in tmpfs and does not survive the reboot.
+            var snapshotFileName: String?
+            if !result.preRestoreSnapshotData.isEmpty {
+                let snapshotName = BackupFileNaming.fileName(routerName: profile.name, at: Date())
+                let snapshotManifest = BackupManifest(
+                    createdAt: Date(), routerID: profile.id.uuidString,
+                    routerName: profile.name, address: profile.address,
+                    model: store.snapshot?.system.model,
+                    firmware: store.snapshot?.system.firmware,
+                    sha256: SHA256Hasher.hexDigest(result.preRestoreSnapshotData),
+                    byteCount: result.preRestoreSnapshotData.count,
+                    configs: [])
+                if (try? library.save(data: result.preRestoreSnapshotData,
+                                      manifest: snapshotManifest, fileName: snapshotName)) != nil {
+                    snapshotFileName = snapshotName
+                }
+            }
             if result.reconnected {
                 phase = .succeeded(L10n.string("恢复完成，路由器已重新连接。"))
                 RouterTaskActivityController.shared.finish(
@@ -872,11 +892,12 @@ struct RestorePreviewView: View {
                 RouterTaskActivityController.shared.finish(
                     phase: L10n.string("恢复已执行，但路由器仍未恢复连接。"), succeeded: false)
             }
-            resultText = L10n.format("恢复前的当前配置已备份在路由器：%@", result.preRestoreSnapshotPath)
+            resultText = snapshotFileName.map { L10n.format("恢复前的当前配置已另存到本机备份库：%@", $0) }
+                ?? L10n.format("恢复前的当前配置已备份在路由器：%@", result.preRestoreSnapshotPath)
             EventLogStore.shared.append(
                 category: .operation, kind: .backupRestore,
                 title: result.reconnected ? L10n.string("恢复配置备份") : L10n.string("恢复后未重新连接"),
-                detail: L10n.format("%@；恢复前快照：%@", entry.fileName, result.preRestoreSnapshotPath),
+                detail: L10n.format("%@；恢复前快照：%@", entry.fileName, snapshotFileName ?? result.preRestoreSnapshotPath),
                 routerID: profile.id.uuidString)
         } catch {
             phase = .failed(FriendlyError.message(error))
@@ -1185,7 +1206,9 @@ private struct FirmwareUpgradeSection: View {
                 onProgress: { sent in Task { @MainActor in sentBytes = sent } },
                 onStep: { newStep in Task { @MainActor in step = newStep } })
             prepared = result
-            outcome = "备份已保存至 \(result.backupPath)；镜像哈希与路由器端一致，镜像合法性校验通过。"
+            outcome = result.remoteHashVerified
+                ? "备份已保存至 \(result.backupPath)；镜像哈希与路由器端一致，镜像合法性校验通过。"
+                : "备份已保存至 \(result.backupPath)；此固件不提供路由器端哈希回读，传输完整性已由分块写入的尺寸校验确认，镜像合法性校验通过。"
         } catch {
             step = .failed(FriendlyError.message(error))
             outcome = "已中止：\(FriendlyError.message(error))。路由器未做任何更改。"

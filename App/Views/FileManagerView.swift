@@ -21,6 +21,13 @@ struct FileManagerView: View {
     @State private var isTransferring = false
     @State private var downloadedFile: DownloadedFile?
     @State private var prompt: NamePrompt?
+    /// Batch-3-locked operation groups, from the session-access
+    /// precheck (permission audit #15–#17): the fixed-command execs
+    /// (mkdir/mv/rmdir) and arbitrary-path writes are granted to no
+    /// login session on stock firmware, so those entries are greyed
+    /// out with an explanation instead of failing after the fact.
+    @State private var directoryOpsDenied = false
+    @State private var writeDenied = false
 
     private struct DownloadedFile: Identifiable {
         let url: URL
@@ -51,6 +58,12 @@ struct FileManagerView: View {
                     Text(path).font(AppTypography.rowTitle.monospaced()).lineLimit(1)
                 }
             }
+            if directoryOpsDenied || writeDenied {
+                Section {
+                    Label("这台固件未向 App 登录会话开放新建文件夹、重命名、删除空目录与向任意路径写入（rpcd 未授权），相关操作已禁用；需要在路由器上补授权后才能使用。浏览与已授权文件的读取不受影响。", systemImage: "lock")
+                        .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                }
+            }
             if isTransferring {
                 HStack { ProgressView(); Text("正在传输文件…") }
             }
@@ -77,11 +90,15 @@ struct FileManagerView: View {
                             .buttonStyle(.plain)
                             .swipeActions(edge: .trailing) {
                                 Button("删除", role: .destructive) { removeDirectoryTarget = entry }
+                                    .disabled(directoryOpsDenied)
                                 Button("重命名") { renameName = entry.name; prompt = .rename(entry) }
+                                    .disabled(directoryOpsDenied)
                             }
                             .contextMenu {
                                 Button("重命名") { renameName = entry.name; prompt = .rename(entry) }
+                                    .disabled(directoryOpsDenied)
                                 Button("删除空目录", role: .destructive) { removeDirectoryTarget = entry }
+                                    .disabled(directoryOpsDenied)
                             }
                         } else {
                             NavigationLink {
@@ -92,11 +109,13 @@ struct FileManagerView: View {
                             .swipeActions(edge: .trailing) {
                                 Button("删除", role: .destructive) { removeTarget = entry }
                                 Button("重命名") { renameName = entry.name; prompt = .rename(entry) }
+                                    .disabled(directoryOpsDenied)
                                 Button("下载") { Task { await download(entry) } }
                             }
                             .contextMenu {
                                 Button("下载并分享") { Task { await download(entry) } }
                                 Button("重命名") { renameName = entry.name; prompt = .rename(entry) }
+                                    .disabled(directoryOpsDenied)
                                 Button("删除", role: .destructive) { removeTarget = entry }
                             }
                         }
@@ -114,16 +133,19 @@ struct FileManagerView: View {
                     } label: {
                         Label("上传文件", systemImage: "square.and.arrow.up")
                     }
+                    .disabled(writeDenied)
                     Button {
                         prompt = .newFolder
                     } label: {
                         Label("新建文件夹", systemImage: "folder.badge.plus")
                     }
+                    .disabled(directoryOpsDenied)
                     Button {
                         prompt = .newFile
                     } label: {
                         Label("新建文件", systemImage: "doc.badge.plus")
                     }
+                    .disabled(writeDenied)
                 } label: {
                     Image(systemName: "plus")
                 }
@@ -288,6 +310,19 @@ struct FileManagerView: View {
         state = .loading
         do { state = .loaded(try await files.list(path: path)) }
         catch { state = .failed(FriendlyError.message(error)) }
+        await refreshAccessGates()
+    }
+
+    /// Session-access precheck for the batch-3-locked operations.
+    /// The three directory commands share one fate in every measured
+    /// acl.d (none granted), so one probe stands for the group; the
+    /// write probe targets a child-shaped path so directory-prefix
+    /// grants ("/tmp/*" style) answer truthfully.
+    private func refreshAccessGates() async {
+        guard let client = store.readClient else { return }
+        directoryOpsDenied = !(await client.sessionAccess(scope: "file", object: "/bin/mkdir", function: "exec"))
+        let probe = path == "/" ? "/.zirox-write-probe" : "\(path)/.zirox-write-probe"
+        writeDenied = !(await client.sessionAccess(scope: "file", object: probe, function: "write"))
     }
 
     private func remove(_ entry: FileEntry) async {
@@ -392,6 +427,10 @@ struct FileEditorView: View {
     @State private var original = ""
     @State private var confirmingSave = false
     @State private var saveResult: String?
+    /// Write access for this exact path, from the session-access
+    /// precheck: without it the save action is disabled up front
+    /// instead of failing after the edit.
+    @State private var writeDenied = false
 
     /// The in-app editor's ceiling: config-sized text only.
     static let editableCeiling: Int64 = 256 * 1024
@@ -420,6 +459,10 @@ struct FileEditorView: View {
                     ErrorStateView(message: message) { Task { await load() } }
                 case .loaded:
                     VStack(spacing: AppSpacing.sm) {
+                        if writeDenied {
+                            Label("这台固件未向 App 会话开放此路径的写入（rpcd 未授权），只能查看，不能保存修改。", systemImage: "lock")
+                                .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                        }
                         if let saveResult {
                             Text(saveResult).font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
                         }
@@ -436,7 +479,7 @@ struct FileEditorView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("保存") { confirmingSave = true }
-                    .disabled(isTooLarge || draft == original)
+                    .disabled(isTooLarge || writeDenied || draft == original)
             }
         }
         .task { if !isTooLarge { await load() } }
@@ -451,6 +494,17 @@ struct FileEditorView: View {
     private func load() async {
         guard let files = store.fileClient else { state = .failed("未连接路由器。"); return }
         state = .loading
+        // File reads are authorized per path (permission audit #15):
+        // most paths on stock firmware are not granted, and the page
+        // says exactly that instead of a generic permission failure.
+        if let client = store.readClient {
+            let readable = await client.sessionAccess(scope: "file", object: filePath, function: "read")
+            guard readable else {
+                state = .failed(L10n.string("路由器未授权读取此文件：这台固件没有向 App 会话开放该路径的读取（rpcd ACL 未包含），需要在路由器上补授权后才能打开。"))
+                return
+            }
+            writeDenied = !(await client.sessionAccess(scope: "file", object: filePath, function: "write"))
+        }
         do {
             let text = try await files.readText(path: filePath)
             original = text

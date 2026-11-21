@@ -386,7 +386,7 @@ struct NetworkDiagnosticsView: View {
         do {
             switch tool {
             case 0: output = try await client.exec(command: "/bin/ping", arguments: ["-c", "4", "-W", "2", host])
-            case 1: output = try await client.exec(command: "/usr/sbin/traceroute", arguments: ["-m", "15", "-w", "2", host])
+            case 1: output = try await client.exec(command: "/bin/traceroute", arguments: ["-m", "15", "-w", "2", host])
             default: output = try await client.exec(command: "/usr/bin/nslookup", arguments: [host])
             }
         } catch {
@@ -633,6 +633,10 @@ struct UPnPView: View {
 struct BandwidthView: View {
     @Environment(RouterStore.self) private var store
     @State private var state: LoadState<BandwidthData> = .loading
+    /// The router does not expose the nlbwmon accounting helper to
+    /// this session at all (component absent): a factual empty
+    /// state, not a failure — retrying cannot install a component.
+    @State private var componentMissing = false
     @State private var names = DeviceNameStore.shared
 
     /// The raw dump plus its per-host rollup; the rollup is nil when
@@ -646,13 +650,20 @@ struct BandwidthView: View {
 
     var body: some View {
         List {
+            if componentMissing {
+                EmptyStateView(title: "未安装流量监控组件",
+                               message: "这台路由器没有安装 nlbwmon 流量监控组件（或未向 App 会话开放其数据通道），暂时无法显示流量排行。",
+                               symbol: "chart.bar.xaxis")
+            }
             switch state {
             case .loading:
                 ProgressView("正在读取带宽监控…")
             case .failed(let message):
                 ErrorStateView(message: message) { Task { await load() } }
             case .loaded(let data):
-                if let report = data.report, !report.hosts.isEmpty {
+                if componentMissing {
+                    EmptyView()
+                } else if let report = data.report, !report.hosts.isEmpty {
                     Section {
                         SummaryBanner(summary: summary(report))
                             .summaryRow()
@@ -756,11 +767,19 @@ struct BandwidthView: View {
     private func load() async {
         guard let client = store.readClient else { state = .failed("未连接路由器。"); return }
         state = .loading
-        // A refused or failing nlbw call is a failure state, not
-        // "no data yet" (audit U9): only a successful empty report
-        // may present as empty.
+        componentMissing = false
+        // Data comes through the nlbwmon action helper (the bare
+        // nlbw exec is granted to no login session). A refused or
+        // failing call is a failure state, not "no data yet" (audit
+        // U9): only a successful empty report may present as empty,
+        // and a helper the router does not expose at all presents
+        // as "component not installed", not as a permission error.
         do {
-            let raw = try await client.exec(command: "/usr/sbin/nlbw", arguments: ["-c", "json"])
+            guard let raw = try await client.bandwidthDownload() else {
+                componentMissing = true
+                state = .loaded(BandwidthData(raw: "", report: nil))
+                return
+            }
             let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
             state = .loaded(BandwidthData(raw: raw, report: trimmed.isEmpty ? BandwidthReport(hosts: [], totalDownload: 0, totalUpload: 0) : BandwidthParser.parse(raw)))
         }

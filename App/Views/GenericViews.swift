@@ -21,6 +21,10 @@ struct UCIConfigView: View {
     /// an explanatory empty state instead of an error card with a retry
     /// button that can never succeed.
     @State private var unavailableHint: String?
+    /// Write access for the single-config editor entry, from the
+    /// same session-access precheck as the read: without it the
+    /// editor link is not offered at all (it could only fail).
+    @State private var canEdit = false
     /// The discovery session's localization entry: section titles and
     /// field labels on this page resolve through it.
     @State private var localization: LuciLocalization = .source
@@ -41,6 +45,12 @@ struct UCIConfigView: View {
             case .loaded(let configurations):
                 let rendered = configurations.flatMap { name, configuration in
                     filteredSections(of: configuration).map { (name, $0) }
+                }
+                if !rendered.isEmpty, let unavailableHint {
+                    Section {
+                        Label(unavailableHint, systemImage: "lock")
+                            .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                    }
                 }
                 if rendered.isEmpty {
                     EmptyStateView(title: "无配置数据",
@@ -65,7 +75,7 @@ struct UCIConfigView: View {
         .navigationTitle(L10n.key(title))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if configNames.count == 1, let name = configNames.first {
+            if configNames.count == 1, let name = configNames.first, canEdit {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
                         ConfigEditorView(configName: name, title: title)
@@ -93,11 +103,30 @@ struct UCIConfigView: View {
         guard let client = store.readClient else { state = .failed(L10n.string("未连接路由器。")); return }
         state = .loading
         unavailableHint = nil
+        canEdit = false
         localization = await client.localization()
+        // Precheck (permission audit, batch 2): ask rpcd up front
+        // which of the requested configs this session may read at
+        // all. UCI configs are authorized per name, and a sizeable
+        // set on every firmware (keepalived, rpcd itself, …) is
+        // granted to no login session — those entries are named and
+        // explained here instead of failing one by one inside.
+        var readableNames: [String] = []
+        var deniedNames: [String] = []
+        for name in configNames {
+            if await client.sessionAccess(scope: "uci", object: name, function: "read") {
+                readableNames.append(name)
+            } else {
+                deniedNames.append(name)
+            }
+        }
+        if configNames.count == 1, let name = configNames.first {
+            canEdit = await client.sessionAccess(scope: "uci", object: name, function: "write")
+        }
         var loaded: [(String, RouterConfiguration)] = []
         var lastError: Error?
         var accessRefusedOnly = true
-        for name in configNames {
+        for name in readableNames {
             do { loaded.append((name, try await client.configuration(name))) }
             catch let error as OpenWrtKitError {
                 lastError = error
@@ -107,7 +136,11 @@ struct UCIConfigView: View {
                 }
             } catch { lastError = error; accessRefusedOnly = false }
         }
-        if loaded.isEmpty, let lastError {
+        if !deniedNames.isEmpty {
+            unavailableHint = L10n.format("以下配置未获路由器授权读取：%@。这台固件没有向 App 登录会话开放它们（rpcd ACL 未包含），需要在路由器上补授权后才能查看。",
+                                          deniedNames.joined(separator: L10n.string("、")))
+        }
+        if loaded.isEmpty, !readableNames.isEmpty, let lastError {
             if accessRefusedOnly {
                 // rpcd does not grant this config to login sessions (or
                 // it does not exist): retrying cannot help, so say so

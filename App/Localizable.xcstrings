@@ -21556,6 +21556,159 @@
           }
         }
       }
+    },
+    "未安装流量监控组件": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未安装流量监控组件"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traffic monitoring component not installed"
+          }
+        }
+      }
+    },
+    "这台路由器没有安装 nlbwmon 流量监控组件（或未向 App 会话开放其数据通道），暂时无法显示流量排行。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这台路由器没有安装 nlbwmon 流量监控组件（或未向 App 会话开放其数据通道），暂时无法显示流量排行。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This router has no nlbwmon traffic monitoring component installed (or does not expose its data channel to app sessions), so the traffic ranking cannot be shown yet."
+          }
+        }
+      }
+    },
+    "以下配置未获路由器授权读取：%@。这台固件没有向 App 登录会话开放它们（rpcd ACL 未包含），需要在路由器上补授权后才能查看。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以下配置未获路由器授权读取：%@。这台固件没有向 App 登录会话开放它们（rpcd ACL 未包含），需要在路由器上补授权后才能查看。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The router has not authorized reading these configurations: %@. This firmware does not expose them to app login sessions (not covered by the rpcd ACL); they can be viewed after adding the grant on the router."
+          }
+        }
+      }
+    },
+    "这台固件未向 App 登录会话开放新建文件夹、重命名、删除空目录与向任意路径写入（rpcd 未授权），相关操作已禁用；需要在路由器上补授权后才能使用。浏览与已授权文件的读取不受影响。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这台固件未向 App 登录会话开放新建文件夹、重命名、删除空目录与向任意路径写入（rpcd 未授权），相关操作已禁用；需要在路由器上补授权后才能使用。浏览与已授权文件的读取不受影响。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This firmware does not expose creating folders, renaming, removing empty directories, or writing to arbitrary paths to app login sessions (not authorized by rpcd), so those actions are disabled; they become available after adding the grant on the router. Browsing and reading authorized files are unaffected."
+          }
+        }
+      }
+    },
+    "这台固件未向 App 会话开放此路径的写入（rpcd 未授权），只能查看，不能保存修改。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这台固件未向 App 会话开放此路径的写入（rpcd 未授权），只能查看，不能保存修改。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This firmware does not expose writing to this path to app sessions (not authorized by rpcd); the file can be viewed but changes cannot be saved."
+          }
+        }
+      }
+    },
+    "路由器未授权读取此文件：这台固件没有向 App 会话开放该路径的读取（rpcd ACL 未包含），需要在路由器上补授权后才能打开。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路由器未授权读取此文件：这台固件没有向 App 会话开放该路径的读取（rpcd ACL 未包含），需要在路由器上补授权后才能打开。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The router has not authorized reading this file: this firmware does not expose reading this path to app sessions (not covered by the rpcd ACL); it can be opened after adding the grant on the router."
+          }
+        }
+      }
+    },
+    "路由器当前配置将被这份备份覆盖，全家网络会中断数分钟。恢复前会自动把当前配置另存一份到本机备份库，恢复不满意可以再恢复回来。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路由器当前配置将被这份备份覆盖，全家网络会中断数分钟。恢复前会自动把当前配置另存一份到本机备份库，恢复不满意可以再恢复回来。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The router's current configuration will be overwritten by this backup and the household network will be down for a few minutes. The current configuration is first saved to the on-device backup library, so it can be restored again if the result is not satisfactory."
+          }
+        }
+      }
+    },
+    "恢复前的当前配置已另存到本机备份库：%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复前的当前配置已另存到本机备份库：%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The pre-restore configuration was saved to the on-device backup library: %@"
+          }
+        }
+      }
+    },
+    "备份已保存至 %@；此固件不提供路由器端哈希回读，传输完整性已由分块写入的尺寸校验确认，镜像合法性校验通过。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份已保存至 %@；此固件不提供路由器端哈希回读，传输完整性已由分块写入的尺寸校验确认，镜像合法性校验通过。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Backup saved to %@; this firmware offers no router-side hash readback, so transfer integrity was confirmed by the chunked write's size verification, and the image passed the legality check."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
