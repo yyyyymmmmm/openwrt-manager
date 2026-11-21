@@ -68,9 +68,100 @@ public struct NftChain: Identifiable, Equatable, Sendable {
     public var countedRules: Int
     public var packets: Int64
     public var bytes: Int64
+    /// The rules themselves (package I, audit U6): the status page
+    /// used to stop at per-chain counts, leaving "is this forwarding
+    /// rule actually there?" unanswerable. Rule bodies are device
+    /// data (class ④) — presented as parsed, never translated.
+    public var rules: [NftRule]
     public var id: String { name }
-    public init(name: String, countedRules: Int = 0, packets: Int64 = 0, bytes: Int64 = 0) {
+    public init(name: String, countedRules: Int = 0, packets: Int64 = 0, bytes: Int64 = 0,
+                rules: [NftRule] = []) {
         self.name = name; self.countedRules = countedRules; self.packets = packets; self.bytes = bytes
+        self.rules = rules
+    }
+}
+
+/// What a rule ultimately does with a packet. The label is the
+/// human word the status page shows; the raw verdict stays in the
+/// rule's raw text for the detail layer.
+public enum NftRuleAction: Equatable, Sendable {
+    case accept
+    case drop
+    case reject
+    case returnFromChain
+    case jump(String)
+    case masquerade
+    case dnat
+    case snat
+    case redirect
+    case other(String)
+    case none
+
+    public var label: String {
+        switch self {
+        case .accept: return KitL10n.text("放行")
+        case .drop: return KitL10n.text("拦截")
+        case .reject: return KitL10n.text("拒绝")
+        case .returnFromChain: return KitL10n.text("返回")
+        case .jump(let target): return KitL10n.format("跳转到「%@」", target)
+        case .masquerade: return KitL10n.text("地址伪装")
+        case .dnat: return KitL10n.text("端口转发")
+        case .snat: return KitL10n.text("源地址转换")
+        case .redirect: return KitL10n.text("重定向")
+        case .other(let raw): return raw
+        case .none: return KitL10n.text("无动作")
+        }
+    }
+
+    /// Whether the rule lets traffic through — drives the status
+    /// page's colour choice, nothing more.
+    public var isPassing: Bool {
+        switch self {
+        case .accept, .masquerade, .dnat, .snat, .redirect, .jump: return true
+        case .drop, .reject: return false
+        case .returnFromChain, .other, .none: return false
+        }
+    }
+}
+
+/// One nftables rule, parsed into the parts a person reads: who
+/// talks to whom, on what, and what happens — plus the raw form for
+/// the detail layer.
+public struct NftRule: Identifiable, Equatable, Sendable {
+    public var id: String
+    /// The rule's own comment (fw4 rules carry names like
+    /// "Allow-DHCP-Renew"); device data, shown verbatim.
+    public var comment: String?
+    public var source: String?
+    public var destination: String?
+    /// Protocol token as the kernel names it ("tcp", "udp", "icmp"…),
+    /// uppercased for display; a protocol *number* when unnamed.
+    public var protocolName: String?
+    public var sourcePort: String?
+    public var destinationPort: String?
+    public var inputInterface: String?
+    public var outputInterface: String?
+    public var action: NftRuleAction
+    public var packets: Int64
+    public var bytes: Int64
+    /// One human sentence: flow, protocol/port, verdict.
+    public var summary: String
+    /// The rule as the router reported it — JSON for the JSON form,
+    /// the line itself for the text form.
+    public var rawText: String
+
+    public init(id: String, comment: String? = nil, source: String? = nil,
+                destination: String? = nil, protocolName: String? = nil,
+                sourcePort: String? = nil, destinationPort: String? = nil,
+                inputInterface: String? = nil, outputInterface: String? = nil,
+                action: NftRuleAction = .none, packets: Int64 = 0, bytes: Int64 = 0,
+                summary: String, rawText: String) {
+        self.id = id; self.comment = comment; self.source = source
+        self.destination = destination; self.protocolName = protocolName
+        self.sourcePort = sourcePort; self.destinationPort = destinationPort
+        self.inputInterface = inputInterface; self.outputInterface = outputInterface
+        self.action = action; self.packets = packets; self.bytes = bytes
+        self.summary = summary; self.rawText = rawText
     }
 }
 
@@ -254,15 +345,181 @@ public enum ReadOnlyParser {
                 guard let index = tableIndex(family: family, name: tableName),
                       let chainIndex = tables[index].chains.firstIndex(where: { $0.name == chainName })
                 else { continue }
-                for expression in rule["expr"].arrayValue ?? [] {
-                    guard expression["counter"].objectValue != nil else { continue }
-                    tables[index].chains[chainIndex].countedRules += 1
-                    tables[index].chains[chainIndex].packets += Int64(expression["counter"]["packets"].intValue ?? 0)
-                    tables[index].chains[chainIndex].bytes += Int64(expression["counter"]["bytes"].intValue ?? 0)
-                }
+                let parsed = nftRule(from: rule,
+                                     id: "\(chainName)|\(tables[index].chains[chainIndex].rules.count)")
+                tables[index].chains[chainIndex].rules.append(parsed.rule)
+                tables[index].chains[chainIndex].countedRules += parsed.counterExpressions
+                tables[index].chains[chainIndex].packets += parsed.rule.packets
+                tables[index].chains[chainIndex].bytes += parsed.rule.bytes
             }
         }
         return tables
+    }
+
+    /// One rule object of the JSON ruleset → the human model. The
+    /// expression list is a small language of its own: matches carry
+    /// the flow (addresses, ports, interfaces, protocol), statements
+    /// carry the verdict. Anything unrecognized is not dropped — it
+    /// stays in the raw text and, when it is the only statement,
+    /// surfaces as an "other" action with its raw name.
+    private static func nftRule(from rule: JSONValue, id: String)
+        -> (rule: NftRule, counterExpressions: Int) {
+        var source: String?
+        var destination: String?
+        var protocolName: String?
+        var sourcePort: String?
+        var destinationPort: String?
+        var inputInterface: String?
+        var outputInterface: String?
+        var action: NftRuleAction = .none
+        var packets: Int64 = 0
+        var bytes: Int64 = 0
+        var counterExpressions = 0
+
+        for expression in rule["expr"].arrayValue ?? [] {
+            guard let object = expression.objectValue else { continue }
+            for (key, value) in object {
+                switch key {
+                case "counter":
+                    counterExpressions += 1
+                    packets += Int64(value["packets"].intValue ?? 0)
+                    bytes += Int64(value["bytes"].intValue ?? 0)
+                case "match":
+                    applyMatch(value, source: &source, destination: &destination,
+                               protocolName: &protocolName, sourcePort: &sourcePort,
+                               destinationPort: &destinationPort,
+                               inputInterface: &inputInterface, outputInterface: &outputInterface)
+                case "accept": action = .accept
+                case "drop": action = .drop
+                case "reject": action = .reject
+                case "return": action = .returnFromChain
+                case "jump", "goto":
+                    action = .jump(value["target"].stringValue ?? "")
+                case "masquerade": action = .masquerade
+                case "dnat": action = .dnat
+                case "snat": action = .snat
+                case "redirect": action = .redirect
+                case "log", "ct", "limit", "quota", "queue", "vmap", "map", "set", "dynset":
+                    // Bookkeeping statements: they shape the rule but
+                    // are not its verdict; the raw text keeps them.
+                    break
+                default:
+                    if action == .none { action = .other(key) }
+                }
+            }
+        }
+
+        let rawText = (try? JSONEncoder().encode(rule)).flatMap { String(data: $0, encoding: .utf8) } ?? ""
+        let parsed = NftRule(
+            id: id, comment: rule["comment"].stringValue,
+            source: source, destination: destination, protocolName: protocolName,
+            sourcePort: sourcePort, destinationPort: destinationPort,
+            inputInterface: inputInterface, outputInterface: outputInterface,
+            action: action, packets: packets, bytes: bytes,
+            summary: nftRuleSummary(source: source, destination: destination,
+                                    protocolName: protocolName, destinationPort: destinationPort,
+                                    action: action),
+            rawText: rawText)
+        return (parsed, counterExpressions)
+    }
+
+    private static func applyMatch(_ match: JSONValue,
+                                   source: inout String?, destination: inout String?,
+                                   protocolName: inout String?, sourcePort: inout String?,
+                                   destinationPort: inout String?,
+                                   inputInterface: inout String?, outputInterface: inout String?) {
+        let left = match["left"]
+        let rendered = nftValueText(match["right"])
+        guard let rendered else { return }
+        if let meta = left["meta"].objectValue, let key = meta["key"]?.stringValue {
+            switch key {
+            case "iifname": inputInterface = rendered
+            case "oifname": outputInterface = rendered
+            case "l4proto": protocolName = protocolName ?? nftProtocolName(rendered)
+            default: break
+            }
+            return
+        }
+        if let payload = left["payload"].objectValue,
+           let field = payload["field"]?.stringValue {
+            let proto = payload["protocol"]?.stringValue
+            switch field {
+            case "saddr": source = rendered
+            case "daddr": destination = rendered
+            case "sport":
+                sourcePort = rendered
+                if let proto { protocolName = protocolName ?? nftProtocolName(proto) }
+            case "dport":
+                destinationPort = rendered
+                if let proto { protocolName = protocolName ?? nftProtocolName(proto) }
+            case "protocol":
+                protocolName = protocolName ?? nftProtocolName(rendered)
+            default: break
+            }
+        }
+    }
+
+    /// A match's right-hand side as display text: a plain value, a
+    /// CIDR prefix, a set joined by commas, or a range with a dash.
+    private static func nftValueText(_ value: JSONValue) -> String? {
+        if let string = value.stringValue { return string }
+        if let number = value.intValue { return String(number) }
+        if let prefix = value["prefix"].objectValue,
+           let address = prefix["addr"]?.stringValue, let length = prefix["len"]?.intValue {
+            return "\(address)/\(length)"
+        }
+        if let set = value["set"].arrayValue {
+            let parts = set.compactMap { nftValueText($0) }
+            return parts.isEmpty ? nil : parts.joined(separator: ", ")
+        }
+        if let range = value["range"].arrayValue, range.count == 2,
+           let low = nftValueText(range[0]), let high = nftValueText(range[1]) {
+            return "\(low)-\(high)"
+        }
+        if let concat = value["concat"].arrayValue {
+            let parts = concat.compactMap { nftValueText($0) }
+            return parts.isEmpty ? nil : parts.joined(separator: ", ")
+        }
+        return nil
+    }
+
+    /// Protocol tokens and numbers → the display token. Names are
+    /// protocol vocabulary (device data class), uppercased as the
+    /// kernel prints them; unknown numbers stay numbers.
+    private static func nftProtocolName(_ raw: String) -> String {
+        switch raw.lowercased() {
+        case "6", "tcp": return "TCP"
+        case "17", "udp": return "UDP"
+        case "1", "icmp": return "ICMP"
+        case "58", "ipv6-icmp", "icmpv6": return "ICMPv6"
+        case "47", "gre": return "GRE"
+        case "50", "esp": return "ESP"
+        case "51", "ah": return "AH"
+        default: return raw.uppercased()
+        }
+    }
+
+    /// The one-sentence reading of a rule: flow first, then the
+    /// protocol/port it applies to, then what happens.
+    private static func nftRuleSummary(source: String?, destination: String?,
+                                       protocolName: String?, destinationPort: String?,
+                                       action: NftRuleAction) -> String {
+        let flow: String
+        switch (source, destination) {
+        case let (source?, destination?):
+            flow = KitL10n.format("%@ → %@", source, destination)
+        case let (nil, destination?):
+            flow = KitL10n.format("发往 %@", destination)
+        case let (source?, nil):
+            flow = KitL10n.format("来自 %@", source)
+        case (nil, nil):
+            flow = KitL10n.text("任意地址")
+        }
+        var parts = [flow]
+        if let protocolName { parts.append(protocolName) }
+        if let destinationPort { parts.append(KitL10n.format("端口 %@", destinationPort)) }
+        parts.append(action.label)
+        return parts.joined(separator: " · ")
     }
 
     /// /proc/sys/net/netfilter/nf_conntrack_count content.
@@ -304,6 +561,22 @@ public enum ReadOnlyParser {
                 chain.countedRules += 1
                 chain.packets += packets ?? 0
                 chain.bytes += bytes ?? 0
+                chain.rules.append(NftRule(
+                    id: "\(chain.name)|\(chain.rules.count)",
+                    action: nftTextAction(line),
+                    packets: packets ?? 0, bytes: bytes ?? 0,
+                    summary: line, rawText: line))
+                tables[tables.count - 1].chains[chainIndex] = chain
+            } else if let chainIndex = currentChain, !tables.isEmpty, depth >= chainDepth,
+                      !line.isEmpty, line != "}", !line.hasPrefix("type ") {
+                // A rule without a counter: the JSON form is the
+                // primary path, but the text fallback keeps rule
+                // bodies too — the line is already the readable form.
+                var chain = tables[tables.count - 1].chains[chainIndex]
+                chain.rules.append(NftRule(
+                    id: "\(chain.name)|\(chain.rules.count)",
+                    action: nftTextAction(line),
+                    summary: line, rawText: line))
                 tables[tables.count - 1].chains[chainIndex] = chain
             }
             depth += opens - closes
@@ -311,6 +584,30 @@ public enum ReadOnlyParser {
             if depth < tableDepth, !tables.isEmpty { currentChain = nil }
         }
         return tables
+    }
+
+    /// The verdict of a text-form rule line, by its trailing
+    /// statement keyword. Text rules keep the line as their summary;
+    /// this only drives the status colour and the detail label.
+    private static func nftTextAction(_ line: String) -> NftRuleAction {
+        let padded = " \(line) "
+        if padded.contains(" accept") { return .accept }
+        if padded.contains(" drop") { return .drop }
+        if padded.contains(" reject") { return .reject }
+        if padded.contains(" masquerade") { return .masquerade }
+        if padded.contains(" dnat ") || padded.contains(" dnat to") { return .dnat }
+        if padded.contains(" snat ") || padded.contains(" snat to") { return .snat }
+        if padded.contains(" redirect") { return .redirect }
+        if let range = padded.range(of: " jump ") {
+            let target = padded[range.upperBound...].split(separator: " ").first.map(String.init) ?? ""
+            return .jump(target)
+        }
+        if let range = padded.range(of: " goto ") {
+            let target = padded[range.upperBound...].split(separator: " ").first.map(String.init) ?? ""
+            return .jump(target)
+        }
+        if padded.contains(" return") { return .returnFromChain }
+        return .none
     }
 
     private static func counterValue(in line: String, after marker: String) -> Int64? {

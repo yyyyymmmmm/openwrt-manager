@@ -186,6 +186,29 @@ public struct ReadOnlyDataClient: Sendable {
         return stations
     }
 
+    /// Neighbourhood scan (package I, audit U4), best effort like
+    /// the association list: iwinfo scan is slow, a busy radio may
+    /// refuse it, and the object is not granted everywhere. Each
+    /// radio is tried in turn; failures simply contribute nothing,
+    /// and the channel page presents an empty result as "scan
+    /// unavailable", never as "no networks around".
+    public func wirelessScan() async -> [WirelessScanEntry] {
+        guard let value = try? await caller.call(object: "network.device", method: "status") else {
+            return []
+        }
+        let names = (value.objectValue ?? [:]).keys.filter { name in
+            name.hasPrefix("wlan") || name.hasPrefix("ath") || name.hasPrefix("phy")
+        }.sorted()
+        var entries: [WirelessScanEntry] = []
+        for name in names {
+            if let result = try? await caller.call(object: "iwinfo", method: "scan",
+                                                   parameters: ["device": .string(name)]) {
+                entries += WirelessScanParser.results(result, device: name)
+            }
+        }
+        return entries
+    }
+
     public func connectionCount() async throws -> ConnectionCount {
         let countText = try await fileRead(path: "/proc/sys/net/netfilter/nf_conntrack_count")
         let maximumText = try? await fileRead(path: "/proc/sys/net/netfilter/nf_conntrack_max")

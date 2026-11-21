@@ -109,7 +109,7 @@ final class LocalizationSystemTests: XCTestCase {
         // Guards against placeholder copies of the source string
         // sneaking into the table (acronyms and format-only strings
         // are the legitimate same-form entries).
-        let sameFormAllowed: Set<String> = ["MTU", "RA SLAAC", "HTTP %lld"]
+        let sameFormAllowed: Set<String> = ["MTU", "RA SLAAC", "HTTP %lld", "%@ → %@"]
         for (source, english) in KitL10n.englishTable {
             if source == english {
                 XCTAssertTrue(sameFormAllowed.contains(source), "untranslated entry: \(source)")

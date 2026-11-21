@@ -108,6 +108,28 @@ public enum HealthRating {
         }
     }
 
+    /// Display fraction for a signal strength: the meter under a
+    /// dBm value. Linear over the range a user can act on — −30 dBm
+    /// (next to the AP) is full, −90 dBm (edge of audibility) empty.
+    /// A rendering scale only; the grade above carries the verdict.
+    public static func signalFraction(dBm: Double) -> Double {
+        min(max((dBm + 90) / 60, 0), 1)
+    }
+
+    /// Channel congestion: how many *other* networks share the
+    /// channel this radio is on. Co-channel neighbours are the one
+    /// thing a channel choice can actually fix, so the count is the
+    /// grade — none is excellent, a crowd is critical.
+    public static func channelGrade(coChannelCount: Int) -> HealthGrade {
+        switch coChannelCount {
+        case ...0: return .excellent
+        case 1...2: return .good
+        case 3...4: return .fair
+        case 5...7: return .poor
+        default: return .critical
+        }
+    }
+
     /// Connection-table fill (conntrack): a ratio when the maximum
     /// is known, unknown otherwise — never guessed.
     public static func connectionsGrade(used: Int, maximum: Int?) -> HealthGrade {
