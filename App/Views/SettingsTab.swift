@@ -67,7 +67,15 @@ struct SettingsTabScreen: View {
                     NavigationLink {
                         EventLogView()
                     } label: {
-                        Label("事件记录", systemImage: "list.bullet.rectangle")
+                        Label("操作记录", systemImage: "list.bullet.rectangle")
+                    }
+                }
+                Section("安全") {
+                    AppLockToggleRow()
+                    NavigationLink {
+                        SSHTrustSettingsView()
+                    } label: {
+                        Label("SSH 主机指纹", systemImage: "fingerprint")
                     }
                 }
                 Section("应用") {

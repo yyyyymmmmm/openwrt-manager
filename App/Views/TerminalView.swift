@@ -16,11 +16,20 @@ import OpenWrtSSH
 /// input, Return included.
 struct TerminalView: View {
     @Environment(RouterStore.self) private var store
+    @Environment(SSHTrustStore.self) private var sshTrust
     @State private var parser = TerminalParser(columns: 80, rows: 24)
     @State private var session: SSHTerminalSession?
     @State private var phase: Phase = .idle
     @State private var password = ""
     @State private var fingerprint: String?
+    /// First-use gate (package C): the presented fingerprint of a
+    /// router with no trust on file. The session exists but the
+    /// surface stays covered until the user confirms or disconnects.
+    @State private var trustPrompt: String?
+    /// Changed-key block (package C): the router presented a key
+    /// that differs from the trusted one. Connection is refused
+    /// until the user explicitly re-trusts from this notice.
+    @State private var changedNotice: (trusted: String, presented: String)?
     @State private var receiveTask: Task<Void, Never>?
     @State private var focusToken = 0
     #if DEBUG
@@ -49,7 +58,14 @@ struct TerminalView: View {
                 HStack { ProgressView(); Text("正在建立 SSH 连接…") }
                     .frame(maxWidth: .infinity, alignment: .leading)
             case .connected:
-                terminalSurface
+                if let trustPrompt {
+                    trustGate(fingerprint: trustPrompt)
+                } else {
+                    terminalSurface
+                }
+            }
+            if let changedNotice {
+                changedKeyPanel(notice: changedNotice)
             }
             if case .failed(let message) = phase {
                 ErrorStateView(message: message)
@@ -86,11 +102,86 @@ struct TerminalView: View {
                 .buttonStyle(AppPrimaryButtonStyle())
                 .disabled(!storedPasswordAvailable && password.isEmpty)
             if let fingerprint, !fingerprint.isEmpty {
-                Text("主机密钥 SHA-256：\(fingerprint)")
+                Text("主机密钥指纹：\(HostKeyFingerprint.displayForm(hexDigest: fingerprint))")
                     .font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
                     .textSelection(.enabled)
             }
         }
+    }
+
+    /// First-use confirmation: the fingerprint the router just
+    /// presented, shown in the comparable OpenSSH form. Nothing of
+    /// the session is visible until the user trusts it.
+    private func trustGate(fingerprint presented: String) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.md) {
+            Label("首次连接这台路由器，请核对主机指纹", systemImage: "lock.shield")
+                .font(AppTypography.rowTitle)
+            Text("下面是路由器在本次连接中出示的 SSH 主机指纹。请与路由器本地显示或以往记录的指纹核对一致后再信任。信任后，下次连接将自动校验；指纹一旦变化，连接会被阻断并提醒你。")
+                .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+            Text(HostKeyFingerprint.displayForm(hexDigest: presented))
+                .font(AppTypography.secondary.monospaced())
+                .textSelection(.enabled)
+            HStack(spacing: AppSpacing.sm) {
+                Button("信任并继续") {
+                    guard let profile = store.activeProfile,
+                          let host = URL(string: profile.address)?.host else { return }
+                    sshTrust.confirmTrust(host: host, port: 22, fingerprint: presented)
+                    EventLogStore.shared.append(
+                        category: .system, kind: .system,
+                        title: L10n.string("已信任 SSH 主机指纹"),
+                        detail: L10n.format("%@：%@", host, HostKeyFingerprint.displayForm(hexDigest: presented)),
+                        routerID: profile.id.uuidString)
+                    trustPrompt = nil
+                }
+                .buttonStyle(AppPrimaryButtonStyle())
+                Button("断开连接", role: .destructive) { disconnectSession() }
+                    .buttonStyle(.bordered)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Changed-key block: shown after a verified connection was
+    /// refused because the presented key differs from the trusted
+    /// one. Re-trusting is only possible from this explicit action.
+    private func changedKeyPanel(notice: (trusted: String, presented: String)) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            Label("主机指纹已变化，连接已被阻断", systemImage: "exclamationmark.shield")
+                .font(AppTypography.rowTitle).foregroundStyle(AppPalette.red)
+            Text("这台路由器出示的 SSH 指纹与已信任的记录不一致。可能原因：路由器重装或刷机后生成了新密钥，或连接被中间人劫持。请先通过可信方式核对新指纹，确认无误后再重新信任。")
+                .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+            Text("已信任：\(HostKeyFingerprint.displayForm(hexDigest: notice.trusted))")
+                .font(AppTypography.metadata.monospaced()).textSelection(.enabled)
+            Text("本次出示：\(HostKeyFingerprint.displayForm(hexDigest: notice.presented))")
+                .font(AppTypography.metadata.monospaced()).textSelection(.enabled)
+            HStack(spacing: AppSpacing.sm) {
+                Button("重新确认并信任新指纹", role: .destructive) {
+                    guard let profile = store.activeProfile,
+                          let host = URL(string: profile.address)?.host else { return }
+                    sshTrust.confirmTrust(host: host, port: 22, fingerprint: notice.presented)
+                    EventLogStore.shared.append(
+                        category: .system, kind: .system,
+                        title: L10n.string("已重新信任 SSH 主机指纹"),
+                        detail: L10n.format("%@：%@", host, HostKeyFingerprint.displayForm(hexDigest: notice.presented)),
+                        routerID: profile.id.uuidString)
+                    changedNotice = nil
+                    Task { await connect() }
+                }
+                .buttonStyle(.bordered)
+                Button("取消") { changedNotice = nil }
+                    .buttonStyle(.bordered)
+            }
+        }
+        .padding(AppSpacing.md)
+        .background(AppPalette.surface, in: RoundedRectangle(cornerRadius: AppRadius.md))
+    }
+
+    private func disconnectSession() {
+        receiveTask?.cancel()
+        if let session { Task { await session.close() } }
+        self.session = nil
+        trustPrompt = nil
+        phase = .idle
     }
 
     private var terminalSurface: some View {
@@ -109,12 +200,7 @@ struct TerminalView: View {
                     .accessibilityIdentifier("terminalByteLog")
             }
             #endif
-            Button("断开连接", role: .destructive) {
-                receiveTask?.cancel()
-                if let session { Task { await session.close() } }
-                self.session = nil
-                phase = .idle
-            }
+            Button("断开连接", role: .destructive) { disconnectSession() }
         }
     }
 
@@ -172,10 +258,18 @@ struct TerminalView: View {
         }
         phase = .connecting
         fingerprint = nil
+        trustPrompt = nil
+        // Host-key trust (package C): with a trusted fingerprint on
+        // file the handshake itself must match it — a mismatch fails
+        // the connection before any shell exists. Without one, the
+        // first key is accepted for inspection only and the surface
+        // stays gated until the user confirms it.
+        let trusted = sshTrust.trustedFingerprint(host: host, port: 22)
+        let policy: SSHTerminalSession.HostKeyPolicy = trusted.map { .verifySHA256($0) } ?? .acceptAny
         do {
             let established = try await SSHTerminalSession.connect(
                 host: host, port: 22, username: profile.username, password: loginPassword,
-                policy: .acceptAny)
+                policy: policy)
             session = established
             let stream = try await established.openShell(columns: 80, rows: 24)
             // The fingerprint exists only once the handshake has
@@ -184,12 +278,36 @@ struct TerminalView: View {
             let presented = established.hostKeySHA256
             fingerprint = presented.isEmpty ? nil : presented
             phase = .connected
+            if trusted == nil, !presented.isEmpty {
+                switch sshTrust.evaluate(host: host, port: 22, presentedFingerprint: presented) {
+                case .firstUse(let canonical):
+                    trustPrompt = canonical
+                case .match:
+                    break
+                case .changed(let known, let now):
+                    disconnectSession()
+                    changedNotice = (trusted: known, presented: now)
+                    return
+                }
+            }
             receiveTask = Task {
                 for await data in stream {
                     var copy = parser
                     copy.feed(data)
                     parser = copy
                 }
+            }
+        } catch let error as SSHSessionError {
+            if case .hostKeyMismatch(let expected, let actual) = error {
+                changedNotice = (trusted: expected, presented: actual)
+                EventLogStore.shared.append(
+                    category: .system, kind: .system,
+                    title: L10n.string("SSH 主机指纹不一致，连接被阻断"),
+                    detail: L10n.format("%@ 出示的指纹与已信任记录不一致。", host),
+                    routerID: profile.id.uuidString)
+                phase = .idle
+            } else {
+                phase = .failed(FriendlyError.message(error))
             }
         } catch {
             phase = .failed(FriendlyError.message(error))

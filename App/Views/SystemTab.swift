@@ -47,7 +47,7 @@ struct SystemTabScreen: View {
                 }
                 Section {
                     NavigationLink {
-                        ActivityListView()
+                        EventLogView()
                     } label: {
                         Label("操作记录", systemImage: "clock.arrow.circlepath")
                     }
@@ -333,10 +333,25 @@ struct OnlineUpgradeView: View {
     }
 }
 
-// MARK: - Backup & flash (read-only)
+// MARK: - Backup & restore (package C, item 1)
+//
+// The artefact is OpenWrt's own sysupgrade tar.gz — created and
+// restored over the ubus file plane, interchangeable with LuCI's
+// flash page. Restore follows the L4 discipline: preview + diff,
+// an explicit confirmation that states the overwrite, an automatic
+// on-router snapshot of the current configuration before anything
+// is applied, byte-verified staging, then reboot + reconnection
+// verification. Every outcome lands in the operation record.
 
 struct BackupRestoreView: View {
     @Environment(RouterStore.self) private var store
+    @State private var library = BackupLibraryStore()
+    @State private var isCreating = false
+    @State private var showingImporter = false
+    @State private var statusText: String?
+    @State private var errorText: String?
+
+    private var routerID: String? { store.activeProfile?.id.uuidString }
 
     var body: some View {
         List {
@@ -347,13 +362,310 @@ struct BackupRestoreView: View {
                 }
                 LabeledContent("配置文件数", value: "\(store.inventory.configNames.count)")
             }
-            Section {
-                Text("备份生成与恢复属于高风险写操作，仍不在本页提供；配置类修改请在各配置页经事务通道完成。")
+            Section("备份") {
+                Button {
+                    Task { await createBackup() }
+                } label: {
+                    Label("创建配置备份", systemImage: "arrow.down.doc")
+                }
+                .disabled(isCreating || store.activeProfile == nil)
+                Button {
+                    showingImporter = true
+                } label: {
+                    Label("导入备份文件", systemImage: "square.and.arrow.down")
+                }
+                Text("备份是 OpenWrt 官方 sysupgrade 格式（含全部配置），与 LuCI 的备份互通。备份文件包含路由器完整配置，只保存在本机；请像对待密码一样保管导出的文件。")
                     .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                if isCreating {
+                    HStack { ProgressView(); Text("正在生成并下载备份…") }
+                }
+                if let statusText {
+                    Label(L10n.key(statusText), systemImage: "checkmark.circle")
+                        .font(AppTypography.secondary).foregroundStyle(AppPalette.green)
+                }
+                if let errorText {
+                    Label(L10n.key(errorText), systemImage: "exclamationmark.triangle")
+                        .font(AppTypography.secondary).foregroundStyle(AppPalette.red)
+                }
+            }
+            if !library.entries.isEmpty {
+                Section("已保存的备份") {
+                    ForEach(library.entries) { entry in
+                        NavigationLink {
+                            RestorePreviewView(entry: entry, library: library)
+                        } label: {
+                            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                                Text(entry.fileName).font(AppTypography.rowTitle).lineLimit(1)
+                                Text("\(entry.addedAt.formatted(date: .abbreviated, time: .shortened)) · \(FormatHelpers.bytes(Int64(entry.byteCount)))")
+                                    .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                                if let manifest = entry.manifest {
+                                    Text("来自 \(manifest.routerName)：\(manifest.configs.count) 个配置、\(manifest.totalSections) 个配置节")
+                                        .font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
+                                } else {
+                                    Text("外部导入，无配置清单")
+                                        .font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
+                                }
+                            }
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                library.remove(entry)
+                            } label: {
+                                Label("删除", systemImage: "trash")
+                            }
+                            ShareLink(item: entry.fileURL) {
+                                Label("导出", systemImage: "square.and.arrow.up")
+                            }
+                        }
+                    }
+                }
             }
         }
         .navigationTitle("备份与更新")
         .navigationBarTitleDisplayMode(.inline)
+        .fileImporter(isPresented: $showingImporter,
+                      allowedContentTypes: [.gzip, .data],
+                      allowsMultipleSelection: false) { result in
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    do {
+                        try library.importBackup(from: url)
+                        statusText = L10n.string("备份已导入。")
+                        errorText = nil
+                    } catch {
+                        errorText = FriendlyError.message(error)
+                    }
+                }
+            case .failure(let error):
+                errorText = FriendlyError.message(error)
+            }
+        }
+    }
+
+    private func createBackup() async {
+        guard let profile = store.activeProfile, let files = store.fileClient else { return }
+        isCreating = true
+        statusText = nil
+        errorText = nil
+        defer { isCreating = false }
+        do {
+            if store.snapshot == nil { await store.refresh() }
+            let operations = BackupRestoreFlow.standardOperations(files: files)
+            let created = try await BackupRestoreFlow.createBackup(operations: operations)
+            var configEntries: [BackupManifest.ConfigEntry] = []
+            if let client = store.readClient {
+                let names = (try? await client.configurationNames()) ?? []
+                for name in names {
+                    let configuration = try? await store.configuration(name)
+                    configEntries.append(.init(name: name, sectionCount: configuration?.sections.count ?? 0))
+                }
+            }
+            let manifest = BackupManifest(
+                createdAt: Date(), routerID: profile.id.uuidString,
+                routerName: profile.name, address: profile.address,
+                model: store.snapshot?.system.model,
+                firmware: store.snapshot?.system.firmware,
+                sha256: created.sha256, byteCount: created.data.count,
+                configs: configEntries)
+            let fileName = BackupFileNaming.fileName(routerName: profile.name, at: manifest.createdAt)
+            try library.save(data: created.data, manifest: manifest, fileName: fileName)
+            statusText = L10n.format("备份已保存：%@", fileName)
+            EventLogStore.shared.append(
+                category: .operation, kind: .backupRestore,
+                title: L10n.string("创建配置备份"),
+                detail: L10n.format("%@（%@，%lld 个配置）", fileName,
+                                    FormatHelpers.bytes(Int64(created.data.count)), configEntries.count),
+                routerID: routerID)
+        } catch {
+            errorText = FriendlyError.message(error)
+            EventLogStore.shared.append(
+                category: .operation, kind: .backupRestore,
+                title: L10n.string("创建配置备份失败"),
+                detail: FriendlyError.message(error), routerID: routerID)
+        }
+    }
+}
+
+/// Restore preview + execution for one library entry. The diff is
+/// name-level (backup inventory vs the router's current configs) —
+/// shown before the confirmation, never after the fact.
+struct RestorePreviewView: View {
+    @Environment(RouterStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let entry: BackupEntry
+    let library: BackupLibraryStore
+
+    @State private var currentNames: [String]?
+    @State private var confirming = false
+    @State private var phase: RestorePhase = .idle
+    @State private var resultText: String?
+
+    private enum RestorePhase: Equatable {
+        case idle, running(String), succeeded(String), failed(String)
+    }
+
+    private var isRunning: Bool { if case .running = phase { return true }; return false }
+
+    private var diff: BackupDiff? {
+        guard let manifest = entry.manifest, let currentNames else { return nil }
+        return BackupDiff.diff(manifest: manifest, currentConfigNames: currentNames)
+    }
+
+    var body: some View {
+        List {
+            Section("备份信息") {
+                LabeledContent("文件", value: entry.fileName)
+                LabeledContent("大小", value: FormatHelpers.bytes(Int64(entry.byteCount)))
+                LabeledContent("时间", value: entry.addedAt.formatted(date: .abbreviated, time: .standard))
+                if let manifest = entry.manifest {
+                    LabeledContent("来源路由器", value: manifest.routerName)
+                    if let model = manifest.model { LabeledContent("机型", value: model) }
+                    if let firmware = manifest.firmware { LabeledContent("固件", value: firmware) }
+                    LabeledContent("SHA-256", value: String(manifest.sha256.prefix(16)) + "…")
+                } else {
+                    Text("这份备份由外部导入，没有配置清单可预览。恢复将按文件内容整体覆盖，请只恢复你信任来源的备份。")
+                        .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                }
+            }
+            if let manifest = entry.manifest {
+                Section("包含的配置（\(manifest.configs.count)）") {
+                    ForEach(manifest.configs, id: \.name) { config in
+                        HStack {
+                            Text(config.name).font(AppTypography.row)
+                            Spacer()
+                            Text("\(config.sectionCount) 节").font(AppTypography.metadata)
+                                .foregroundStyle(AppPalette.muted)
+                        }
+                    }
+                }
+            }
+            if let diff {
+                Section("与当前配置的差异") {
+                    if !diff.onlyInBackup.isEmpty {
+                        LabeledContent("备份独有", value: diff.onlyInBackup.joined(separator: "、"))
+                    }
+                    LabeledContent("两边都有", value: "\(diff.inBoth.count) 个")
+                    if !diff.onlyInCurrent.isEmpty {
+                        LabeledContent("当前独有", value: diff.onlyInCurrent.joined(separator: "、"))
+                    }
+                    Text("恢复后，备份包含的配置以备份为准；当前独有的配置可能被移除或保留，取决于路由器恢复机制对未包含文件的处理。")
+                        .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                }
+            } else if entry.manifest != nil {
+                Section {
+                    HStack { ProgressView(); Text("正在读取当前配置清单…") }
+                }
+            }
+            Section {
+                Button("恢复这份备份", role: .destructive) { confirming = true }
+                    .disabled(isRunning || store.activeProfile == nil
+                              || store.isMutating || store.pendingConfiguration != nil)
+                switch phase {
+                case .idle:
+                    EmptyView()
+                case .running(let text):
+                    HStack { ProgressView(); Text(L10n.key(text)) }
+                case .succeeded(let text):
+                    Label(L10n.key(text), systemImage: "checkmark.circle")
+                        .font(AppTypography.secondary).foregroundStyle(AppPalette.green)
+                case .failed(let text):
+                    Label(L10n.key(text), systemImage: "exclamationmark.triangle")
+                        .font(AppTypography.secondary).foregroundStyle(AppPalette.red)
+                }
+                if let resultText {
+                    Text(L10n.key(resultText)).font(AppTypography.secondary)
+                        .foregroundStyle(AppPalette.muted)
+                }
+            } footer: {
+                Text("恢复会覆盖路由器当前配置并重启。开始前 App 会先在路由器上自动备份当前配置，万一恢复有问题，可用那份快照再恢复回来。")
+                    .font(AppTypography.metadata)
+            }
+        }
+        .navigationTitle("恢复备份")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            if entry.manifest != nil, currentNames == nil {
+                currentNames = (try? await store.readClient?.configurationNames()) ?? []
+            }
+        }
+        .confirmationDialog("确定要恢复这份备份吗？", isPresented: $confirming, titleVisibility: .visible) {
+            Button("恢复并重启", role: .destructive) { Task { await runRestore() } }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("路由器当前配置将被这份备份覆盖，全家网络会中断数分钟。恢复前会自动备份当前配置到路由器 /tmp 目录。")
+        }
+    }
+
+    private func runRestore() async {
+        guard let profile = store.activeProfile, let files = store.fileClient else { return }
+        resultText = nil
+        do {
+            let data = try library.data(for: entry)
+            var operations = BackupRestoreFlow.standardOperations(files: files)
+            let delayBox = ProbeDelayBox()
+            operations.reboot = { try await store.rebootRouter() }
+            operations.probeReconnect = { await store.probeRouterReachable() }
+            operations.probeDelay = {
+                // First probe waits out the shutdown so a still-up
+                // old session is not mistaken for recovery.
+                let first = delayBox.nextIsFirst()
+                try? await Task.sleep(for: .seconds(first ? 20 : 10))
+            }
+            let result = try await BackupRestoreFlow.restore(
+                backupData: data, fileName: entry.fileName, confirmed: true,
+                operations: operations,
+                onStep: { step in
+                    Task { @MainActor in
+                        if let text = Self.stepText(step) { phase = .running(text) }
+                    }
+                })
+            if result.reconnected {
+                phase = .succeeded(L10n.string("恢复完成，路由器已重新连接。"))
+                await store.refresh()
+            } else {
+                phase = .failed(L10n.string("恢复已执行，但等待超时后路由器仍未恢复连接。请检查电源与网络后手动刷新。"))
+            }
+            resultText = L10n.format("恢复前的当前配置已备份在路由器：%@", result.preRestoreSnapshotPath)
+            EventLogStore.shared.append(
+                category: .operation, kind: .backupRestore,
+                title: result.reconnected ? L10n.string("恢复配置备份") : L10n.string("恢复后未重新连接"),
+                detail: L10n.format("%@；恢复前快照：%@", entry.fileName, result.preRestoreSnapshotPath),
+                routerID: profile.id.uuidString)
+        } catch {
+            phase = .failed(FriendlyError.message(error))
+            EventLogStore.shared.append(
+                category: .operation, kind: .backupRestore,
+                title: L10n.string("恢复配置备份失败"),
+                detail: FriendlyError.message(error),
+                routerID: profile.id.uuidString)
+        }
+    }
+
+    private static func stepText(_ step: BackupRestoreFlow.Step) -> String? {
+        switch step {
+        case .snapshottingCurrent: return L10n.string("正在备份当前配置…")
+        case .uploading: return L10n.string("正在上传备份到路由器…")
+        case .verifyingUpload: return L10n.string("正在校验上传完整性…")
+        case .restoring: return L10n.string("正在执行恢复…")
+        case .rebooting: return L10n.string("正在重启路由器…")
+        case .reconnectVerification: return L10n.string("正在等待路由器恢复…")
+        case .succeeded, .failed: return nil
+        }
+    }
+}
+
+/// First-probe delay bookkeeping for the restore wait: the first
+/// delay is the long one (router still going down), later delays
+/// are the poll cadence.
+private final class ProbeDelayBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var used = false
+    func nextIsFirst() -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        if used { return false }
+        used = true
+        return true
     }
 }
 

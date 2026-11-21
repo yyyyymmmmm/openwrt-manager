@@ -342,5 +342,9 @@ extension KitL10n {
         "防火墙正在工作：%lld 张表 · %lld 个链": "Firewall is working: %lld tables · %lld chains",
         "静态路由": "Static Routes",
         "频段": "Band",
-    ]
+            "路由器返回了空的备份文件，未保存。": "The router returned an empty backup file; nothing was saved.",
+        "恢复后未能重新连接路由器": "Could not reconnect to the router after the restore",
+        "无法读取路由器上的备份哈希。": "Could not read the backup hash on the router.",
+        "恢复失败（sysupgrade 返回 %lld），路由器配置未变更。": "Restore failed (sysupgrade returned %lld); the router configuration was not changed.",
+]
 }

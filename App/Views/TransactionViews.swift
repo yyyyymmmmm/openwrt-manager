@@ -117,9 +117,22 @@ struct TransactionConfirmationView: View {
             let receipt = try await store.executeConfiguration(plan: plan, reloadServices: reloadServices)
             resultMessage = "已应用 \(receipt.editCount) 项修改并回读验证通过。"
             phase = .succeeded
+            // The records surface (package C) is fed here, at the one
+            // gate every configuration write passes through.
+            EventLogStore.shared.append(
+                category: .operation, kind: .configuration,
+                title: L10n.format("配置已更新：%@", plan.original.name),
+                detail: L10n.format("%lld 项修改已下发、回读验证并确认。摘要：%@", receipt.editCount,
+                                    plan.edits.map(\.summary).joined(separator: "；")),
+                routerID: store.activeProfile?.id.uuidString)
         } catch {
             resultMessage = FriendlyError.message(error)
             phase = .failed
+            EventLogStore.shared.append(
+                category: .operation, kind: .configuration,
+                title: L10n.format("配置更新失败：%@", plan.original.name),
+                detail: FriendlyError.message(error),
+                routerID: store.activeProfile?.id.uuidString)
         }
     }
 }

@@ -338,16 +338,48 @@ public struct AlertEngine: Codable, Equatable, Sendable {
 
 public struct StoredEvent: Codable, Equatable, Identifiable, Sendable {
     public enum Category: String, Codable, Sendable { case operation, alert, system }
+    /// The filter dimension of the records surface (package C):
+    /// what sort of thing happened, independent of the coarser
+    /// category. Events written before kinds existed decode with a
+    /// kind derived from their category, so old logs stay filterable.
+    public enum Kind: String, Codable, CaseIterable, Sendable {
+        case configuration, quickAction, operation, alert, backupRestore, login, system
+    }
     public var id: String
     public var at: Date
     public var category: Category
+    public var kind: Kind
     public var title: String
     public var detail: String
     public var routerID: String?
     public init(id: String = UUID().uuidString, at: Date, category: Category,
-                title: String, detail: String, routerID: String? = nil) {
+                kind: Kind? = nil, title: String, detail: String, routerID: String? = nil) {
         self.id = id; self.at = at; self.category = category
+        self.kind = kind ?? Self.derivedKind(for: category)
         self.title = title; self.detail = detail; self.routerID = routerID
+    }
+
+    public static func derivedKind(for category: Category) -> Kind {
+        switch category {
+        case .alert: return .alert
+        case .operation: return .operation
+        case .system: return .system
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, at, category, kind, title, detail, routerID
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        at = try container.decode(Date.self, forKey: .at)
+        category = try container.decode(Category.self, forKey: .category)
+        kind = try container.decodeIfPresent(Kind.self, forKey: .kind) ?? Self.derivedKind(for: category)
+        title = try container.decode(String.self, forKey: .title)
+        detail = try container.decode(String.self, forKey: .detail)
+        routerID = try container.decodeIfPresent(String.self, forKey: .routerID)
     }
 }
 
@@ -362,9 +394,11 @@ public struct EventLog: Codable, Equatable, Sendable {
     }
 
     /// Newest first, optionally scoped to one router (plus global
-    /// events, which carry no router id).
-    public func recent(limit: Int = 200, routerID: String? = nil) -> [StoredEvent] {
-        let scoped = routerID == nil ? events : events.filter { $0.routerID == nil || $0.routerID == routerID }
+    /// events, which carry no router id) and/or to one kind.
+    public func recent(limit: Int = 200, routerID: String? = nil, kind: StoredEvent.Kind? = nil) -> [StoredEvent] {
+        var scoped = events
+        if routerID != nil { scoped = scoped.filter { $0.routerID == nil || $0.routerID == routerID } }
+        if let kind { scoped = scoped.filter { $0.kind == kind } }
         return Array(scoped.suffix(limit).reversed())
     }
 }

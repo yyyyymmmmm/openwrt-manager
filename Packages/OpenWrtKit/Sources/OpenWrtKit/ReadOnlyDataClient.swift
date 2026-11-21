@@ -133,6 +133,30 @@ public struct ReadOnlyDataClient: Sendable {
         return try SnapshotParser.wirelessDevices(value)
     }
 
+    /// Associated wireless stations (package C device roster
+    /// enrichment), best effort by design: the iwinfo ubus object is
+    /// not granted to login sessions on every build, and a radio may
+    /// have no stations. Candidate netdevs come from the network
+    /// device status (wlan*/ath*/phy* names); each assoclist call
+    /// that fails is skipped, and a wholesale denial simply yields
+    /// an empty list — the roster then stands on leases + neighbors.
+    public func associatedStations() async -> [WirelessStation] {
+        guard let value = try? await caller.call(object: "network.device", method: "status") else {
+            return []
+        }
+        let names = (value.objectValue ?? [:]).keys.filter { name in
+            name.hasPrefix("wlan") || name.hasPrefix("ath") || name.hasPrefix("phy")
+        }.sorted()
+        var stations: [WirelessStation] = []
+        for name in names {
+            if let result = try? await caller.call(object: "iwinfo", method: "assoclist",
+                                                   parameters: ["device": .string(name)]) {
+                stations += StationParser.assoclist(result, device: name)
+            }
+        }
+        return stations
+    }
+
     public func connectionCount() async throws -> ConnectionCount {
         let countText = try await fileRead(path: "/proc/sys/net/netfilter/nf_conntrack_count")
         let maximumText = try? await fileRead(path: "/proc/sys/net/netfilter/nf_conntrack_max")

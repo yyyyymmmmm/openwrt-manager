@@ -49,9 +49,10 @@ final class EventLogStore {
     /// Every recorded event also lands in the diagnostic buffer
     /// (package A), so an exported diagnostics file covers operations
     /// and alerts as well as connections and transactions.
-    func append(category: StoredEvent.Category, title: String, detail: String,
+    func append(category: StoredEvent.Category, kind: StoredEvent.Kind? = nil,
+                title: String, detail: String,
                 routerID: String? = nil, at: Date = Date()) {
-        log.append(StoredEvent(at: at, category: category, title: title,
+        log.append(StoredEvent(at: at, category: category, kind: kind, title: title,
                                detail: detail, routerID: routerID))
         MonitoringFiles.save(log, to: fileURL)
         AppDiagnostics.record(category == .alert ? .error : .app, title,
@@ -153,7 +154,7 @@ final class AlertCenter {
 
     private func deliver(_ transition: AlertTransition, routerID: String, routerName: String) {
         let text = Self.text(for: transition)
-        EventLogStore.shared.append(category: .alert, title: text.title, detail: text.detail,
+        EventLogStore.shared.append(category: .alert, kind: .alert, title: text.title, detail: text.detail,
                                     routerID: routerID, at: transition.at)
         guard authorization == .authorized || authorization == .provisional else { return }
         let content = UNMutableNotificationContent()

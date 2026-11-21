@@ -280,7 +280,7 @@ struct QuickActionsSection: View {
     private func runReboot() {
         phase = .working(L10n.string("正在发送重启指令…"))
         errorText = nil
-        EventLogStore.shared.append(category: .operation, title: L10n.string("重启路由器"),
+        EventLogStore.shared.append(category: .operation, kind: .quickAction, title: L10n.string("重启路由器"),
                                     detail: L10n.string("已从概览页发起重启，等待恢复。"),
                                     routerID: routerID)
         Task {
@@ -308,7 +308,7 @@ struct QuickActionsSection: View {
             if await store.probeRouterReachable() {
                 await store.refresh()
                 phase = .done(L10n.string("路由器已恢复，状态已重新读取。"))
-                EventLogStore.shared.append(category: .operation, title: L10n.string("路由器已恢复"),
+                EventLogStore.shared.append(category: .operation, kind: .quickAction, title: L10n.string("路由器已恢复"),
                                             detail: L10n.string("重启后重新登录成功，状态已刷新。"),
                                             routerID: routerID)
                 return
@@ -316,7 +316,7 @@ struct QuickActionsSection: View {
             try? await Task.sleep(for: .seconds(10))
         }
         phase = .failed(L10n.string("等待超时，路由器尚未恢复。请检查电源与网络后手动刷新。"))
-        EventLogStore.shared.append(category: .operation, title: L10n.string("重启后未恢复"),
+        EventLogStore.shared.append(category: .operation, kind: .quickAction, title: L10n.string("重启后未恢复"),
                                     detail: L10n.string("等待约 7 分钟仍无法重新登录路由器。"),
                                     routerID: routerID)
     }
@@ -326,7 +326,7 @@ struct QuickActionsSection: View {
     private func runRedial() {
         phase = .working(L10n.string("正在重拨…"))
         errorText = nil
-        EventLogStore.shared.append(category: .operation, title: L10n.string("重拨 WAN"),
+        EventLogStore.shared.append(category: .operation, kind: .quickAction, title: L10n.string("重拨 WAN"),
                                     detail: L10n.string("已从概览页发起重拨，等待核对。"),
                                     routerID: routerID)
         Task {
@@ -343,7 +343,7 @@ struct QuickActionsSection: View {
                 if let upstream = store.capability?.upstream,
                    store.snapshot?.interfaces.first(where: { $0.name == upstream.interfaceName })?.up == true {
                     phase = .done(L10n.string("WAN 已恢复连接。"))
-                    EventLogStore.shared.append(category: .operation, title: L10n.string("重拨完成"),
+                    EventLogStore.shared.append(category: .operation, kind: .quickAction, title: L10n.string("重拨完成"),
                                                 detail: L10n.string("WAN 接口已恢复连接。"),
                                                 routerID: routerID)
                     return
@@ -371,7 +371,7 @@ struct QuickActionsSection: View {
                 return
             }
             wifiPlan = try ConfigurationPlan(original: original, edited: edited)
-            EventLogStore.shared.append(category: .operation,
+            EventLogStore.shared.append(category: .operation, kind: .configuration,
                                         title: wifiEnabled ? L10n.string("关闭 Wi-Fi") : L10n.string("开启 Wi-Fi"),
                                         detail: L10n.string("已从概览页发起，经配置事务确认后生效。"),
                                         routerID: routerID)

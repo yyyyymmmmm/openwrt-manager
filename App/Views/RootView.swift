@@ -6,18 +6,30 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var showingRouterPicker = false
     @State private var monitoring = MonitoringService()
+    @State private var appLock = AppLockController()
+    @State private var sshTrust = SSHTrustStore.shared
 
     var body: some View {
-        Group {
-            if store.hasConnection {
-                RouterTabs(showingRouterPicker: $showingRouterPicker)
-                    .id(store.connectionID)
-            } else {
-                ConnectFlowView(isModal: false)
+        ZStack {
+            Group {
+                if store.hasConnection {
+                    RouterTabs(showingRouterPicker: $showingRouterPicker)
+                        .id(store.connectionID)
+                } else {
+                    ConnectFlowView(isModal: false)
+                }
+            }
+            // App lock (package C): while locked the management
+            // content is replaced outright — nothing of any router
+            // renders behind the lock face.
+            if appLock.isLocked {
+                LockScreenView()
             }
         }
         .environment(monitoring)
         .environment(EventLogStore.shared)
+        .environment(appLock)
+        .environment(sshTrust)
         .sheet(isPresented: $showingRouterPicker) {
             ConnectFlowView(isModal: true)
                 .presentationDragIndicator(.visible)
@@ -37,6 +49,13 @@ struct RootView: View {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background { BackgroundSampler.schedule() }
+            switch phase {
+            case .active: appLock.handleScenePhase(.active)
+            case .inactive: appLock.handleScenePhase(.inactive)
+            case .background: appLock.handleScenePhase(.background)
+            @unknown default: break
+            }
+            if appLock.isLocked { showingRouterPicker = false }
         }
         // Language changes (system or per-app) re-run the refresh,
         // whose language gate re-discovers when the snapshot's

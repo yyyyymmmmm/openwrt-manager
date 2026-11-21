@@ -126,6 +126,10 @@ final class RouterStore {
         connectionID = UUID()
         clearData()
         recordActivity(L10n.string("已连接路由器"), detail: L10n.string("通过路由器账户建立管理会话。"), category: .connection)
+        EventLogStore.shared.append(category: .operation, kind: .login,
+                                    title: L10n.string("登录路由器"),
+                                    detail: L10n.format("已连接到 %@（%@）。", saved.name, saved.address),
+                                    routerID: saved.id.uuidString)
         profiles.removeAll { $0.id == saved.id }
         profiles.insert(saved, at: 0)
         persist()

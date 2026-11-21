@@ -29,6 +29,13 @@ struct NetworkTabScreen: View {
                             .summaryRow()
                     }
                 }
+                Section {
+                    NavigationLink {
+                        DevicesView()
+                    } label: {
+                        Label("设备管理", systemImage: "iphone.gen3")
+                    }
+                }
                 if pages.isEmpty {
                     EmptyStateView(title: "暂无网络页面", message: "发现完成后，这里会按这台路由器实际的网络菜单生成入口。", symbol: "network.slash")
                 } else {

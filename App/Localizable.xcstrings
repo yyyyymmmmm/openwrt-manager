@@ -11628,6 +11628,2199 @@
           }
         }
       }
+    },
+    "%@ 出示的指纹与已信任记录不一致。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 出示的指纹与已信任记录不一致。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ presented a fingerprint that does not match the trusted record."
+          }
+        }
+      }
+    },
+    "%@ 节": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 节"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ sections"
+          }
+        }
+      }
+    },
+    "%@（%@，%lld 个配置）": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@（%@，%lld 个配置）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (%@, %lld configs)"
+          }
+        }
+      }
+    },
+    "%@；恢复前快照：%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@；恢复前快照：%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@; pre-restore snapshot: %@"
+          }
+        }
+      }
+    },
+    "%lld 个": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 个"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld"
+          }
+        }
+      }
+    },
+    "%lld 项修改已下发、回读验证并确认。摘要：%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 项修改已下发、回读验证并确认。摘要：%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld changes were applied, verified by readback and confirmed. Summary: %@"
+          }
+        }
+      }
+    },
+    "DHCP 租约、邻居表与无线关联都没有报告设备。设备上线或续租后会出现在这里。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DHCP 租约、邻居表与无线关联都没有报告设备。设备上线或续租后会出现在这里。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DHCP leases, the neighbor table and wireless association reported no devices. Devices appear here once they come online or renew a lease."
+          }
+        }
+      }
+    },
+    "IP 地址": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "IP 地址"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "IP Address"
+          }
+        }
+      }
+    },
+    "SSH 主机指纹": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH 主机指纹"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH Host Fingerprints"
+          }
+        }
+      }
+    },
+    "SSH 主机指纹不一致，连接被阻断": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH 主机指纹不一致，连接被阻断"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH host fingerprint mismatch; connection blocked"
+          }
+        }
+      }
+    },
+    "一键动作": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一键动作"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quick Action"
+          }
+        }
+      }
+    },
+    "下面是路由器在本次连接中出示的 SSH 主机指纹。请与路由器本地显示或以往记录的指纹核对一致后再信任。信任后，下次连接将自动校验；指纹一旦变化，连接会被阻断并提醒你。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下面是路由器在本次连接中出示的 SSH 主机指纹。请与路由器本地显示或以往记录的指纹核对一致后再信任。信任后，下次连接将自动校验；指纹一旦变化，连接会被阻断并提醒你。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is the SSH host fingerprint the router presented for this connection. Compare it with the fingerprint shown locally on the router or in your records before trusting it. Once trusted, later connections are verified automatically; if the fingerprint ever changes, the connection is blocked and you are told."
+          }
+        }
+      }
+    },
+    "与当前配置的差异": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "与当前配置的差异"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Difference from the current configuration"
+          }
+        }
+      }
+    },
+    "两边都有": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "两边都有"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In both"
+          }
+        }
+      }
+    },
+    "主机密钥指纹：%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主机密钥指纹：%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Host key fingerprint: %@"
+          }
+        }
+      }
+    },
+    "主机指纹已变化，连接已被阻断": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主机指纹已变化，连接已被阻断"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The host fingerprint has changed; the connection was blocked"
+          }
+        }
+      }
+    },
+    "事项": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "事项"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Event"
+          }
+        }
+      }
+    },
+    "保存备注名": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存备注名"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save Name"
+          }
+        }
+      }
+    },
+    "信任于 %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "信任于 %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trusted on %@"
+          }
+        }
+      }
+    },
+    "信任并继续": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "信任并继续"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trust and Continue"
+          }
+        }
+      }
+    },
+    "信号": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "信号"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signal"
+          }
+        }
+      }
+    },
+    "全局（不针对某台路由器）": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全局（不针对某台路由器）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Global (not tied to one router)"
+          }
+        }
+      }
+    },
+    "全部": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All"
+          }
+        }
+      }
+    },
+    "列表由 DHCP 租约、邻居表与无线关联三处数据合并，同一设备按 MAC 去重；没有 MAC 的邻居条目单独列出。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "列表由 DHCP 租约、邻居表与无线关联三处数据合并，同一设备按 MAC 去重；没有 MAC 的邻居条目单独列出。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This list merges DHCP leases, the neighbor table and wireless association; the same device is deduplicated by MAC, and neighbor entries without a MAC are listed separately."
+          }
+        }
+      }
+    },
+    "创建配置备份": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "创建配置备份"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create Configuration Backup"
+          }
+        }
+      }
+    },
+    "创建配置备份失败": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "创建配置备份失败"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration Backup Failed"
+          }
+        }
+      }
+    },
+    "包含的配置（%lld）": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "包含的配置（%lld）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Included configurations (%lld)"
+          }
+        }
+      }
+    },
+    "在线设备（%lld）": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在线设备（%lld）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Online devices (%lld)"
+          }
+        }
+      }
+    },
+    "备份": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Backup"
+          }
+        }
+      }
+    },
+    "备份信息": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份信息"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Backup Information"
+          }
+        }
+      }
+    },
+    "备份已保存：%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份已保存：%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Backup saved: %@"
+          }
+        }
+      }
+    },
+    "备份已导入。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份已导入。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Backup imported."
+          }
+        }
+      }
+    },
+    "备份恢复": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份恢复"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Backup & Restore"
+          }
+        }
+      }
+    },
+    "备份是 OpenWrt 官方 sysupgrade 格式（含全部配置），与 LuCI 的备份互通。备份文件包含路由器完整配置，只保存在本机；请像对待密码一样保管导出的文件。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份是 OpenWrt 官方 sysupgrade 格式（含全部配置），与 LuCI 的备份互通。备份文件包含路由器完整配置，只保存在本机；请像对待密码一样保管导出的文件。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Backups use OpenWrt's official sysupgrade format (the full configuration) and are interchangeable with LuCI's. A backup file contains the router's complete configuration and is stored only on this device; treat exported files like passwords."
+          }
+        }
+      }
+    },
+    "备份独有": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备份独有"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only in backup"
+          }
+        }
+      }
+    },
+    "备注名": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备注名"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name Note"
+          }
+        }
+      }
+    },
+    "备注名已保存（只保存在本机，不写路由器）。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "备注名已保存（只保存在本机，不写路由器）。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name saved (stored on this device only, never written to the router)."
+          }
+        }
+      }
+    },
+    "外部导入，无配置清单": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "外部导入，无配置清单"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Imported externally; no configuration inventory"
+          }
+        }
+      }
+    },
+    "大小": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大小"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Size"
+          }
+        }
+      }
+    },
+    "安全": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安全"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Security"
+          }
+        }
+      }
+    },
+    "导入备份文件": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入备份文件"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import Backup File"
+          }
+        }
+      }
+    },
+    "尚未连接路由器。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未连接路由器。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not connected to a router yet."
+          }
+        }
+      }
+    },
+    "已保存的备份": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已保存的备份"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved Backups"
+          }
+        }
+      }
+    },
+    "已信任 SSH 主机指纹": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已信任 SSH 主机指纹"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH Host Fingerprint Trusted"
+          }
+        }
+      }
+    },
+    "已信任：%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已信任：%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trusted: %@"
+          }
+        }
+      }
+    },
+    "已拉黑": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已拉黑"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blocked"
+          }
+        }
+      }
+    },
+    "已是该状态，无需变更。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已是该状态，无需变更。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Already in that state; nothing to change."
+          }
+        }
+      }
+    },
+    "已连接到 %@（%@）。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已连接到 %@（%@）。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connected to %@ (%@)."
+          }
+        }
+      }
+    },
+    "已重新信任 SSH 主机指纹": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已重新信任 SSH 主机指纹"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH Host Fingerprint Re-trusted"
+          }
+        }
+      }
+    },
+    "已锁定": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已锁定"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Locked"
+          }
+        }
+      }
+    },
+    "开启后，冷启动与离开超过 30 秒返回时，需要 Face ID、触控 ID 或设备密码解锁；锁定期间不显示任何路由器内容。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开启后，冷启动与离开超过 30 秒返回时，需要 Face ID、触控 ID 或设备密码解锁；锁定期间不显示任何路由器内容。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When on, a cold start and any return after more than 30 seconds away require Face ID, Touch ID or the device passcode; no router content is shown while locked."
+          }
+        }
+      }
+    },
+    "当前独有": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前独有"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only in current"
+          }
+        }
+      }
+    },
+    "恢复会覆盖路由器当前配置并重启。开始前 App 会先在路由器上自动备份当前配置，万一恢复有问题，可用那份快照再恢复回来。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复会覆盖路由器当前配置并重启。开始前 App 会先在路由器上自动备份当前配置，万一恢复有问题，可用那份快照再恢复回来。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restoring overwrites the router's current configuration and reboots it. Before it starts, the app automatically backs up the current configuration on the router, so a bad restore can be undone with that snapshot."
+          }
+        }
+      }
+    },
+    "恢复前的当前配置已备份在路由器：%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复前的当前配置已备份在路由器：%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The pre-restore configuration was backed up on the router: %@"
+          }
+        }
+      }
+    },
+    "恢复后未重新连接": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复后未重新连接"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not Reconnected After Restore"
+          }
+        }
+      }
+    },
+    "恢复后，备份包含的配置以备份为准；当前独有的配置可能被移除或保留，取决于路由器恢复机制对未包含文件的处理。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复后，备份包含的配置以备份为准；当前独有的配置可能被移除或保留，取决于路由器恢复机制对未包含文件的处理。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After the restore, configurations in the backup win. Configurations that exist only in the current setup may be removed or kept, depending on how the router's restore handles files the backup does not include."
+          }
+        }
+      }
+    },
+    "恢复备份": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复备份"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore Backup"
+          }
+        }
+      }
+    },
+    "恢复完成，路由器已重新连接。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复完成，路由器已重新连接。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore complete; the router has reconnected."
+          }
+        }
+      }
+    },
+    "恢复已执行，但等待超时后路由器仍未恢复连接。请检查电源与网络后手动刷新。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复已执行，但等待超时后路由器仍未恢复连接。请检查电源与网络后手动刷新。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The restore ran, but the router did not come back before the wait timed out. Check its power and network, then refresh manually."
+          }
+        }
+      }
+    },
+    "恢复并重启": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复并重启"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore and Reboot"
+          }
+        }
+      }
+    },
+    "恢复这份备份": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复这份备份"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore This Backup"
+          }
+        }
+      }
+    },
+    "恢复配置备份": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复配置备份"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration Backup Restored"
+          }
+        }
+      }
+    },
+    "恢复配置备份失败": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复配置备份失败"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration Backup Restore Failed"
+          }
+        }
+      }
+    },
+    "打开 App 需解锁": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开 App 需解锁"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Require Unlock to Open the App"
+          }
+        }
+      }
+    },
+    "拉黑": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拉黑"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blocking"
+          }
+        }
+      }
+    },
+    "拉黑无线接入": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拉黑无线接入"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Block Wireless Access"
+          }
+        }
+      }
+    },
+    "拉黑有线转发": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拉黑有线转发"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Block Wired Forwarding"
+          }
+        }
+      }
+    },
+    "接入方式": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "接入方式"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connection"
+          }
+        }
+      }
+    },
+    "接入方式未知": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "接入方式未知"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connection unknown"
+          }
+        }
+      }
+    },
+    "撤销信任": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "撤销信任"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revoke Trust"
+          }
+        }
+      }
+    },
+    "撤销后，下次终端连接这台路由器时会重新要求核对指纹。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "撤销后，下次终端连接这台路由器时会重新要求核对指纹。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After revoking, the next terminal connection to this router will ask you to verify the fingerprint again."
+          }
+        }
+      }
+    },
+    "操作记录是给人看的账：做了什么、结果如何。诊断日志是排障原料：连接与内部事件的原始记录，可导出发给支持人员。两者互相独立，不合并。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "操作记录是给人看的账：做了什么、结果如何。诊断日志是排障原料：连接与内部事件的原始记录，可导出发给支持人员。两者互相独立，不合并。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The operation record is the human-readable account: what was done and how it turned out. The diagnostic log is troubleshooting raw material: the original record of connections and internal events, exportable for support. The two are independent and never merged."
+          }
+        }
+      }
+    },
+    "数据来源": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "数据来源"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sources"
+          }
+        }
+      }
+    },
+    "无法访问本地备份目录。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法访问本地备份目录。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cannot access the local backup directory."
+          }
+        }
+      }
+    },
+    "无线关联": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无线关联"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wireless association"
+          }
+        }
+      }
+    },
+    "无线接入": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无线接入"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wireless access"
+          }
+        }
+      }
+    },
+    "无线设备": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无线设备"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wireless Device"
+          }
+        }
+      }
+    },
+    "显示名称": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示名称"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Display Name"
+          }
+        }
+      }
+    },
+    "暂无在线设备": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无在线设备"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Online Devices"
+          }
+        }
+      }
+    },
+    "暂无已信任指纹": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无已信任指纹"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Trusted Fingerprints"
+          }
+        }
+      }
+    },
+    "暂无记录": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无记录"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Records"
+          }
+        }
+      }
+    },
+    "有线": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有线"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wired"
+          }
+        }
+      }
+    },
+    "有线转发": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有线转发"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wired forwarding"
+          }
+        }
+      }
+    },
+    "未拉黑": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未拉黑"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not blocked"
+          }
+        }
+      }
+    },
+    "本次出示：%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本次出示：%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Presented now: %@"
+          }
+        }
+      }
+    },
+    "本次连接活动": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本次连接活动"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This Session's Activity"
+          }
+        }
+      }
+    },
+    "来源路由器": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "来源路由器"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source Router"
+          }
+        }
+      }
+    },
+    "来自 %@：%lld 个配置、%@ 个配置节": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "来自 %@：%lld 个配置、%@ 个配置节"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From %@: %lld configs, %@ sections"
+          }
+        }
+      }
+    },
+    "正在上传备份到路由器…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在上传备份到路由器…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uploading the backup to the router…"
+          }
+        }
+      }
+    },
+    "正在备份当前配置…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在备份当前配置…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Backing up the current configuration…"
+          }
+        }
+      }
+    },
+    "正在执行恢复…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在执行恢复…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restoring…"
+          }
+        }
+      }
+    },
+    "正在校验上传完整性…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在校验上传完整性…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifying the upload…"
+          }
+        }
+      }
+    },
+    "正在汇总设备…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在汇总设备…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gathering devices…"
+          }
+        }
+      }
+    },
+    "正在生成并下载备份…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在生成并下载备份…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Creating and downloading the backup…"
+          }
+        }
+      }
+    },
+    "正在等待路由器恢复…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在等待路由器恢复…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting for the router to come back…"
+          }
+        }
+      }
+    },
+    "正在读取当前配置清单…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在读取当前配置清单…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading the current configuration list…"
+          }
+        }
+      }
+    },
+    "正在重启路由器…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在重启路由器…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rebooting the router…"
+          }
+        }
+      }
+    },
+    "正在验证…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在验证…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifying…"
+          }
+        }
+      }
+    },
+    "流量（本次关联）": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "流量（本次关联）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Traffic (this association)"
+          }
+        }
+      }
+    },
+    "登录": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Login"
+          }
+        }
+      }
+    },
+    "相关": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "相关"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Related"
+          }
+        }
+      }
+    },
+    "确定要恢复这份备份吗？": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确定要恢复这份备份吗？"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore this backup?"
+          }
+        }
+      }
+    },
+    "租约剩余": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "租约剩余"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lease Remaining"
+          }
+        }
+      }
+    },
+    "给这台设备起个名字": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "给这台设备起个名字"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Give this device a name"
+          }
+        }
+      }
+    },
+    "解锁": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解锁"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlock"
+          }
+        }
+      }
+    },
+    "解锁以查看路由器管理内容": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解锁以查看路由器管理内容"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlock to view router management content"
+          }
+        }
+      }
+    },
+    "解锁后才能查看路由器管理内容。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解锁后才能查看路由器管理内容。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlock to view router management content."
+          }
+        }
+      }
+    },
+    "解除无线拉黑": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解除无线拉黑"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unblock Wireless Access"
+          }
+        }
+      }
+    },
+    "解除有线拉黑": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解除有线拉黑"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unblock Wired Forwarding"
+          }
+        }
+      }
+    },
+    "记录详情": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记录详情"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Record Details"
+          }
+        }
+      }
+    },
+    "设备管理": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设备管理"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Device Management"
+          }
+        }
+      }
+    },
+    "详情": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "详情"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Details"
+          }
+        }
+      }
+    },
+    "路由器当前配置将被这份备份覆盖，全家网络会中断数分钟。恢复前会自动备份当前配置到路由器 /tmp 目录。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路由器当前配置将被这份备份覆盖，全家网络会中断数分钟。恢复前会自动备份当前配置到路由器 /tmp 目录。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The router's current configuration will be overwritten by this backup and the household network will be down for a few minutes. The current configuration is backed up to the router's /tmp directory first."
+          }
+        }
+      }
+    },
+    "这份备份由外部导入，没有配置清单可预览。恢复将按文件内容整体覆盖，请只恢复你信任来源的备份。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这份备份由外部导入，没有配置清单可预览。恢复将按文件内容整体覆盖，请只恢复你信任来源的备份。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This backup was imported from elsewhere and has no configuration inventory to preview. Restoring applies the file as a whole; only restore backups from sources you trust."
+          }
+        }
+      }
+    },
+    "这台路由器出示的 SSH 指纹与已信任的记录不一致。可能原因：路由器重装或刷机后生成了新密钥，或连接被中间人劫持。请先通过可信方式核对新指纹，确认无误后再重新信任。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这台路由器出示的 SSH 指纹与已信任的记录不一致。可能原因：路由器重装或刷机后生成了新密钥，或连接被中间人劫持。请先通过可信方式核对新指纹，确认无误后再重新信任。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The SSH fingerprint this router presented does not match the trusted record. Possible causes: the router was reinstalled or reflashed and generated a new key, or the connection is being intercepted. Verify the new fingerprint through a trusted channel before re-trusting it."
+          }
+        }
+      }
+    },
+    "这条记录来自邻居表且没有 MAC 地址，无法与租约或无线关联合并，也无法命名或拉黑。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这条记录来自邻居表且没有 MAC 地址，无法与租约或无线关联合并，也无法命名或拉黑。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This entry comes from the neighbor table without a MAC address, so it cannot be merged with leases or associations, named, or blocked."
+          }
+        }
+      }
+    },
+    "通过各无线接口的 MAC 过滤名单生效：拉黑后该设备无法再连入这台路由器的 Wi-Fi。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通过各无线接口的 MAC 过滤名单生效：拉黑后该设备无法再连入这台路由器的 Wi-Fi。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Applied through each wireless interface's MAC filter list: once blocked, this device can no longer join this router's Wi-Fi."
+          }
+        }
+      }
+    },
+    "通过防火墙规则拦截该设备的上网转发。同网段设备之间的互访不经过防火墙，不在此拦截范围内。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通过防火墙规则拦截该设备的上网转发。同网段设备之间的互访不经过防火墙，不在此拦截范围内。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Applied through a firewall rule that drops this device's internet forwarding. Traffic between devices on the same subnet never passes the firewall and is not covered."
+          }
+        }
+      }
+    },
+    "邻居状态": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "邻居状态"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neighbor State"
+          }
+        }
+      }
+    },
+    "邻居表": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "邻居表"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neighbor table"
+          }
+        }
+      }
+    },
+    "配置变更": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配置变更"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration"
+          }
+        }
+      }
+    },
+    "配置变更、一键动作、告警、备份恢复与登录会记在这里，可按类型筛选。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配置变更、一键动作、告警、备份恢复与登录会记在这里，可按类型筛选。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration changes, quick actions, alerts, backup/restore and logins are recorded here and can be filtered by type."
+          }
+        }
+      }
+    },
+    "配置已更新：%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配置已更新：%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration updated: %@"
+          }
+        }
+      }
+    },
+    "配置更新失败：%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配置更新失败：%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration update failed: %@"
+          }
+        }
+      }
+    },
+    "重新确认并信任新指纹": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新确认并信任新指纹"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Re-verify and Trust the New Fingerprint"
+          }
+        }
+      }
+    },
+    "首次在终端连接一台路由器并确认指纹后，记录会出现在这里。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首次在终端连接一台路由器并确认指纹后，记录会出现在这里。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Records appear here after you connect to a router in the terminal and confirm its fingerprint for the first time."
+          }
+        }
+      }
+    },
+    "首次连接这台路由器，请核对主机指纹": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首次连接这台路由器，请核对主机指纹"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First connection to this router — verify the host fingerprint"
+          }
+        }
+      }
+    },
+    "验证身份以启用 App 锁": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "验证身份以启用 App 锁"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verify your identity to enable the app lock"
+          }
+        }
+      }
+    },
+    "；": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "；"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "; "
+          }
+        }
+      }
     }
   },
   "version": "1.0"
