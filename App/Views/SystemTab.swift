@@ -993,20 +993,32 @@ struct RebootInfoView: View {
 private struct FirmwareUpgradeSection: View {
     @Environment(RouterStore.self) private var store
     @State private var pickerPresented = false
-    @State private var imageData: Data?
+    @State private var imageURL: URL?
     @State private var imageName: String?
+    @State private var imageSize: Int64 = 0
+    @State private var localDigest: String?
+    @State private var expectedHash = ""
     @State private var step: UpgradeFlow.Step?
-    @State private var prepared: (backupPath: String, digest: String)?
+    @State private var sentBytes: Int64 = 0
+    @State private var prepared: UpgradeFlow.PreparedUpgrade?
     @State private var working = false
     @State private var secondConfirmation = false
     @State private var outcome: String?
+
+    private var expectedTrimmed: String {
+        expectedHash.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+    private var expectedFormatValid: Bool {
+        expectedTrimmed.count == 64 && expectedTrimmed.allSatisfy(\.isHexDigit)
+    }
 
     var body: some View {
         Section("固件升级（加强事务）") {
             if let imageName {
                 LabeledContent("镜像", value: imageName)
-                if let imageData {
-                    LabeledContent("本地 SHA-256", value: SHA256Hasher.hexDigest(imageData))
+                LabeledContent("镜像大小", value: ByteCountFormatter.string(fromByteCount: imageSize, countStyle: .file))
+                if let localDigest {
+                    LabeledContent("本地 SHA-256", value: localDigest)
                         .font(AppTypography.metadata)
                 }
             }
@@ -1016,14 +1028,57 @@ private struct FirmwareUpgradeSection: View {
                 Label("选择固件镜像", systemImage: "doc.badge.plus")
             }
             .disabled(working || prepared != nil)
+            if prepared == nil {
+                TextField("官方 SHA-256（可选）", text: $expectedHash)
+                    .font(AppTypography.metadata)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .disabled(working)
+                Text("从固件发布页复制官方 SHA-256 粘贴到这里：填写后镜像与它不一致会直接中止；不填则不做这项比对。")
+                    .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+                if !expectedTrimmed.isEmpty {
+                    if !expectedFormatValid {
+                        Text("这串 SHA-256 格式不对（应为 64 位十六进制）。")
+                            .font(AppTypography.secondary).foregroundStyle(AppPalette.orange)
+                    } else if let localDigest {
+                        if expectedTrimmed == localDigest {
+                            Text("与所选镜像的 SHA-256 一致。")
+                                .font(AppTypography.secondary).foregroundStyle(AppPalette.green)
+                        } else {
+                            Text("与所选镜像的 SHA-256 不一致，校验时会被中止。")
+                                .font(AppTypography.secondary).foregroundStyle(AppPalette.orange)
+                        }
+                    }
+                }
+            }
             if let step {
                 Label(stepText(step), systemImage: step == .succeeded ? "checkmark.circle" : "arrow.triangle.2.circlepath")
                     .font(AppTypography.secondary)
                     .foregroundStyle(step == .succeeded ? AppPalette.green : AppPalette.muted)
             }
+            if working, step == .staging, imageSize > 0 {
+                ProgressView(value: Double(sentBytes), total: Double(imageSize))
+                Text(L10n.format("已上传 %@ / %@", ByteCountFormatter.string(fromByteCount: sentBytes, countStyle: .file),
+                                 ByteCountFormatter.string(fromByteCount: imageSize, countStyle: .file)))
+                    .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
+            }
+            if let prepared {
+                if let tmpFree = prepared.space.tmpFreeBytes {
+                    LabeledContent("内存盘 /tmp 可用", value: ByteCountFormatter.string(fromByteCount: tmpFree, countStyle: .file))
+                }
+                if let overlayFree = prepared.space.overlayFreeBytes {
+                    LabeledContent("根分区可用", value: ByteCountFormatter.string(fromByteCount: overlayFree, countStyle: .file))
+                }
+                Text(prepared.expectedHashVerified
+                     ? "已与提供的官方 SHA-256 比对一致。"
+                     : "未提供官方 SHA-256，本次没有做官方哈希比对；传输完整性与 sysupgrade 合法性校验均已完成。")
+                    .font(AppTypography.secondary)
+                    .foregroundStyle(prepared.expectedHashVerified ? AppPalette.green : AppPalette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if prepared == nil {
                 Button("开始：备份并校验镜像") { Task { await prepare() } }
-                    .disabled(imageData == nil || working)
+                    .disabled(imageURL == nil || working)
             } else if !secondConfirmation {
                 Text("备份与校验已完成。再次确认后将真正执行升级——升级期间全屋断网，路由器自动重启。")
                     .font(AppTypography.secondary).foregroundStyle(AppPalette.orange)
@@ -1038,6 +1093,7 @@ private struct FirmwareUpgradeSection: View {
                 Button("取消本次升级") {
                     prepared = nil
                     step = nil
+                    sentBytes = 0
                     outcome = L10n.string("已取消本次升级：路由器未执行任何更改，此前自动生成的备份仍保留在路由器上。")
                 }
                 .disabled(working)
@@ -1049,12 +1105,15 @@ private struct FirmwareUpgradeSection: View {
         }
         .fileImporter(isPresented: $pickerPresented,
                       allowedContentTypes: [.data]) { result in
-            if case .success(let url) = result,
-               url.startAccessingSecurityScopedResource(),
-               let data = try? Data(contentsOf: url) {
-                imageData = data
+            if case .success(let url) = result {
+                imageURL = url
                 imageName = url.lastPathComponent
-                url.stopAccessingSecurityScopedResource()
+                imageSize = 0
+                localDigest = nil
+                prepared = nil
+                sentBytes = 0
+                outcome = nil
+                Task { await computeLocalDigest(url) }
             }
         }
     }
@@ -1069,15 +1128,63 @@ private struct FirmwareUpgradeSection: View {
         return operations
     }
 
-    private func prepare() async {
-        guard let imageData, let operations = operations() else { return }
-        working = true
-        defer { working = false }
-        do {
-            let result = try await UpgradeFlow.prepare(image: imageData, operations: operations) { newStep in
-                Task { @MainActor in step = newStep }
+    /// Opens the picked image as a chunk reader. The caller owns the
+    /// security-scoped access window; the handle closes itself at EOF.
+    private func makeReader(_ url: URL, size: Int64) -> FirmwareChunkReader? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        return FirmwareChunkReader(size: size) {
+            let data = try handle.read(upToCount: 256 * 1024)
+            guard let data, !data.isEmpty else {
+                try? handle.close()
+                return nil
             }
-            prepared = (result.backupPath, result.imageSHA256)
+            return data
+        }
+    }
+
+    /// Streams the picked file once to learn its size and SHA-256 —
+    /// the image is never loaded whole into memory.
+    private func computeLocalDigest(_ url: URL) async {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        let size = Int64((try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
+        await MainActor.run { imageSize = size }
+        guard let reader = makeReader(url, size: size) else { return }
+        var hasher = SHA256Hasher()
+        do {
+            while let chunk = try await reader.nextChunk() { hasher.update(chunk) }
+            let digest = hasher.finalize().map { String(format: "%02x", $0) }.joined()
+            await MainActor.run { localDigest = digest }
+        } catch {
+            await MainActor.run { localDigest = nil }
+        }
+    }
+
+    private func prepare() async {
+        guard let imageURL, let operations = operations() else { return }
+        working = true
+        sentBytes = 0
+        defer { working = false }
+        let scoped = imageURL.startAccessingSecurityScopedResource()
+        defer { if scoped { imageURL.stopAccessingSecurityScopedResource() } }
+        // The selection pass normally measured the size already; if
+        // it has not landed yet, measure now — the precheck gates on
+        // this number.
+        var size = imageSize
+        if size == 0 {
+            size = Int64((try? imageURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
+            imageSize = size
+        }
+        guard let reader = makeReader(imageURL, size: size) else {
+            outcome = "已中止：无法读取所选镜像文件。路由器未做任何更改。"
+            return
+        }
+        do {
+            let result = try await UpgradeFlow.prepare(
+                source: reader, expectedSHA256: expectedHash, operations: operations,
+                onProgress: { sent in Task { @MainActor in sentBytes = sent } },
+                onStep: { newStep in Task { @MainActor in step = newStep } })
+            prepared = result
             outcome = "备份已保存至 \(result.backupPath)；镜像哈希与路由器端一致，镜像合法性校验通过。"
         } catch {
             step = .failed(FriendlyError.message(error))
@@ -1118,6 +1225,7 @@ private struct FirmwareUpgradeSection: View {
 
     private func stepText(_ step: UpgradeFlow.Step) -> String {
         switch step {
+        case .spacePrecheck: return "正在检查路由器可用空间…"
         case .backup: return "正在自动备份当前配置…"
         case .staging: return "正在上传镜像到路由器…"
         case .hashVerification: return "正在校验镜像哈希…"

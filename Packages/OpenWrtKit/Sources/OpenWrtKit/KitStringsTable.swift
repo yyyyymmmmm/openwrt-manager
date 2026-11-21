@@ -391,5 +391,12 @@ extension KitL10n {
         "恢复后未能重新连接路由器": "Could not reconnect to the router after the restore",
         "无法读取路由器上的备份哈希。": "Could not read the backup hash on the router.",
         "恢复失败（sysupgrade 返回 %lld），路由器配置未变更。": "Restore failed (sysupgrade returned %lld); the router configuration was not changed.",
+        "提供的 SHA-256 应为 64 位十六进制字符串，请核对后重试。": "The provided SHA-256 must be a 64-character hexadecimal string; check it and try again.",
+        "无法读取路由器内存盘（/tmp）的可用空间，已中止升级准备。请确认路由器连接正常后重试。": "Could not read the free space on the router's /tmp (memory disk); upgrade preparation was aborted. Check the connection and try again.",
+        "路由器内存盘（/tmp）可用空间不足：镜像需要 %@，当前可用 %@，还差 %@。镜像暂存在内存盘上，可先重启路由器释放空间，或删除 /tmp 中不需要的文件后重试。": "Not enough free space on the router's /tmp (memory disk): the image needs %@, only %@ is available, %@ short. The image is staged on the memory disk; reboot the router to free space, or delete unneeded files in /tmp and try again.",
+        "备份已生成并保留在路由器上，但内存盘（/tmp）可用空间不足：镜像需要 %@，当前可用 %@，还差 %@。请释放 /tmp 空间后重试。": "The backup was created and kept on the router, but /tmp (memory disk) no longer has enough free space: the image needs %@, only %@ is available, %@ short. Free up /tmp space and try again.",
+        "上传镜像中途失败，已清除路由器上的残缺镜像文件。原因：%@": "The image upload failed partway; the partial image file on the router was removed. Reason: %@",
+        "镜像与提供的 SHA-256 不一致：提供值 %@，镜像实际 %@。已中止，未执行升级。": "The image does not match the provided SHA-256: provided %@, actual image %@. Aborted; the upgrade was not performed.",
+        "无法读取路由器可用空间。": "Could not read the router's free space.",
 ]
 }

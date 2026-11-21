@@ -21131,6 +21131,227 @@
           }
         }
       }
+    },
+    "镜像大小": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "镜像大小"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Image size"
+          }
+        }
+      }
+    },
+    "官方 SHA-256（可选）": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "官方 SHA-256（可选）"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Official SHA-256 (optional)"
+          }
+        }
+      }
+    },
+    "从固件发布页复制官方 SHA-256 粘贴到这里：填写后镜像与它不一致会直接中止；不填则不做这项比对。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从固件发布页复制官方 SHA-256 粘贴到这里：填写后镜像与它不一致会直接中止；不填则不做这项比对。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste the official SHA-256 from the firmware release page here: if filled in, an image that does not match is aborted; if left empty, this comparison is skipped."
+          }
+        }
+      }
+    },
+    "这串 SHA-256 格式不对（应为 64 位十六进制）。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这串 SHA-256 格式不对（应为 64 位十六进制）。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This SHA-256 looks malformed (it should be 64 hexadecimal characters)."
+          }
+        }
+      }
+    },
+    "与所选镜像的 SHA-256 一致。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "与所选镜像的 SHA-256 一致。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Matches the selected image's SHA-256."
+          }
+        }
+      }
+    },
+    "与所选镜像的 SHA-256 不一致，校验时会被中止。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "与所选镜像的 SHA-256 不一致，校验时会被中止。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Does not match the selected image's SHA-256; preparation will abort."
+          }
+        }
+      }
+    },
+    "已上传 %@ / %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已上传 %@ / %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uploaded %@ / %@"
+          }
+        }
+      }
+    },
+    "内存盘 /tmp 可用": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内存盘 /tmp 可用"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Free on /tmp (memory disk)"
+          }
+        }
+      }
+    },
+    "根分区可用": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "根分区可用"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Free on root partition"
+          }
+        }
+      }
+    },
+    "已与提供的官方 SHA-256 比对一致。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已与提供的官方 SHA-256 比对一致。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verified against the provided official SHA-256."
+          }
+        }
+      }
+    },
+    "未提供官方 SHA-256，本次没有做官方哈希比对；传输完整性与 sysupgrade 合法性校验均已完成。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未提供官方 SHA-256，本次没有做官方哈希比对；传输完整性与 sysupgrade 合法性校验均已完成。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No official SHA-256 was provided, so that comparison was skipped; transfer integrity and the sysupgrade validation both completed."
+          }
+        }
+      }
+    },
+    "已中止：无法读取所选镜像文件。路由器未做任何更改。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已中止：无法读取所选镜像文件。路由器未做任何更改。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aborted: the selected image file could not be read. The router was not changed."
+          }
+        }
+      }
+    },
+    "正在检查路由器可用空间…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在检查路由器可用空间…"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking the router's free space…"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

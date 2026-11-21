@@ -115,6 +115,59 @@ public struct FileClient: Sendable {
         guard stat.size == Int64(data.count) else { throw TransactionError.verificationFailed(path) }
     }
 
+    /// Streams binary data to the router chunk by chunk (upgrade
+    /// staging): the producer is pulled for one chunk at a time, so
+    /// neither the raw image nor its base64 form ever exists whole in
+    /// memory. Chunks are re-blocked into 24 KiB raw blocks — a
+    /// multiple of 3, so each block's base64 encoding is
+    /// quantum-aligned and the concatenation decodes as the whole —
+    /// written with the base64 flag (append mode after the first
+    /// block), and the remote size is verified at the end. Any failure
+    /// mid-stream removes the partial file before rethrowing, so a
+    /// half-written image is never left behind to be mistaken for a
+    /// complete one.
+    public func writeChunkedVerified(path: String,
+                                     nextChunk: () async throws -> Data?) async throws -> Int64 {
+        let blockSize = 24 * 1024
+        var pending = Data()
+        var total: Int64 = 0
+        var wroteAny = false
+
+        func emit(_ block: Data) async throws {
+            var parameters: [String: JSONValue] = [
+                "path": .string(path), "data": .string(block.base64EncodedString()), "base64": .bool(true)
+            ]
+            if wroteAny { parameters["append"] = .bool(true) }
+            _ = try await caller.call(object: "file", method: "write", parameters: parameters)
+            wroteAny = true
+        }
+
+        do {
+            while let chunk = try await nextChunk() {
+                if chunk.isEmpty { continue }
+                pending.append(chunk)
+                total += Int64(chunk.count)
+                while pending.count >= blockSize {
+                    let block = pending.prefix(blockSize)
+                    try await emit(Data(block))
+                    pending.removeFirst(blockSize)
+                }
+            }
+            if !pending.isEmpty || !wroteAny {
+                try await emit(pending)
+            }
+        } catch {
+            _ = try? await remove(path: path)
+            throw error
+        }
+        let stat = try await stat(path: path)
+        guard stat.size == total else {
+            _ = try? await remove(path: path)
+            throw TransactionError.verificationFailed(path)
+        }
+        return total
+    }
+
     public func remove(path: String) async throws {
         _ = try await caller.call(object: "file", method: "remove", parameters: ["path": .string(path)])
     }
