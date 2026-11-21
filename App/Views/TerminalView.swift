@@ -98,7 +98,7 @@ struct TerminalView: View {
             Label("通过 SSH 原生连接到 \(store.activeProfile?.name ?? L10n.string("路由器"))（\(store.activeProfile?.username ?? "root")）。",
                   systemImage: "terminal")
                 .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
-            if storedPasswordAvailable {
+            if canUseSavedPassword {
                 Text("将使用档案中保存的密码登录。")
                     .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
             } else {
@@ -107,7 +107,7 @@ struct TerminalView: View {
             }
             Button("连接") { Task { await connect() } }
                 .buttonStyle(AppPrimaryButtonStyle())
-                .disabled(!storedPasswordAvailable && password.isEmpty)
+                .disabled(!canUseSavedPassword && password.isEmpty)
             if let fingerprint, !fingerprint.isEmpty {
                 Text("主机密钥指纹：\(HostKeyFingerprint.displayForm(hexDigest: fingerprint))")
                     .font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
@@ -281,6 +281,15 @@ struct TerminalView: View {
         return credential.password != nil
     }
 
+    /// False once the Face ID check for the saved password was
+    /// refused (package K): the panel then offers the typed-password
+    /// field instead of silently spending the saved one.
+    @State private var savedPasswordDeclined = false
+
+    private var canUseSavedPassword: Bool {
+        storedPasswordAvailable && !savedPasswordDeclined
+    }
+
     /// The one byte sink for every input path — surface keystrokes,
     /// IME commits and the key bar all land here.
     private func sendToShell(_ data: Data) {
@@ -300,8 +309,19 @@ struct TerminalView: View {
             return
         }
         let loginPassword: String
-        if let credential = try? store.credential(for: profile), let saved = credential.password {
-            loginPassword = saved
+        if let saved = (try? store.credential(for: profile))?.password, !savedPasswordDeclined {
+            // Spending the saved password is an interactive
+            // credential use (package K): the Face ID gate runs
+            // first, exactly like a one-tap router switch. A typed
+            // password never needs the gate — the user just gave it.
+            switch await CredentialGate.authorize(reason: CredentialGate.savedPasswordReason) {
+            case .authorized:
+                loginPassword = saved
+            case .refused, .unavailable:
+                savedPasswordDeclined = true
+                phase = .failed("身份验证未完成，未使用保存的密码。请输入 SSH 密码后重试。")
+                return
+            }
         } else {
             loginPassword = password
         }

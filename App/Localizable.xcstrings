@@ -21352,6 +21352,210 @@
           }
         }
       }
+    },
+    "验证身份以使用保存的路由器密码": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "验证身份以使用保存的路由器密码"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verify your identity to use the saved router password"
+          }
+        }
+      }
+    },
+    "切换路由器：证书待核对": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切换路由器：证书待核对"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Router Switch: Certificate Review Needed"
+          }
+        }
+      }
+    },
+    "切换到 %@ 前，需要先核对路由器证书指纹。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切换到 %@ 前，需要先核对路由器证书指纹。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Before switching to %@, the router's certificate fingerprint must be reviewed first."
+          }
+        }
+      }
+    },
+    "切换路由器失败": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切换路由器失败"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Router Switch Failed"
+          }
+        }
+      }
+    },
+    "切换到 %@ 失败：%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切换到 %@ 失败：%@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switching to %@ failed: %@"
+          }
+        }
+      }
+    },
+    "添加路由器": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加路由器"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add Router"
+          }
+        }
+      }
+    },
+    "点按档案即可切换连接；使用保存的密码前，会先以 Face ID 验证身份。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点按档案即可切换连接；使用保存的密码前，会先以 Face ID 验证身份。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap a profile to switch to it. Your identity is verified with Face ID before a saved password is used."
+          }
+        }
+      }
+    },
+    "切换到此路由器": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切换到此路由器"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch to This Router"
+          }
+        }
+      }
+    },
+    "身份验证未完成，请手动输入密码。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "身份验证未完成，请手动输入密码。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentication wasn't completed. Please enter the password manually."
+          }
+        }
+      }
+    },
+    "使用 Face ID 解锁 App": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用 Face ID 解锁 App"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlock the App with Face ID"
+          }
+        }
+      }
+    },
+    "开启后，冷启动或离开超过 30 秒再返回时，需要用 Face ID、触控 ID 或设备密码解锁；锁定期间不显示任何路由器内容。切换路由器时调用保存密码前的 Face ID 验证始终生效，不受此开关影响。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开启后，冷启动或离开超过 30 秒再返回时，需要用 Face ID、触控 ID 或设备密码解锁；锁定期间不显示任何路由器内容。切换路由器时调用保存密码前的 Face ID 验证始终生效，不受此开关影响。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When on, returning after a cold start or more than 30 seconds away requires Face ID, Touch ID, or your device passcode to unlock; no router content is shown while locked. The Face ID check before a saved password is used to switch routers is always on and is not affected by this switch."
+          }
+        }
+      }
+    },
+    "身份验证未完成，未使用保存的密码。请输入 SSH 密码后重试。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "身份验证未完成，未使用保存的密码。请输入 SSH 密码后重试。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentication wasn't completed, so the saved password was not used. Enter the SSH password and try again."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

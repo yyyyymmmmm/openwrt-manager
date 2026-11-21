@@ -3,7 +3,10 @@ import OpenWrtKit
 
 private enum ConnectRoute: Hashable {
     case scan
-    case login(address: String, profile: RouterProfile?)
+    /// `manual` marks the package-K fallback form: reached when a
+    /// one-tap switch could not spend the saved password, the form
+    /// then never prefills it.
+    case login(address: String, profile: RouterProfile?, manual: Bool)
 }
 
 struct ConnectFlowView: View {
@@ -17,6 +20,7 @@ struct ConnectFlowView: View {
     @State private var addressError: String?
     @State private var removalTarget: RouterProfile?
     @State private var showingWelcome = true
+    @State private var quickConnect = QuickConnectModel()
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -45,14 +49,14 @@ struct ConnectFlowView: View {
                         address = selectedAddress
                         do {
                             let normalized = try URLNormalizer.normalize(selectedAddress)
-                            path.append(.login(address: normalized.url.absoluteString, profile: nil))
+                            path.append(.login(address: normalized.url.absoluteString, profile: nil, manual: false))
                         } catch {
                             addressError = FriendlyError.message(error)
                             path.removeLast()
                         }
                     }
-                case .login(let address, let profile):
-                    RouterLoginView(address: address, existingProfile: profile)
+                case .login(let address, let profile, let manual):
+                    RouterLoginView(address: address, existingProfile: profile, manualPasswordEntry: manual)
                 }
             }
             .alert(item: $removalTarget) { profile in
@@ -65,6 +69,13 @@ struct ConnectFlowView: View {
             .onChange(of: store.connectionID) { _, _ in
                 if store.hasConnection && isModal { dismiss() }
             }
+            .onChange(of: quickConnect.manualEntryProfile) { _, profile in
+                if let profile {
+                    path.append(.login(address: profile.address, profile: profile, manual: true))
+                    quickConnect.manualEntryProfile = nil
+                }
+            }
+            .quickConnectCertificateAlert(model: quickConnect, store: store)
         }
         .tint(AppPalette.accent)
     }
@@ -114,9 +125,12 @@ struct ConnectFlowView: View {
                         AppGroup {
                         ForEach(store.profiles) { profile in
                             Button {
-                                path.append(.login(address: profile.address, profile: profile))
+                                Task { await quickConnect.tap(profile, store: store) }
                             } label: {
-                                AppRow(title: profile.name, detail: profile.address, symbol: "wifi.router", chevron: true)
+                                AppRow(title: profile.name, detail: profile.address, symbol: "wifi.router",
+                                       value: quickConnect.isConnecting(profile) ? L10n.string("正在连接…") : nil,
+                                       badge: store.activeProfile?.id == profile.id ? "当前连接" : nil,
+                                       chevron: !quickConnect.isConnecting(profile) && store.activeProfile?.id != profile.id)
                             }
                             .buttonStyle(.plain)
                             .contextMenu {
@@ -125,6 +139,13 @@ struct ConnectFlowView: View {
                                 }
                             }
                         }
+                        }
+                        ForEach(store.profiles) { profile in
+                            if let failure = quickConnect.failure(for: profile) {
+                                Label(failure, systemImage: "exclamationmark.circle.fill")
+                                    .font(.footnote)
+                                    .foregroundStyle(AppPalette.red)
+                            }
                         }
                     }
                 }
@@ -159,7 +180,7 @@ struct ConnectFlowView: View {
         do {
             let normalized = try URLNormalizer.normalize(address)
             address = normalized.url.absoluteString
-            path.append(.login(address: normalized.url.absoluteString, profile: nil))
+            path.append(.login(address: normalized.url.absoluteString, profile: nil, manual: false))
         } catch {
             addressError = FriendlyError.message(error)
         }

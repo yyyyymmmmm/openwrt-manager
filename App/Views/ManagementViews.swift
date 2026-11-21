@@ -323,9 +323,9 @@ struct AppLockToggleRow: View {
                     Task { _ = await lock.disableWithAuthentication() }
                 }
             })) {
-            Label("打开 App 需解锁", systemImage: "faceid")
+            Label("使用 Face ID 解锁 App", systemImage: "faceid")
         }
-        Text("开启后，冷启动与离开超过 30 秒返回时，需要 Face ID、触控 ID 或设备密码解锁；锁定期间不显示任何路由器内容。")
+        Text("开启后，冷启动或离开超过 30 秒再返回时，需要用 Face ID、触控 ID 或设备密码解锁；锁定期间不显示任何路由器内容。切换路由器时调用保存密码前的 Face ID 验证始终生效，不受此开关影响。")
             .font(AppTypography.secondary).foregroundStyle(AppPalette.muted)
     }
 }
