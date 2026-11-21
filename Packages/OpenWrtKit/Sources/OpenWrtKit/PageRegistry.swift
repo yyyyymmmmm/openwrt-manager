@@ -72,9 +72,17 @@ public enum PageRegistry {
     /// Services with dedicated pages (spec 3.3 P0).
     public static let dedicatedServiceKeys: Set<String> = ["openbox", "homeproxy", "mosdns"]
 
-    /// Service key -> UCI config name where they differ.
+    /// Service key -> UCI config name where they differ. socat's LuCI
+    /// configuration lives in luci_socat (the plain "socat" file is the
+    /// daemon's example config and rpcd does not grant it); dnsmasq and
+    /// odhcpd are both configured through the dhcp config on every
+    /// OpenWrt — the mapping matters on init.d-fallback routers, where
+    /// the service key is the init script name.
     public static let serviceConfigNames: [String: String] = [
-        "wol": "etherwake"
+        "wol": "etherwake",
+        "socat": "luci_socat",
+        "dnsmasq": "dhcp",
+        "odhcpd": "dhcp"
     ]
 
     public static func tabs(for snapshot: CapabilitySnapshot) -> [TabDescriptor] {

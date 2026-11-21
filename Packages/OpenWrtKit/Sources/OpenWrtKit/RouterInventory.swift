@@ -29,6 +29,17 @@ public struct RouterMenuEntry: Identifiable, Equatable, Sendable {
         self.path = path; self.title = title; self.order = order
         self.configs = configs; self.aclGroups = aclGroups; self.children = children
     }
+
+    /// This tree with every title replaced by its translation from the
+    /// router's own LuCI catalog where the catalog has one (the menu
+    /// endpoint itself never translates — see LuciTranslationCatalog).
+    /// Titles without a catalog entry keep the source string, the web
+    /// UI's own fallback.
+    public func applyingTranslations(_ catalog: LuciTranslationCatalog) -> RouterMenuEntry {
+        RouterMenuEntry(path: path, title: catalog.translate(title) ?? title, order: order,
+                        configs: configs, aclGroups: aclGroups,
+                        children: children.map { $0.applyingTranslations(catalog) })
+    }
 }
 
 public struct InitService: Identifiable, Equatable, Sendable {

@@ -63,13 +63,35 @@ public struct ReadOnlyDataClient: Sendable {
     }
 
     public func deviceTraffic() async throws -> [DeviceTraffic] {
-        let value = try await caller.call(object: "network.device", method: "status")
-        return ReadOnlyParser.deviceTraffic(value)
+        do {
+            let value = try await caller.call(object: "network.device", method: "status")
+            return ReadOnlyParser.deviceTraffic(value)
+        } catch OpenWrtKitError.permissionDenied {
+            // Firmware whose acl.d grants no network.device object (the
+            // main router): luci-rpc getNetworkDevices is granted on
+            // both test routers and carries the same byte counters —
+            // it is the source LuCI's own realtime graphs poll.
+            let value = try await caller.call(object: "luci-rpc", method: "getNetworkDevices")
+            return ReadOnlyParser.networkDeviceTraffic(value)
+        }
     }
 
     public func neighbors() async throws -> [NeighborEntry] {
-        let output = try await exec(command: "/bin/ip", arguments: ["neigh", "show"])
-        return ReadOnlyParser.neighbors(output)
+        // The only neigh command lines rpcd grants are the /sbin/ip
+        // per-family forms (acl.d luci-mod-status-routes, both test
+        // routers); /bin/ip is not even present on stock firmware.
+        var entries: [NeighborEntry] = []
+        var succeeded = false
+        var lastError: Error?
+        for family in ["-4", "-6"] {
+            do {
+                entries += ReadOnlyParser.neighbors(
+                    try await exec(command: "/sbin/ip", arguments: [family, "neigh", "show"]))
+                succeeded = true
+            } catch { lastError = error }
+        }
+        if !succeeded, let lastError { throw lastError }
+        return entries
     }
 
     // MARK: Services, leases, wireless
@@ -115,14 +137,26 @@ public struct ReadOnlyDataClient: Sendable {
     // MARK: Logs, processes, firewall status
 
     public func systemLog(lines: Int = 200) async throws -> [LogEntry] {
-        let value = try await caller.call(object: "log", method: "read", parameters: [
-            "lines": .number(Double(lines)), "oneshot": .bool(true), "stream": .bool(false)
-        ])
-        return ReadOnlyParser.systemLog(value)
+        do {
+            let value = try await caller.call(object: "log", method: "read", parameters: [
+                "lines": .number(Double(lines)), "oneshot": .bool(true), "stream": .bool(false)
+            ])
+            return ReadOnlyParser.systemLog(value)
+        } catch OpenWrtKitError.permissionDenied {
+            // Firmware whose acl.d grants no log object at all (the
+            // main router, stock 24.10): LuCI's own log view falls back
+            // to the syslog-wrapper exec, which IS granted there. It
+            // prints the whole log oldest-first; keep the newest `lines`.
+            let output = try await exec(command: "/usr/libexec/syslog-wrapper", arguments: [])
+            return Array(ReadOnlyParser.systemLogText(output).prefix(lines))
+        }
     }
 
     public func kernelLog() async throws -> [LogEntry] {
-        ReadOnlyParser.kernelLog(try await exec(command: "/bin/dmesg", arguments: []))
+        // Only the "-r" form is granted (acl.d luci-mod-status-logs,
+        // both test routers); it prefixes each line with <priority>,
+        // which the parser strips into the entry's priority field.
+        ReadOnlyParser.kernelLog(try await exec(command: "/bin/dmesg", arguments: ["-r"]))
     }
 
     public func processes() async throws -> [ProcessInfo] {
@@ -131,7 +165,21 @@ public struct ReadOnlyDataClient: Sendable {
     }
 
     public func nftables() async throws -> [NftTable] {
-        ReadOnlyParser.nftables(try await exec(command: "/usr/sbin/nft", arguments: ["list", "ruleset"]))
+        // The one nft command line rpcd grants to login sessions is
+        // the JSON form LuCI's firewall status page itself uses
+        // (acl.d luci-mod-status-firewall, verified on both test
+        // routers): the plain "list ruleset" form is denied, which was
+        // the firewall page's "permission insufficient" failure.
+        do {
+            let output = try await exec(command: "/usr/sbin/nft",
+                                        arguments: ["--terse", "--json", "list", "ruleset"])
+            return try ReadOnlyParser.nftablesJSON(output)
+        } catch OpenWrtKitError.permissionDenied {
+            // Older acl.d sets may grant only the text form; try it
+            // before surfacing the denial.
+            let output = try await exec(command: "/usr/sbin/nft", arguments: ["list", "ruleset"])
+            return ReadOnlyParser.nftables(output)
+        }
     }
 
     // MARK: UCI configuration (read-only here; writes live in phase 2's

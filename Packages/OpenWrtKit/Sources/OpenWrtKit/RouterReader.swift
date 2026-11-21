@@ -95,6 +95,20 @@ public struct RouterReader: Sendable {
         case .success(let value): inventory.initServices = value; inventory.initRead = true
         case .failure(let error): inventory.warnings.append("启动项：\(error.localizedDescription)")
         }
+        // Menu titles arrive as LuCI source strings on every firmware —
+        // the router never translates them (see LuciTranslationCatalog).
+        // Localize them with the router's own catalog, the web UI's
+        // mechanism; a catalog problem degrades to source-language
+        // titles plus a warning, never to a failed discovery.
+        if inventory.menuRead {
+            do {
+                if let catalog = try await caller.translationsCatalog() {
+                    inventory.menus = inventory.menus.map { $0.applyingTranslations(catalog) }
+                }
+            } catch {
+                inventory.warnings.append("菜单翻译：未能加载路由器语言包，标题保留原文（\(error.localizedDescription)）")
+            }
+        }
         return inventory
     }
 

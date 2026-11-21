@@ -9,6 +9,10 @@ public protocol UbusCalling: Sendable {
     func call(object: String, method: String, parameters: [String: JSONValue]) async throws -> JSONValue
     func menu() async throws -> JSONValue
     func installedPackages() async throws -> [InstalledPackage]
+    /// The router's LuCI translation catalog for menu titles, when its
+    /// effective language is not English. Default: no catalog (callers
+    /// keep the source-language titles).
+    func translationsCatalog() async throws -> LuciTranslationCatalog?
     func destroySession() async
     /// Drops the current session so the next call logs in again. Used by
     /// discovery's self-healing when a haul comes back at anonymous grade
@@ -20,6 +24,7 @@ public protocol UbusCalling: Sendable {
 extension UbusCalling {
     public func destroySession() async {}
     public func invalidateSession() async {}
+    public func translationsCatalog() async throws -> LuciTranslationCatalog? { nil }
 
     /// Parameterless convenience mirroring UbusClient.call's default.
     public func call(object: String, method: String) async throws -> JSONValue {
@@ -55,6 +60,13 @@ public struct FixedSessionCaller: UbusCalling {
 
     public func installedPackages() async throws -> [InstalledPackage] {
         try await client.installedPackages(session: session)
+    }
+
+    public func translationsCatalog() async throws -> LuciTranslationCatalog? {
+        guard let luciCookie else { return nil }
+        let config = try? await client.call(session: session, object: "uci", method: "get",
+                                            parameters: ["config": .string("luci")])
+        return try await client.translationCatalog(cookie: luciCookie, luciConfig: config)
     }
 
     public func destroySession() async {

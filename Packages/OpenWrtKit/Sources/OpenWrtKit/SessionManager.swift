@@ -90,6 +90,17 @@ public actor SessionManager {
         return cookie
     }
 
+    /// The LuCI translation catalog for menu titles, negotiated from
+    /// the router's own luci config. A failed luci-config read simply
+    /// yields no catalog; a failed catalog fetch throws so discovery
+    /// can note it — titles then stay in the source language, they are
+    /// never fabricated.
+    public func translationsCatalog() async throws -> LuciTranslationCatalog? {
+        _ = try await session()
+        let config = try? await call(object: "uci", method: "get", parameters: ["config": .string("luci")])
+        return try await client.translationCatalog(cookie: luciSessionCookie(), luciConfig: config)
+    }
+
     public func installedPackages() async throws -> [InstalledPackage] {
         let session = try await session()
         do {

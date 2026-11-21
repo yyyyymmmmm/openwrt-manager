@@ -10,9 +10,21 @@ public actor UbusClient {
     private let address: RouterAddress
     private let session: URLSession
     private var requestID = 0
+    /// The client's preferred languages (device locale order). Sent as
+    /// Accept-Language on every LuCI HTTP request and used to negotiate
+    /// the menu-title catalog language; routers with a fixed
+    /// luci.main.lang ignore the header, "auto" routers follow it.
+    public let preferredLanguages: [String]
 
-    public init(address: RouterAddress, session: URLSession = .shared) {
+    public init(address: RouterAddress, session: URLSession = .shared,
+                preferredLanguages: [String] = Locale.preferredLanguages) {
         self.endpoint = address.rpcURL; self.address = address; self.session = session
+        self.preferredLanguages = preferredLanguages
+    }
+
+    private func applyLanguage(to request: inout URLRequest) {
+        guard !preferredLanguages.isEmpty else { return }
+        request.setValue(preferredLanguages.joined(separator: ", "), forHTTPHeaderField: "Accept-Language")
     }
 
     public func login(username: String, password: String) async throws -> UbusSession {
@@ -62,6 +74,7 @@ public actor UbusClient {
         var request = URLRequest(url: address.url.appendingPathComponent("cgi-bin/luci/"))
         request.httpMethod = "POST"
         request.timeoutInterval = 15
+        applyLanguage(to: &request)
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         var form = URLComponents()
         form.queryItems = [URLQueryItem(name: "luci_username", value: username),
@@ -95,8 +108,38 @@ public actor UbusClient {
         var request = URLRequest(url: address.url.appendingPathComponent("cgi-bin/luci/admin/menu"))
         request.setValue(cookie, forHTTPHeaderField: "Cookie")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        applyLanguage(to: &request)
         request.timeoutInterval = 15
         return try JSONDecoder().decode(JSONValue.self, from: await checkedData(request))
+    }
+
+    /// The LuCI translation catalog payload (`window.TR={...};`) for one
+    /// language, from the same endpoint the web UI loads its strings
+    /// from. The menu endpoint never translates titles (see
+    /// LuciTranslationCatalog), so titles are localized client-side with
+    /// this dictionary — the web UI's own mechanism.
+    public func translations(cookie: String, language: String) async throws -> String {
+        var request = URLRequest(url: address.url.appendingPathComponent("cgi-bin/luci/admin/translations/\(language)"))
+        request.setValue(cookie, forHTTPHeaderField: "Cookie")
+        applyLanguage(to: &request)
+        request.timeoutInterval = 15
+        let data = try await checkedData(request)
+        guard let text = String(data: data, encoding: .utf8) else {
+            throw OpenWrtKitError.malformedResponse
+        }
+        return text
+    }
+
+    /// The parsed catalog for the language this router effectively
+    /// serves (negotiated from its luci config against the client's
+    /// preferred languages), or nil when that language is English /
+    /// undetermined. Fetch and parse failures throw — callers treat a
+    /// missing catalog as "titles stay in the source language", never
+    /// as a discovery failure.
+    public func translationCatalog(cookie: String, luciConfig: JSONValue?) async throws -> LuciTranslationCatalog? {
+        guard let language = LuciLanguageNegotiator.effectiveLanguage(
+            luciConfig: luciConfig, preferredLanguages: preferredLanguages) else { return nil }
+        return LuciTranslationCatalog.parse(try await translations(cookie: cookie, language: language))
     }
 
     /// Native data requests only. No arbitrary commands or web UI are exposed.
@@ -104,6 +147,7 @@ public actor UbusClient {
         var request = URLRequest(url: address.url.appendingPathComponent("cgi-bin/cgi-exec"))
         request.httpMethod = "POST"
         request.timeoutInterval = 30
+        applyLanguage(to: &request)
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         var form = URLComponents()
         form.queryItems = [URLQueryItem(name: "sessionid", value: auth.token),

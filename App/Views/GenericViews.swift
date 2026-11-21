@@ -12,6 +12,11 @@ struct UCIConfigView: View {
     var sectionTypeFilter: String? = nil
     var isGenericFallback = false
     @State private var state: LoadState<[(String, RouterConfiguration)]> = .loading
+    /// Set when every requested config was refused by rpcd (not granted
+    /// to login sessions) or does not exist: the page then degrades to
+    /// an explanatory empty state instead of an error card with a retry
+    /// button that can never succeed.
+    @State private var unavailableHint: String?
 
     var body: some View {
         List {
@@ -33,7 +38,8 @@ struct UCIConfigView: View {
                         .map { (name, $0) }
                 }
                 if rendered.isEmpty {
-                    EmptyStateView(title: "无配置数据", message: "路由器上没有对应的配置内容。")
+                    EmptyStateView(title: "无配置数据",
+                                   message: unavailableHint ?? "路由器上没有对应的配置内容。")
                 } else {
                     ForEach(rendered, id: \.1.id) { name, section in
                         Section(configurations.count > 1 ? "\(name) · \(section.title)" : section.title) {
@@ -64,14 +70,30 @@ struct UCIConfigView: View {
     private func load() async {
         guard let client = store.readClient else { state = .failed("未连接路由器。"); return }
         state = .loading
+        unavailableHint = nil
         var loaded: [(String, RouterConfiguration)] = []
         var lastError: Error?
+        var accessRefusedOnly = true
         for name in configNames {
             do { loaded.append((name, try await client.configuration(name))) }
-            catch { lastError = error }
+            catch let error as OpenWrtKitError {
+                lastError = error
+                switch error {
+                case .permissionDenied, .unsupported: break
+                default: accessRefusedOnly = false
+                }
+            } catch { lastError = error; accessRefusedOnly = false }
         }
         if loaded.isEmpty, let lastError {
-            state = .failed(FriendlyError.message(lastError))
+            if accessRefusedOnly {
+                // rpcd does not grant this config to login sessions (or
+                // it does not exist): retrying cannot help, so say so
+                // plainly instead of presenting a failure.
+                unavailableHint = "此固件未向 App 会话开放该配置的读取（rpcd 未授权或配置不存在），本页已降级为说明展示。"
+                state = .loaded(loaded)
+            } else {
+                state = .failed(FriendlyError.message(lastError))
+            }
         } else {
             state = .loaded(loaded)
         }
