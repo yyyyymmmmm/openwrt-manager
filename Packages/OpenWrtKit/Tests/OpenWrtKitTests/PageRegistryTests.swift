@@ -58,9 +58,14 @@ final class PageRegistryTests: XCTestCase {
         XCTAssertEqual(services.count, 14)
         let dedicated = services.filter { if case .serviceDedicated = $0.kind { return true }; return false }
         XCTAssertEqual(Set(dedicated.compactMap(\.serviceKey)),
-                       ["openbox", "homeproxy", "mosdns", "ddns", "appfilter", "wol", "vlmcsd"])
+                       ["openbox", "homeproxy", "mosdns", "ddns", "appfilter", "wol", "vlmcsd",
+                        "frpc", "natmap", "socat", "zerotier", "webdav"])
         let generic = services.filter(\.isGenericFallback)
-        XCTAssertEqual(generic.count, 7)
+        XCTAssertEqual(generic.count, 2)
+        // Only the two low-increment AirPlay services stay generic.
+        XCTAssertEqual(Set(generic.compactMap(\.serviceKey)), ["airconnect", "airplay2"])
+        // Socat's dedicated page reads luci_socat, not the daemon file.
+        XCTAssertEqual(services.first { $0.serviceKey == "socat" }?.configNames, ["luci_socat"])
         // WOL's UCI config is named etherwake, not wol.
         XCTAssertEqual(services.first { $0.serviceKey == "wol" }?.configNames, ["etherwake"])
         // No page may be keyed by a package name.

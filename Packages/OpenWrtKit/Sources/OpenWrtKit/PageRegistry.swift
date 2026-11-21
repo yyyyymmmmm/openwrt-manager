@@ -70,9 +70,13 @@ public struct TabDescriptor: Identifiable, Equatable, Sendable {
 
 public enum PageRegistry {
     /// Services with dedicated pages (spec 3.3 P0; package F added the
-    /// four whose channels the gap inventory verified end to end).
+    /// four whose channels the gap inventory verified end to end,
+    /// package F2 the five UCI-shaped services of its first tier —
+    /// webdav's page states plainly that its running state has no
+    /// source, and zerotier's covers the UCI layer only).
     public static let dedicatedServiceKeys: Set<String> = [
-        "openbox", "homeproxy", "mosdns", "ddns", "appfilter", "wol", "vlmcsd"
+        "openbox", "homeproxy", "mosdns", "ddns", "appfilter", "wol", "vlmcsd",
+        "frpc", "natmap", "socat", "zerotier", "webdav"
     ]
 
     /// Service key -> UCI config name where they differ. socat's LuCI
