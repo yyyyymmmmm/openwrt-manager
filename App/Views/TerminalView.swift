@@ -58,7 +58,7 @@ struct TerminalView: View {
             Button("连接") { Task { await connect() } }
                 .buttonStyle(AppPrimaryButtonStyle())
                 .disabled(!storedPasswordAvailable && password.isEmpty)
-            if let fingerprint {
+            if let fingerprint, !fingerprint.isEmpty {
                 Text("主机密钥 SHA-256：\(fingerprint)")
                     .font(AppTypography.metadata).foregroundStyle(AppPalette.muted)
                     .textSelection(.enabled)
@@ -146,13 +146,18 @@ struct TerminalView: View {
             loginPassword = password
         }
         phase = .connecting
+        fingerprint = nil
         do {
             let established = try await SSHTerminalSession.connect(
                 host: host, port: 22, username: profile.username, password: loginPassword,
                 policy: .acceptAny)
             session = established
-            fingerprint = established.hostKeySHA256
             let stream = try await established.openShell(columns: 80, rows: 24)
+            // The fingerprint exists only once the handshake has
+            // completed, which openShell guarantees: read it now, not
+            // right after connect (that produced the empty label).
+            let presented = established.hostKeySHA256
+            fingerprint = presented.isEmpty ? nil : presented
             phase = .connected
             receiveTask = Task {
                 for await data in stream {

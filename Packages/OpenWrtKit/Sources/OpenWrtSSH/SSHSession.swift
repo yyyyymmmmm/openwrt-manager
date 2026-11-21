@@ -7,11 +7,21 @@ import OpenWrtKit
 /// speaking to the router's dropbear/OpenSSH daemon — password auth from
 /// the app's credential store, host-key verification by SHA-256
 /// fingerprint, PTY + shell channel feeding the kit's TerminalCore.
-/// The library is Apple's swift-nio-ssh 0.12 (pure Swift, actively
-/// maintained); no web terminal and no external jumps are involved.
+/// The library is Apple's swift-nio-ssh (pure Swift, actively
+/// maintained), extended with the AES-CTR transport protection
+/// schemes dropbear requires (see TransportProtection.swift); no web
+/// terminal and no external jumps are involved.
 
 public enum SSHSessionError: Error, Equatable {
     case hostKeyMismatch(expected: String, actual: String)
+    /// The server rejected the password we offered.
+    case authenticationFailed
+    /// No common transport protection scheme (cipher/MAC) with the
+    /// server — the failure that raw builds reported as an opaque
+    /// NIOCore.ChannelError.
+    case algorithmNegotiationFailed
+    case connectionTimedOut
+    case connectionRefused
     case connectionFailed(String)
     case shellUnavailable
 }
@@ -28,20 +38,28 @@ public final class SSHTerminalSession: Sendable {
     private let group: MultiThreadedEventLoopGroup
     private let channel: Channel
     private let shellBox: ShellBox
+    private let fingerprintBox: FingerprintBox
+    private let authState: AuthStateBox
     /// SHA-256 (hex) of the host key presented during the handshake.
-    public let hostKeySHA256: String
+    /// Read lazily from the handshake: the fingerprint only exists
+    /// once key exchange has completed, which is after the TCP-level
+    /// connect returns — callers should read this after openShell.
+    public var hostKeySHA256: String { fingerprintBox.value ?? "" }
 
-    private init(group: MultiThreadedEventLoopGroup, channel: Channel, shellBox: ShellBox, hostKeySHA256: String) {
+    private init(group: MultiThreadedEventLoopGroup, channel: Channel, shellBox: ShellBox,
+                 fingerprintBox: FingerprintBox, authState: AuthStateBox) {
         self.group = group
         self.channel = channel
         self.shellBox = shellBox
-        self.hostKeySHA256 = hostKeySHA256
+        self.fingerprintBox = fingerprintBox
+        self.authState = authState
     }
 
     public static func connect(host: String, port: Int = 22,
                                username: String, password: String,
                                policy: HostKeyPolicy = .acceptAny) async throws -> SSHTerminalSession {
         let fingerprintBox = FingerprintBox()
+        let authState = AuthStateBox()
         let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let bootstrap = ClientBootstrap(group: group)
             .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
@@ -50,8 +68,9 @@ public final class SSHTerminalSession: Sendable {
                 channel.pipeline.addHandlers([
                     NIOSSHHandler(
                         role: .client(.init(
-                            userAuthDelegate: PasswordAuthDelegate(username: username, password: password),
-                            serverAuthDelegate: FingerprintAuthDelegate(policy: policy, box: fingerprintBox))),
+                            userAuthDelegate: PasswordAuthDelegate(username: username, password: password, state: authState),
+                            serverAuthDelegate: FingerprintAuthDelegate(policy: policy, box: fingerprintBox),
+                            transportProtectionSchemes: SSHTransportProtectionSchemes.supported)),
                         allocator: channel.allocator,
                         inboundChildChannelInitializer: nil)
                 ])
@@ -59,30 +78,67 @@ public final class SSHTerminalSession: Sendable {
         do {
             let channel = try await bootstrap.connect(host: host, port: port).get()
             return SSHTerminalSession(group: group, channel: channel,
-                                      shellBox: ShellBox(), hostKeySHA256: fingerprintBox.value ?? "")
+                                      shellBox: ShellBox(), fingerprintBox: fingerprintBox,
+                                      authState: authState)
         } catch {
             try? await group.shutdownGracefully()
-            if let mismatch = error as? SSHSessionError { throw mismatch }
-            throw SSHSessionError.connectionFailed(error.localizedDescription)
+            throw classify(error, authRejected: authState.rejected)
         }
+    }
+
+    /// Maps the raw SwiftNIO/swift-nio-ssh errors that can surface from
+    /// connect/openShell onto the session's semantic error cases, so
+    /// the UI never has to show a raw `NIOCore.ChannelError` again.
+    /// Internal (not private) so the test suite can pin the mapping.
+    static func classify(_ error: Error, authRejected: Bool) -> SSHSessionError {
+        if let sessionError = error as? SSHSessionError { return sessionError }
+        if authRejected { return .authenticationFailed }
+        if let sshError = error as? NIOSSHError, sshError.type == .keyExchangeNegotiationFailure {
+            return .algorithmNegotiationFailed
+        }
+        if let channelError = error as? ChannelError, case .connectTimeout = channelError {
+            return .connectionTimedOut
+        }
+        if let connectionError = error as? NIOConnectionError {
+            for failure in connectionError.connectionErrors {
+                if isRefused(failure.error) { return .connectionRefused }
+                if let channelError = failure.error as? ChannelError, case .connectTimeout = channelError {
+                    return .connectionTimedOut
+                }
+            }
+        }
+        if isRefused(error) { return .connectionRefused }
+        return .connectionFailed(String(describing: error))
+    }
+
+    private static func isRefused(_ error: Error) -> Bool {
+        if let ioError = error as? IOError { return ioError.errnoCode == ECONNREFUSED }
+        return false
     }
 
     /// Opens the shell channel with a PTY of the given size. Output arrives
     /// on the returned stream; feed it to TerminalParser.
     public func openShell(columns: Int, rows: Int) async throws -> AsyncStream<Data> {
-        let handler = try await channel.pipeline.handler(type: NIOSSHHandler.self).get()
-        let promise = channel.eventLoop.makePromise(of: Channel.self)
-        handler.createChannel(promise) { childChannel, channelType in
-            guard channelType == .session else {
-                return childChannel.close()
+        do {
+            let handler = try await channel.pipeline.handler(type: NIOSSHHandler.self).get()
+            let promise = channel.eventLoop.makePromise(of: Channel.self)
+            handler.createChannel(promise) { childChannel, channelType in
+                guard channelType == .session else {
+                    return childChannel.close()
+                }
+                return childChannel.pipeline.addHandler(
+                    ShellChannelHandler(box: self.shellBox, columns: columns, rows: rows))
             }
-            return childChannel.pipeline.addHandler(
-                ShellChannelHandler(box: self.shellBox, columns: columns, rows: rows))
+            let childChannel = try await promise.futureResult.get()
+            shellBox.attach(channel: childChannel)
+            try await shellBox.waitReady()
+            return shellBox.stream
+        } catch {
+            // The SSH handshake and user authentication complete lazily
+            // while the first channel is being created, so their
+            // failures surface here rather than in connect().
+            throw Self.classify(error, authRejected: authState.rejected)
         }
-        let childChannel = try await promise.futureResult.get()
-        shellBox.attach(channel: childChannel)
-        try await shellBox.waitReady()
-        return shellBox.stream
     }
 
     public func send(_ data: Data) {
@@ -102,21 +158,57 @@ public final class SSHTerminalSession: Sendable {
 
 // MARK: - Authentication delegates
 
+/// Tracks the password offer across authentication rounds: being
+/// asked for a fresh offer after we already offered the password
+/// means the server rejected it. Shared between the delegate and the
+/// session so failures can be classified as authentication failures
+/// instead of opaque channel closures.
+private final class AuthStateBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var offersMade = 0
+    private var rejectedFlag = false
+
+    /// Records an offer attempt; returns true only for the first one.
+    func registerOffer() -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        offersMade += 1
+        return offersMade == 1
+    }
+
+    func markRejected() {
+        lock.lock(); rejectedFlag = true; lock.unlock()
+    }
+
+    var rejected: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return rejectedFlag
+    }
+}
+
 private final class PasswordAuthDelegate: NIOSSHClientUserAuthenticationDelegate, Sendable {
     private let username: String
     private let password: String
+    private let state: AuthStateBox
 
-    init(username: String, password: String) {
+    init(username: String, password: String, state: AuthStateBox) {
         self.username = username
         self.password = password
+        self.state = state
     }
 
     func nextAuthenticationType(availableMethods: NIOSSHAvailableUserAuthenticationMethods,
                                 nextChallengePromise: EventLoopPromise<NIOSSHUserAuthenticationOffer?>) {
         if availableMethods.contains(.password) {
-            nextChallengePromise.succeed(NIOSSHUserAuthenticationOffer(
-                username: username, serviceName: "",
-                offer: .password(.init(password: password))))
+            if state.registerOffer() {
+                nextChallengePromise.succeed(NIOSSHUserAuthenticationOffer(
+                    username: username, serviceName: "",
+                    offer: .password(.init(password: password))))
+            } else {
+                // Asked again: the offered password was rejected.
+                // Stop offering so the failure surfaces promptly.
+                state.markRejected()
+                nextChallengePromise.succeed(nil)
+            }
         } else {
             nextChallengePromise.succeed(nil)
         }

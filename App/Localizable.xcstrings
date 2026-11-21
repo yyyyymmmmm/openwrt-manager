@@ -698,6 +698,57 @@
         }
       }
     },
+    "SSH 登录失败：用户名或密码不正确。请核对档案中保存的密码后重试。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH 登录失败：用户名或密码不正确。请核对档案中保存的密码后重试。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH sign-in failed: the username or password is incorrect. Check the password saved in the profile and try again."
+          }
+        }
+      }
+    },
+    "SSH 连接失败。请检查网络与路由器状态后重试。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH 连接失败。请检查网络与路由器状态后重试。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The SSH connection failed. Check the network and the router, then try again."
+          }
+        }
+      }
+    },
+    "SSH 连接超时。请确认手机与路由器在同一网络，并检查路由器上的 SSH 服务（dropbear）是否已开启。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH 连接超时。请确认手机与路由器在同一网络，并检查路由器上的 SSH 服务（dropbear）是否已开启。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The SSH connection timed out. Make sure the phone and router are on the same network and that the router's SSH service (dropbear) is running."
+          }
+        }
+      }
+    },
     "UPnP IGD 和 PCP": {
       "extractionState": "manual",
       "localizations": {
@@ -936,6 +987,23 @@
         }
       }
     },
+    "与路由器协商加密算法失败：双方没有共同支持的算法。请升级路由器固件或 App 后重试。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "与路由器协商加密算法失败：双方没有共同支持的算法。请升级路由器固件或 App 后重试。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not negotiate an encryption algorithm with the router: no mutually supported algorithm. Update the router firmware or the app and try again."
+          }
+        }
+      }
+    },
     "主机名": {
       "extractionState": "manual",
       "localizations": {
@@ -983,6 +1051,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Host Key SHA-256: %@"
+          }
+        }
+      }
+    },
+    "主机密钥与记录不一致，可能存在安全风险。预期指纹：%@；实际指纹：%@。请先核对路由器无误，再更新档案中的记录。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主机密钥与记录不一致，可能存在安全风险。预期指纹：%@；实际指纹：%@。请先核对路由器无误，再更新档案中的记录。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The host key does not match the saved record, which may be a security risk. Expected fingerprint: %@; actual fingerprint: %@. Verify the router before updating the saved record."
           }
         }
       }
@@ -4179,6 +4264,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Could not resolve the host from the profile address."
+          }
+        }
+      }
+    },
+    "无法打开终端会话：路由器没有接受 shell 通道。请稍后重试。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法打开终端会话：路由器没有接受 shell 通道。请稍后重试。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not open a terminal session: the router did not accept a shell channel. Try again later."
           }
         }
       }
@@ -7511,6 +7613,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "The router accepted the rollback request. Check the re-read configuration."
+          }
+        }
+      }
+    },
+    "路由器拒绝了 SSH 连接：SSH 服务可能未开启，或端口不是 22。请在路由器上确认 dropbear 的运行状态。": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路由器拒绝了 SSH 连接：SSH 服务可能未开启，或端口不是 22。请在路由器上确认 dropbear 的运行状态。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The router refused the SSH connection: the SSH service may be off, or the port is not 22. Check that dropbear is running on the router."
           }
         }
       }

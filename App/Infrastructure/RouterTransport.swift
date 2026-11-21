@@ -2,6 +2,7 @@ import Foundation
 import Security
 import CryptoKit
 import OpenWrtKit
+import OpenWrtSSH
 
 final class RouterTransport {
     let session: URLSession
@@ -80,6 +81,26 @@ final class RouterSessionDelegate: NSObject, URLSessionTaskDelegate, @unchecked 
 
 enum FriendlyError {
     static func message(_ error: Error) -> String {
+        if let error = error as? SSHSessionError {
+            // SSH failures are semantic cases by the time they reach
+            // the UI; the raw SwiftNIO error text is never shown.
+            switch error {
+            case .hostKeyMismatch(let expected, let actual):
+                return L10n.format("主机密钥与记录不一致，可能存在安全风险。预期指纹：%@；实际指纹：%@。请先核对路由器无误，再更新档案中的记录。", expected, actual)
+            case .authenticationFailed:
+                return L10n.string("SSH 登录失败：用户名或密码不正确。请核对档案中保存的密码后重试。")
+            case .algorithmNegotiationFailed:
+                return L10n.string("与路由器协商加密算法失败：双方没有共同支持的算法。请升级路由器固件或 App 后重试。")
+            case .connectionTimedOut:
+                return L10n.string("SSH 连接超时。请确认手机与路由器在同一网络，并检查路由器上的 SSH 服务（dropbear）是否已开启。")
+            case .connectionRefused:
+                return L10n.string("路由器拒绝了 SSH 连接：SSH 服务可能未开启，或端口不是 22。请在路由器上确认 dropbear 的运行状态。")
+            case .connectionFailed:
+                return L10n.string("SSH 连接失败。请检查网络与路由器状态后重试。")
+            case .shellUnavailable:
+                return L10n.string("无法打开终端会话：路由器没有接受 shell 通道。请稍后重试。")
+            }
+        }
         if let error = error as? URLError {
             switch error.code {
             case .notConnectedToInternet: return L10n.string("网络不可用。请连接路由器所在的 Wi-Fi，并在设置中允许本地网络访问。")
