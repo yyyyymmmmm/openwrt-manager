@@ -284,7 +284,7 @@ enum FormatHelpers {
         let days = total / 86400, hours = (total % 86400) / 3600, minutes = (total % 3600) / 60
         if days > 0 { return L10n.format("%lld 天 %lld 小时", days, hours) }
         if hours > 0 { return L10n.format("%lld 小时 %lld 分", hours, minutes) }
-        return L10n.format("%lld 分", minutes) }
+        return L10n.format("%lld 分", minutes)
     }
 
     static func percent(used: Int64?, total: Int64?) -> String? {
