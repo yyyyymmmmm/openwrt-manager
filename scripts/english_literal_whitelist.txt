@@ -1,0 +1,24 @@
+# English-literal audit whitelist — see audit_english_literals in
+# audit_release.py. Two entry kinds: an exact normalized literal, or
+# "file:<repository-relative path>" exempting one whole file. An
+# entry here means: this pure-English literal is legitimately
+# outside the String Catalog, for the reason stated in the comment
+# above it. Keep this list short; user-visible copy belongs in the
+# catalog, not here.
+
+# Matched against the router's own ping output to classify the
+# result; the literal itself is never displayed — the verdict shown
+# is localized catalog copy.
+100% packet loss
+# Same ping-output matching as the entry above.
+0% packet loss
+# A ddns daemon state word matched against router data; what is
+# displayed goes through the localized mapping beside the match.
+Run once
+# fatalError text of an unavailable storyboard initializer: a
+# developer-facing crash message, never interface copy.
+programmatic view
+# UI-test seed fixture (DEBUG-only): every string in it stands in
+# for router-returned data — the router's own English menu titles,
+# board strings, profile names. Device data, not app copy.
+file:App/Infrastructure/UITestingSeed.swift

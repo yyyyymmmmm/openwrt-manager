@@ -5,7 +5,8 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from audit_release import audit_ipa, audit_localization, audit_sources
+from audit_release import (audit_english_literals, audit_ipa, audit_localization,
+                           audit_rawvalue_display, audit_sources)
 
 
 class ReleaseAuditTests(unittest.TestCase):
@@ -63,9 +64,6 @@ class ReleaseAuditTests(unittest.TestCase):
             audit_ipa(self.bundle({"OpenWrtManager": b"not an iPhone executable"}))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class LocalizationAuditTests(unittest.TestCase):
     def setUp(self):
@@ -110,3 +108,93 @@ class LocalizationAuditTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "specifiers differ"):
             audit_localization(self.root)
 
+
+class EnglishLiteralAuditTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        (self.root / "App").mkdir(parents=True)
+        (self.root / "scripts").mkdir()
+
+    def write_view(self, body):
+        (self.root / "App/View.swift").write_text(
+            "import SwiftUI\nstruct V: View { var body: some View { " + body + " } }\n",
+            encoding="utf-8")
+
+    def test_hardcoded_english_title_fails(self):
+        self.write_view('Text("DHCP and DNS")')
+        with self.assertRaisesRegex(ValueError, "English literal"):
+            audit_english_literals(self.root)
+
+    def test_whitelisted_literal_passes(self):
+        (self.root / "scripts/english_literal_whitelist.txt").write_text(
+            "# matched against router ping output, never displayed\n100% packet loss\n",
+            encoding="utf-8")
+        self.write_view('if output.contains("100% packet loss") { Text("概览") }')
+        result = audit_english_literals(self.root)
+        self.assertEqual(result["english_literals_checked"], 1)
+
+    def test_unit_format_passes_without_whitelist(self):
+        self.write_view('Text("\\(signal) dBm"); Text(String(format: "%.1f%% CPU", cpu))')
+        result = audit_english_literals(self.root)
+        self.assertEqual(result["english_literals_checked"], 2)
+
+    def test_file_scoped_whitelist_passes(self):
+        (self.root / "scripts/english_literal_whitelist.txt").write_text(
+            "# seed fixture standing in for router data\nfile:App/Seed.swift\n",
+            encoding="utf-8")
+        (self.root / "App/Seed.swift").write_text(
+            'let titles = ["Custom Rules", "Port Forwards"]\n', encoding="utf-8")
+        result = audit_english_literals(self.root)
+        self.assertEqual(result["english_literals_checked"], 0)
+
+    def test_single_token_and_chinese_are_out_of_scope(self):
+        self.write_view('Text("OpenWrt"); Text("概览")')
+        result = audit_english_literals(self.root)
+        self.assertEqual(result["english_literals_checked"], 0)
+
+
+class RawValueAuditTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        (self.root / "App").mkdir(parents=True)
+        (self.root / "scripts").mkdir()
+
+    def test_rawvalue_rendered_in_view_fails(self):
+        (self.root / "App/View.swift").write_text(
+            "import SwiftUI\nstruct V: View { var body: some View { Text(status.rawValue) } }\n",
+            encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Raw-value audit"):
+            audit_rawvalue_display(self.root)
+
+    def test_whitelisted_rawvalue_passes(self):
+        (self.root / "scripts/rawvalue_whitelist.txt").write_text(
+            "# storage key only, never rendered\nApp/Store.swift :: size.rawValue\n",
+            encoding="utf-8")
+        (self.root / "App/Store.swift").write_text(
+            "var body: some View { Text(title).onAppear { saved = size.rawValue } }\n",
+            encoding="utf-8")
+        result = audit_rawvalue_display(self.root)
+        self.assertEqual(result["rawvalue_sites_checked"], 1)
+
+    def test_whitelist_is_file_scoped(self):
+        (self.root / "scripts/rawvalue_whitelist.txt").write_text(
+            "App/Store.swift :: size.rawValue\n", encoding="utf-8")
+        (self.root / "App/Other.swift").write_text(
+            "let label = size.rawValue\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Raw-value audit"):
+            audit_rawvalue_display(self.root)
+
+    def test_comment_mention_is_ignored(self):
+        (self.root / "App/View.swift").write_text(
+            "// Never render an enum .rawValue as text.\nimport SwiftUI\n",
+            encoding="utf-8")
+        result = audit_rawvalue_display(self.root)
+        self.assertEqual(result["rawvalue_sites_checked"], 0)
+
+
+if __name__ == "__main__":
+    unittest.main()

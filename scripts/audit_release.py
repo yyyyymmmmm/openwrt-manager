@@ -83,7 +83,9 @@ def main():
     parser.add_argument("--ipa", type=Path)
     args = parser.parse_args()
     result = {"production_sources_checked": audit_sources(args.repository.resolve()),
-              "localization": audit_localization(args.repository.resolve())}
+              "localization": audit_localization(args.repository.resolve()),
+              "english_literals": audit_english_literals(args.repository.resolve()),
+              "rawvalue_display": audit_rawvalue_display(args.repository.resolve())}
     if args.ipa:
         result["ipa"] = audit_ipa(args.ipa.resolve())
     print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -278,6 +280,121 @@ def audit_localization(repository):
         raise ValueError("Localization audit failed:\n" + "\n".join(errors))
     return {"catalog_keys": len(keys), "app_literals_checked": app_literals,
             "kit_literals_checked": kit_literals, "kit_english_entries": len(table_keys)}
+
+
+
+# ---------------------------------------------------------------------------
+# English-literal & raw-value audit (package H, 2026-11-21)
+#
+# The localization audit above only sees literals containing CJK: a
+# hard-coded English title ("DHCP and DNS" was the case that shipped)
+# and an enum raw value rendered as text are invisible to it. These
+# two scans close that blind spot.
+#
+# English scan: a pure-ASCII literal containing a space and a real
+# word is presumed to be interface copy bypassing the catalog.
+# Deliberate under-reporting keeps it quiet: single tokens (protocol
+# and product names, keys matched against device data) are out of
+# scope, and number formats whose only words are universal unit
+# symbols ("%@ dBm", "%.1f%% CPU") pass automatically. Genuine
+# exceptions go in scripts/english_literal_whitelist.txt — an exact
+# literal, or "file:<path>" for one whole fixture/data file — each
+# with a comment saying why.
+#
+# Raw-value scan: every ".rawValue" in App sources must be accounted
+# for in scripts/rawvalue_whitelist.txt (path :: line substring, one
+# reason comment each). Whitelisted uses are the ones that never
+# render as text — storage keys, identifiers, log tags. A value that
+# IS displayed must go through a localized mapping instead
+# (PackageManager.displayName is the pattern).
+# ---------------------------------------------------------------------------
+
+ASCII_WORD_RE = re.compile(r"[A-Za-z]{2,}")
+_FORMAT_SPEC_RE = re.compile(r"%(?:\d+\$)?(?:\.\d+)?(?:ll|l)?[@df%]")
+_UNIT_TOKENS = {"dBm", "ms", "CPU", "PID", "B/s", "KB/s", "MB/s", "GB/s"}
+
+
+def _is_unit_format(normalized):
+    """True when every word in the literal is a universal unit symbol
+    once the format specifiers are removed: the numbers are
+    locale-formatted at runtime and the units themselves are not
+    translated in any language, so this is not English copy."""
+    remainder = _FORMAT_SPEC_RE.sub(" ", normalized)
+    tokens = re.findall(r"[A-Za-z]+(?:/[A-Za-z]+)?", remainder)
+    return bool(tokens) and all(token in _UNIT_TOKENS for token in tokens)
+
+
+def _load_english_whitelist(repository):
+    literals, files = set(), set()
+    path = repository / "scripts" / "english_literal_whitelist.txt"
+    if path.is_file():
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("file:"):
+                files.add(line[len("file:"):])
+            else:
+                literals.add(line)
+    return literals, files
+
+
+def audit_english_literals(repository):
+    literals_wl, files_wl = _load_english_whitelist(repository)
+    errors = []
+    checked = 0
+    for source in sorted((repository / "App").rglob("*.swift")):
+        relative = source.relative_to(repository).as_posix()
+        if relative in files_wl:
+            continue
+        for normalized, line in iter_swift_literals(source.read_text(encoding="utf-8")):
+            if CJK_RE.search(normalized) or not normalized.isascii():
+                continue
+            if " " not in normalized or not ASCII_WORD_RE.search(normalized):
+                continue
+            checked += 1
+            if normalized in literals_wl or _is_unit_format(normalized):
+                continue
+            errors.append(
+                f"{relative}:{line}: English literal bypasses "
+                f"Localizable.xcstrings and is not whitelisted: {normalized!r}")
+    if errors:
+        raise ValueError("English-literal audit failed:\n" + "\n".join(errors))
+    return {"english_literals_checked": checked}
+
+
+def _load_rawvalue_whitelist(repository):
+    entries = []
+    path = repository / "scripts" / "rawvalue_whitelist.txt"
+    if path.is_file():
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            file_part, separator, needle = line.partition(" :: ")
+            if separator:
+                entries.append((file_part.strip(), needle.strip()))
+    return entries
+
+
+def audit_rawvalue_display(repository):
+    whitelist = _load_rawvalue_whitelist(repository)
+    errors = []
+    checked = 0
+    for source in sorted((repository / "App").rglob("*.swift")):
+        relative = source.relative_to(repository).as_posix()
+        for number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
+            if ".rawValue" not in line or line.strip().startswith("//"):
+                continue
+            checked += 1
+            if any(relative == path and needle in line for path, needle in whitelist):
+                continue
+            errors.append(
+                f"{relative}:{number}: raw value use is not whitelisted; "
+                f"if it can render as text it needs a localized mapping: {line.strip()!r}")
+    if errors:
+        raise ValueError("Raw-value audit failed:\n" + "\n".join(errors))
+    return {"rawvalue_sites_checked": checked}
 
 
 if __name__ == "__main__":
