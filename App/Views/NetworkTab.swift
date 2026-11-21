@@ -227,7 +227,7 @@ struct DNSView: View {
 
 // MARK: - Diagnostics (query-only tools)
 
-struct DiagnosticsView: View {
+struct NetworkDiagnosticsView: View {
     @Environment(RouterStore.self) private var store
     @State private var target = ""
     @State private var tool = 0

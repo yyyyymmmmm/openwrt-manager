@@ -36,7 +36,7 @@ struct PageDestination: View {
         case .dns:
             DNSView()
         case .diagnostics:
-            DiagnosticsView()
+            NetworkDiagnosticsView()
         case .speedTest:
             SpeedTestView()
         case .sqm:
