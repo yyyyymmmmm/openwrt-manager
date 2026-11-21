@@ -5,8 +5,8 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from audit_release import (audit_english_literals, audit_ipa, audit_localization,
-                           audit_rawvalue_display, audit_sources)
+from audit_release import (audit_english_literals, audit_hardcoded_colors, audit_ipa,
+                           audit_localization, audit_rawvalue_display, audit_sources)
 
 
 class ReleaseAuditTests(unittest.TestCase):
@@ -194,6 +194,63 @@ class RawValueAuditTests(unittest.TestCase):
             encoding="utf-8")
         result = audit_rawvalue_display(self.root)
         self.assertEqual(result["rawvalue_sites_checked"], 0)
+
+
+class HardcodedColorAuditTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        (self.root / "App").mkdir(parents=True)
+        (self.root / "scripts").mkdir()
+
+    def test_hex_literal_in_view_fails(self):
+        (self.root / "App/View.swift").write_text(
+            "import SwiftUI\nlet brand = color(0x087873, 0x74C8C0)\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Hardcoded-color audit"):
+            audit_hardcoded_colors(self.root)
+
+    def test_system_color_direct_use_fails(self):
+        (self.root / "App/View.swift").write_text(
+            "import SwiftUI\nstruct V: View { var body: some View { Text(\"x\").foregroundStyle(.green) } }\n",
+            encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Hardcoded-color audit"):
+            audit_hardcoded_colors(self.root)
+
+    def test_accent_color_asset_reference_fails(self):
+        (self.root / "App/View.swift").write_text(
+            "import SwiftUI\nlet root = RootView().tint(.accentColor)\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Hardcoded-color audit"):
+            audit_hardcoded_colors(self.root)
+
+    def test_palette_token_use_passes(self):
+        (self.root / "App/View.swift").write_text(
+            "import SwiftUI\nstruct V: View { var body: some View { Text(\"x\").foregroundStyle(AppPalette.green) } }\n",
+            encoding="utf-8")
+        result = audit_hardcoded_colors(self.root)
+        self.assertEqual(result["color_sites_checked"], 0)
+
+    def test_whitelisted_site_passes(self):
+        (self.root / "scripts/color_whitelist.txt").write_text(
+            "# terminal brand tint, deliberate\nApp/View.swift :: .teal\n", encoding="utf-8")
+        (self.root / "App/View.swift").write_text(
+            "import SwiftUI\nlet tint = Color.teal\n", encoding="utf-8")
+        result = audit_hardcoded_colors(self.root)
+        self.assertEqual(result["color_sites_checked"], 1)
+
+    def test_file_scoped_exemption_passes(self):
+        (self.root / "scripts/color_whitelist.txt").write_text(
+            "file:App/Palette.swift\n", encoding="utf-8")
+        (self.root / "App/Palette.swift").write_text(
+            "let accent = color(0x0052D9, 0x6EA8FF)\n", encoding="utf-8")
+        result = audit_hardcoded_colors(self.root)
+        self.assertEqual(result["color_sites_checked"], 0)
+
+    def test_color_comment_mention_is_ignored(self):
+        (self.root / "App/View.swift").write_text(
+            "// Was .green before package O.\nimport SwiftUI\n", encoding="utf-8")
+        result = audit_hardcoded_colors(self.root)
+        self.assertEqual(result["color_sites_checked"], 0)
 
 
 if __name__ == "__main__":

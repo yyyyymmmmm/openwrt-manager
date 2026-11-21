@@ -1,0 +1,11 @@
+# Hardcoded-color audit (package O): colors in App/Widget sources must
+# come from AppPalette (semantic tokens + the themed accent ramp) —
+# never from hex literals, literal Color/UIColor initializers, or
+# direct system colors. Exceptions below, each with its reason.
+# Format: "file:<path>" exempts one whole file; "path :: substring"
+# exempts the matching lines of one file.
+
+# DesignSystem.swift IS the palette: every token's light/dark pair is
+# defined there by hex (including the primary button's .white on the
+# accent fill and the text pair behind AppPalette.textUIColor).
+file:App/Views/DesignSystem.swift

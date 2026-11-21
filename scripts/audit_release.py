@@ -85,7 +85,8 @@ def main():
     result = {"production_sources_checked": audit_sources(args.repository.resolve()),
               "localization": audit_localization(args.repository.resolve()),
               "english_literals": audit_english_literals(args.repository.resolve()),
-              "rawvalue_display": audit_rawvalue_display(args.repository.resolve())}
+              "rawvalue_display": audit_rawvalue_display(args.repository.resolve()),
+              "hardcoded_colors": audit_hardcoded_colors(args.repository.resolve())}
     if args.ipa:
         result["ipa"] = audit_ipa(args.ipa.resolve())
     print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -395,6 +396,78 @@ def audit_rawvalue_display(repository):
     if errors:
         raise ValueError("Raw-value audit failed:\n" + "\n".join(errors))
     return {"rawvalue_sites_checked": checked}
+
+
+
+# ---------------------------------------------------------------------------
+# Hardcoded-color audit (package O, 2026-11-21)
+#
+# Package M themed only AppPalette's accent ramp. The AccentColor
+# asset still held the shipped jade and an inner .tint(.accentColor)
+# shadowed the theme tint, so every native control stayed green —
+# invisible to all three scans above, none of which look at colors.
+# This scan keeps color from bypassing the palette/theme again in
+# App and Widget sources: hex literals, literal Color/UIColor
+# component initializers, UIColor.system* colors, and direct
+# system-color member access (.green, .accentColor, …) that is not
+# an AppPalette token. The palette's own definition site and any
+# deliberate exception go in scripts/color_whitelist.txt —
+# "file:<path>" for one whole file, or "path :: line substring" per
+# site, each with a comment saying why. (The kit's AppTheme.swift
+# holds the theme catalog's hex by design and is out of scope: this
+# scan covers the App and Widget targets only.)
+# ---------------------------------------------------------------------------
+
+_COLOR_NAME_RE = re.compile(
+    r"(?<!AppPalette)\.(green|teal|mint|blue|orange|red|purple|pink|yellow|indigo|cyan|accentColor|white|black)\b")
+_COLOR_HEX_RE = re.compile(r"0x[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?\b|\"#[0-9A-Fa-f]{6,8}\"")
+_COLOR_INIT_RE = re.compile(r"\b(?:Color|UIColor)\((?:red|hue):")
+_COLOR_SYSTEM_RE = re.compile(r"\bUIColor\.system[A-Z]")
+
+
+def _load_color_whitelist(repository):
+    files, entries = set(), []
+    path = repository / "scripts" / "color_whitelist.txt"
+    if path.is_file():
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("file:"):
+                files.add(line[len("file:"):])
+                continue
+            file_part, separator, needle = line.partition(" :: ")
+            if separator:
+                entries.append((file_part.strip(), needle.strip()))
+    return files, entries
+
+
+def audit_hardcoded_colors(repository):
+    files_wl, entries = _load_color_whitelist(repository)
+    errors = []
+    checked = 0
+    for root in (repository / "App", repository / "Widget"):
+        if not root.is_dir():
+            continue
+        for source in sorted(root.rglob("*.swift")):
+            relative = source.relative_to(repository).as_posix()
+            if relative in files_wl:
+                continue
+            for number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
+                if line.strip().startswith("//"):
+                    continue
+                if not (_COLOR_NAME_RE.search(line) or _COLOR_HEX_RE.search(line)
+                        or _COLOR_INIT_RE.search(line) or _COLOR_SYSTEM_RE.search(line)):
+                    continue
+                checked += 1
+                if any(relative == path and needle in line for path, needle in entries):
+                    continue
+                errors.append(
+                    f"{relative}:{number}: hardcoded color bypasses AppPalette/AppTheme "
+                    f"and is not whitelisted: {line.strip()!r}")
+    if errors:
+        raise ValueError("Hardcoded-color audit failed:\n" + "\n".join(errors))
+    return {"color_sites_checked": checked}
 
 
 if __name__ == "__main__":
